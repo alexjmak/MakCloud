@@ -1,0 +1,14 @@
+extends layout
+
+block header
+    link(rel='stylesheet', type='text/css', href='/stylesheets/accounts.css')
+    script(type='text/javascript', src= "/javascripts/accounts.js")
+
+block content
+    #frame.box.mdc-elevation--z8
+        h2.mdc-typography.mdc-typography--headline4(style='margin-top: 5px; margin-bottom: 3px;') Account Manager
+        h3#computername.mdc-typography.mdc-typography--subtitle2(style='margin-top: 0; margin-bottom:5px')= hostname
+        #accounts.box
+        br
+        div
+            button#submit.mdc-button.mdc-button--raised Save

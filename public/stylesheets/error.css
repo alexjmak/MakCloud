@@ -1,0 +1,28 @@
+.box {
+    border-radius: 5px;
+    width: 450px;
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 60%;
+    top: 15%;
+    margin: auto;
+    padding: 20px 20px 55px 20px;
+}
+
+#title {
+    font-weight: bold;
+    text-align: center;
+    margin-top: 5px;
+    margin-bottom: 3px;
+}
+
+#computername {
+    margin-top: 0;
+    margin-bottom:5px
+}
+
+#message {
+    text-align: center;
+    font-size: 20px;
+}

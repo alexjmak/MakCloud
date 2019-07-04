@@ -1,0 +1,16 @@
+extends layout
+
+block header
+    link(rel='stylesheet', type='text/css', href='/stylesheets/directory.css')
+    script.
+        let folderContents = "#{directory.files}".split(",");
+    script(type='text/javascript', src= "/javascripts/directory.js")
+
+block content
+    #frame.box.mdc-elevation--z8
+        h2.mdc-typography.mdc-typography--headline4(style='margin-top: 5px; margin-bottom: 3px;') Directory: /#{directory.path}
+        h3#computername.mdc-typography.mdc-typography--subtitle2(style='margin-top: 0; margin-bottom:5px')= hostname
+        #files.box
+        br
+        div
+            button#back.mdc-button.mdc-button--raised Back

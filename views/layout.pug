@@ -1,0 +1,70 @@
+block variables
+doctype html
+html
+    head
+        title= "MakCloud"
+        meta(name='viewport', content='width=device-width initial-scale=1 user-scalable=no')
+        link(rel='stylesheet', type='text/css', href='/stylesheets/material-components-web.min.css')
+        link(rel='stylesheet', type='text/css', href='/Material-Icons/material-icons.css')
+        link(rel='stylesheet', type='text/css', href='/stylesheets/layout.css')
+        script.
+            let currentUsername = "#{username}";
+        script(type='text/javascript', src='/javascripts/jquery-3.3.1.js')
+        script(type='text/javascript', src='/javascripts/jquery.md5.js')
+        script(type='text/javascript', src='/javascripts/jquery.cookie.js')
+        script(type='text/javascript', src='/javascripts/material-components-web.min.js')
+        script(type='text/javascript', src='/javascripts/jquery.cookie.js')
+        script(type='text/javascript', src='/javascripts/jwtParser.js')
+        script(type='text/javascript', src='/javascripts/requests.js')
+        script(type='text/javascript', src='/javascripts/dialog.js')
+        script(type='text/javascript', src='/javascripts/snackbar.js')
+        script(type='text/javascript', src='/javascripts/layout.js')
+
+        block header
+    body
+        aside.mdc-drawer.mdc-drawer--modal
+            .mdc-drawer__header
+                h3.mdc-drawer__title MakCloud
+                h6.mdc-drawer__subtitle= hostname
+            .mdc-drawer__content
+                nav.mdc-list
+                    a.mdc-list-item.mdc-list-item--activated(href='/files')
+                        i.material-icons.mdc-list-item__graphic(aria-hidden='true') folder
+                        span.mdc-list-item__text File Manager
+                    a.mdc-list-item(href='/accounts')
+                        i.material-icons.mdc-list-item__graphic(aria-hidden='true') account_circle
+                        span.mdc-list-item__text Account Manager
+
+                    .mdc-list-divider
+                    a.mdc-list-item(href='/logout')
+                        i.material-icons.mdc-list-item__graphic(aria-hidden='true') launch
+                        span.mdc-list-item__text Logout
+        .mdc-drawer-scrim
+        .mdc-drawer-app-content
+            header.mdc-top-app-bar
+                .mdc-top-app-bar__row.mdc-elevation--z4
+
+                    section.mdc-top-app-bar__section.mdc-top-app-bar__section--align-start
+                        button.material-icons.mdc-top-app-bar__navigation-icon.mdc-ripple(id="drawerButton" style="color: white; background-color: transparent; border: none; outline: none") menu
+                    section.mdc-top-app-bar__section.mdc-top-app-bar__section--align-end
+                        h3(id="currentUsername", style="font-weight: normal; cursor: pointer;")= username
+                        button#accountButton.material-icons(type='submit' style="float: right; font-size: 36px; color: white; background-color: transparent; border: none; outline: none") perm_identity
+            block content
+        br
+        br
+        br
+        br
+        #accountCard.mdc-card.mdc-elevation--z10(style=" display:none; z-index:1;position:relative;width: 300px; float:right; margin-right: 25px; padding-bottom: 10px; padding-left: 16px;")
+            .demo-card__primary
+                div(style="padding-right: 16px;")
+                    i.material-icons.mdc-list-item__graphic(style='display:inline; float: left; font-size: 64px') account_circle
+                    h2.mdc-typography.mdc-typography--headline6(style="text-align: right; margin-bottom: 0")= username
+                    h3.mdc-typography.mdc-typography--subtitle2(style="text-align: right; margin-top: 0")
+
+                .mdc-card__action-buttons(style="float: right; padding-right: 7px;")
+                    a(href="/accounts")
+                        button.mdc-button.mdc-card__action.mdc-card__action--button(style="float: right") Account
+                    a(href="/logout")
+                        button.mdc-button.mdc-card__action.mdc-card__action--button(style="float: right") Logout
+
+

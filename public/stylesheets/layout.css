@@ -1,0 +1,54 @@
+@import url("../Roboto/roboto.css");
+
+
+:root {
+    --mdc-theme-primary: #15438c;
+}
+
+body {
+    font-family: Roboto, Arial, Helvetica, sans-serif;
+    background-color: #f7f7f7;
+    margin: 0;
+
+}
+
+.box {
+    background-color: #ffffff;
+}
+
+h1 {
+    font-size: 30px;
+    margin-top: 0;
+    margin-bottom: 1px;
+}
+
+
+input[type="button"] {
+    width: 75px;
+    margin-top: 7px;
+    cursor: pointer;
+}
+
+
+button {
+    cursor: pointer;
+}
+
+#computername {
+    font-size: 15px;
+    margin-bottom: 17px;
+    margin-left: 2px;
+}
+
+::-webkit-scrollbar {
+    display: none;
+}
+
+pre {
+    margin-top: 0;
+    margin-bottom: 0;
+}
+
+a:visited {
+    color: blue;
+}

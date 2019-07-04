@@ -1,0 +1,23 @@
+#frame {
+    border-radius: 5px; width:50%; position:fixed; left:0; right:0; bottom:10%; top:15%; margin:auto; padding: 20px 20px 55px 20px;
+}
+
+@media (max-height: 764px) {
+    #frame {
+        height: 75%;
+    }
+}
+
+@media (max-height: 600px) {
+    #frame {
+        height: 70%;
+    }
+}
+
+#properties {
+    height: 80%;
+    width: 99%;
+    border-radius: 5px;
+    overflow: scroll;
+    padding: 5px;
+}
