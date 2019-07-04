@@ -3,7 +3,7 @@ $(document).ready(function() {
         $('#accountButton').attr("disabled", true);
     }
     const topAppBar = mdc.topAppBar.MDCTopAppBar.attachTo(document.querySelector('.mdc-top-app-bar'));
-    const drawer = mdc.drawer.MDCDrawer.attachTo(document.querySelector('.mdc-drawer'));
+    const drawer = mdc.list.MDCList.attachTo(document.querySelector('.mdc-list'));
 
     let listItems = $(".mdc-list-item");
     listItems.each(function() {

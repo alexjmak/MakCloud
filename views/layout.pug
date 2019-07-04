@@ -22,10 +22,19 @@ html
 
         block header
     body
-        aside.mdc-drawer.mdc-drawer--modal
-            .mdc-drawer__header
-                h3.mdc-drawer__title MakCloud
-                h6.mdc-drawer__subtitle= hostname
+
+        header.mdc-top-app-bar
+            .mdc-top-app-bar__row.mdc-elevation--z4
+
+                section.mdc-top-app-bar__section.mdc-top-app-bar__section--align-start
+
+                    button.material-icons(style="margin-left: 5px; color: white; background-color: transparent; border: none; outline: none") cloud
+                    h3(style="font-size: 22px;")= "MakCloud"
+                section.mdc-top-app-bar__section.mdc-top-app-bar__section--align-end
+                    h3(id="currentUsername", style="font-weight: normal; cursor: pointer;")= username
+                    button#accountButton.material-icons(type='submit' style="float: right; font-size: 36px; color: white; background-color: transparent; border: none; outline: none") perm_identity
+
+        aside.mdc-drawer.mdc-top-app-bar--fixed-adjust
             .mdc-drawer__content
                 nav.mdc-list
                     a.mdc-list-item.mdc-list-item--activated(href='/files')
@@ -39,32 +48,20 @@ html
                     a.mdc-list-item(href='/logout')
                         i.material-icons.mdc-list-item__graphic(aria-hidden='true') launch
                         span.mdc-list-item__text Logout
-        .mdc-drawer-scrim
-        .mdc-drawer-app-content
-            header.mdc-top-app-bar
-                .mdc-top-app-bar__row.mdc-elevation--z4
+        .mdc-drawer-app-content.mdc-top-app-bar--fixed-adjust
 
-                    section.mdc-top-app-bar__section.mdc-top-app-bar__section--align-start
-                        button.material-icons.mdc-top-app-bar__navigation-icon.mdc-ripple(id="drawerButton" style="color: white; background-color: transparent; border: none; outline: none") menu
-                    section.mdc-top-app-bar__section.mdc-top-app-bar__section--align-end
-                        h3(id="currentUsername", style="font-weight: normal; cursor: pointer;")= username
-                        button#accountButton.material-icons(type='submit' style="float: right; font-size: 36px; color: white; background-color: transparent; border: none; outline: none") perm_identity
+
+            #accountCard.mdc-card.mdc-elevation--z10(style=" display:none; z-index:1;position:relative;width: 300px; float:right; margin-right: 20px;padding-bottom: 10px; padding-left: 16px; margin-top: 20px")
+                .demo-card__primary
+                    div(style="padding-right: 16px;")
+                        i.material-icons.mdc-list-item__graphic(style='display:inline; float: left; font-size: 64px') account_circle
+                        h2.mdc-typography.mdc-typography--headline6(style="text-align: right; margin-bottom: 0")= username
+                        h3.mdc-typography.mdc-typography--subtitle2(style="text-align: right; margin-top: 0")
+
+                    .mdc-card__action-buttons(style="float: right; padding-right: 7px;")
+                        a(href="/accounts")
+                            button.mdc-button.mdc-card__action.mdc-card__action--button(style="float: right") Account
+                        a(href="/logout")
+                            button.mdc-button.mdc-card__action.mdc-card__action--button(style="float: right") Logout
             block content
-        br
-        br
-        br
-        br
-        #accountCard.mdc-card.mdc-elevation--z10(style=" display:none; z-index:1;position:relative;width: 300px; float:right; margin-right: 25px; padding-bottom: 10px; padding-left: 16px;")
-            .demo-card__primary
-                div(style="padding-right: 16px;")
-                    i.material-icons.mdc-list-item__graphic(style='display:inline; float: left; font-size: 64px') account_circle
-                    h2.mdc-typography.mdc-typography--headline6(style="text-align: right; margin-bottom: 0")= username
-                    h3.mdc-typography.mdc-typography--subtitle2(style="text-align: right; margin-top: 0")
-
-                .mdc-card__action-buttons(style="float: right; padding-right: 7px;")
-                    a(href="/accounts")
-                        button.mdc-button.mdc-card__action.mdc-card__action--button(style="float: right") Account
-                    a(href="/logout")
-                        button.mdc-button.mdc-card__action.mdc-card__action--button(style="float: right") Logout
-
 

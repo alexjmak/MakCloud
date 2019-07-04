@@ -5,11 +5,33 @@
     --mdc-theme-primary: #15438c;
 }
 
+.mdc-drawer {
+    height: auto;
+}
 body {
     font-family: Roboto, Arial, Helvetica, sans-serif;
-    background-color: #f7f7f7;
+
     margin: 0;
 
+}
+body {
+    display: flex;
+    height: 100vh;
+}
+
+.mdc-drawer-app-content {
+    flex: auto;
+    overflow: auto;
+    position: relative;
+}
+
+
+.app-bar {
+    position: absolute;
+}
+
+.mdc-top-app-bar {
+   z-index: 7;
 }
 
 .box {
