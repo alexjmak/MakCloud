@@ -5,6 +5,7 @@ $(document).ready(function() {
     const topAppBar = mdc.topAppBar.MDCTopAppBar.attachTo(document.querySelector('.mdc-top-app-bar'));
     const drawer = mdc.list.MDCList.attachTo(document.querySelector('.mdc-list'));
 
+    /*
     let listItems = $(".mdc-list-item");
     listItems.each(function() {
         let listItem = $(this);
@@ -14,6 +15,8 @@ $(document).ready(function() {
             return false;
         }
     });
+
+    */
 
     topAppBar.listen('MDCTopAppBar:nav', function () {
         drawer.open = true;
@@ -33,7 +36,7 @@ $(document).ready(function() {
 
             }
         }
-    })
+    });
 
     $("#currentUsername").click(function() {
         if (!accountCard.is(":visible")) {

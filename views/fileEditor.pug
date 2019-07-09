@@ -7,16 +7,15 @@ block header
     script(type='text/javascript', src= "/javascripts/fileEditor.js")
 
 block content
-    #frame.box.mdc-elevation--z8
-        h2#file.mdc-typography.mdc-typography--headline4(style='margin-top: 5px; margin-bottom: 3px;') File Editor: #{file.path}
-        h3#computername.mdc-typography.mdc-typography--subtitle2(style='margin-top: 0; margin-bottom:5px')= hostname
-        #fileContents.box(contenteditable='true')
-        br
-        div
-            button#back.mdc-button.mdc-button--raised Back
-            button#save.mdc-button.mdc-button--raised Save
-            button#revert.mdc-button.mdc-button--raised Revert
-            button#raw.mdc-button.mdc-button--raised Download
+    h2#file.mdc-typography.mdc-typography--headline4(style='margin-top: 5px; margin-bottom: 3px;') File Editor: #{file.path}
+    h3#computername.mdc-typography.mdc-typography--subtitle2(style='margin-top: 0; margin-bottom:5px')= hostname
+    #fileContents.box(contenteditable='true')
+    br
+    div
+        button#back.mdc-button.mdc-button--raised Back
+        button#save.mdc-button.mdc-button--raised Save
+        button#revert.mdc-button.mdc-button--raised Revert
+        button#raw.mdc-button.mdc-button--raised Download
 
 
     

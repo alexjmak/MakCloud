@@ -22,10 +22,19 @@
     }
 }
 
-#files {
-    height: 80%;
-    width: 99%;
-    border-radius: 5px;
+table {
+    width:100%;
     overflow: scroll;
     padding: 5px;
+    border-collapse: collapse;
+}
+
+tr {
+    border-bottom: 1px solid darkgray;
+
+}
+
+h4 {
+    margin: 0;
+    margin-bottom: 7px;
 }

@@ -4,6 +4,21 @@ block header
     link(rel='stylesheet', type='text/css', href='/stylesheets/properties.css')
     script(type='text/javascript', src= "/javascripts/properties.js")
 
+block drawer
+    aside.mdc-drawer.mdc-top-app-bar--fixed-adjust
+        .mdc-drawer__content
+            nav.mdc-list
+                a.mdc-list-item.mdc-list-item--activated(href='/files')
+                    i.material-icons.mdc-list-item__graphic(aria-hidden='true') folder
+                    span.mdc-list-item__text File Manager
+                a.mdc-list-item(href='/accounts')
+                    i.material-icons.mdc-list-item__graphic(aria-hidden='true') account_circle
+                    span.mdc-list-item__text Account Manager
+
+                .mdc-list-divider
+                a.mdc-list-item(href='/logout')
+                    i.material-icons.mdc-list-item__graphic(aria-hidden='true') launch
+                    span.mdc-list-item__text Logout
 
 block content
     #frame.box.mdc-elevation--z8

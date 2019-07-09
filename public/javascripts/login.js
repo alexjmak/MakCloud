@@ -1,4 +1,3 @@
-
 $(document).ready(function() {
     var topAppBarElement = document.querySelector('.mdc-top-app-bar');
     var topAppBar = new mdc.topAppBar.MDCTopAppBar(topAppBarElement);
@@ -14,6 +13,7 @@ $(document).ready(function() {
         new mdc.textField.MDCTextField(x[i]);
     }
 
+    $("#accountButton").hide();
     $("#computername").text($.cookie("host"));
     $.removeCookie("host");
 

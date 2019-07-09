@@ -20,7 +20,7 @@
     "mobile-detect": "^1.4.3",
     "pidusage": "^2.0.17",
     "pug": "^2.0.3",
-    "sqlite3": "^4.0.8",
+    "sqlite3": "^4.0.9",
     "strftime": "^0.10.0"
   }
 }

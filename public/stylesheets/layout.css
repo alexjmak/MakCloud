@@ -8,6 +8,7 @@
 .mdc-drawer {
     height: auto;
 }
+
 body {
     font-family: Roboto, Arial, Helvetica, sans-serif;
 
@@ -23,15 +24,18 @@ body {
     flex: auto;
     overflow: auto;
     position: relative;
+    margin: 7px
 }
 
 
 .app-bar {
     position: absolute;
+
 }
 
 .mdc-top-app-bar {
-   z-index: 7;
+    z-index: 7;
+    /*background-color: #15438c;*/
 }
 
 .box {
@@ -44,6 +48,9 @@ h1 {
     margin-bottom: 1px;
 }
 
+h2 {
+    margin-top: 0;
+}
 
 input[type="button"] {
     width: 75px;

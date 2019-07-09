@@ -9,6 +9,7 @@ const cookieParser = require('cookie-parser');
 const helmet = require("helmet");
 
 const authorization = require('./authorization');
+const accountManager = require('./accountManager');
 
 const app = express();
 
@@ -66,7 +67,10 @@ app.use(function(req, res, next) {
 app.use(function(err, req, res, next) {
     log(req, req.url + " (" + (err.status || 500) + " " + err.message + ")");
     res.status(err.status || 500);
-    res.render('error', {message: err.message, status: err.status});
+    accountManager.getInformation("username", "id", authorization.getTokenSubject(req), function(username) {
+        res.render('error', {message: err.message, status: err.status, username: username});
+    });
+
 });
 
 app.set('views', path.join(__dirname, 'views'));

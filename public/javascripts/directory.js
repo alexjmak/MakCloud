@@ -19,11 +19,37 @@ $(document).ready(function() {
             backButton.prop("hidden", false);
             continue;
         }
-        files.append("<a href=\"" + location.pathname + "/" + file + "?edit\">" + file + "</a><br>")
+        files.append("<tr class='file' id='" + file + "'><td><p>" + file + "</p></td></tr>");
+
     }
+
+    $(".file").dblclick(function() {
+        window.location = location.pathname + "/" + this.id + "?edit";
+    });
+
+    $(document).click(function (e) {
+        if (!$(".file").is(e.target) && $(".file").has(e.target).length === 0) {
+            setTimeout(function() {
+                $(".file").css("background-color", "")
+            }, 0)
+
+        }
+
+    });
+
+    $(".file").click(function() {
+        $(".file").css("background-color", "")
+        $(this).css("background-color", "lightgray")
+    });
+
+
 
     $("#back").click(function() {
         window.open(location.pathname + "/..", "_self");
     });
 
 });
+
+function deselectAll() {
+
+}

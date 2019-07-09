@@ -5,7 +5,10 @@ let accountDatabase = new database.Database("./accounts.db");
 
 accountDatabase.run("CREATE TABLE IF NOT EXISTS accounts (id INTEGER PRIMARY KEY, username TEXT NOT NULL UNIQUE, hash TEXT NOT NULL, salt TEXT NOT NULL, enabled INTEGER NOT NULL DEFAULT 1, privilege INTEGER NOT NULL DEFAULT 0);");
 
-newAccount("admin", "password", Number.MAX_SAFE_INTEGER);
+newAccount("admin", "password", 100);
+getInformation("id", "username", "admin", function(id) {
+    updatePrivilege(id, 100);
+});
 
 function accountExists(usernameOrID, enabledCheck, next) {
     let query;
@@ -30,18 +33,22 @@ function accountExists(usernameOrID, enabledCheck, next) {
     });
 }
 
-function getAccountsSummary(next) {
-    accountDatabase.all("SELECT id, username, enabled, privilege FROM accounts ORDER BY username COLLATE NOCASE", null,function (results) {
-        let resultsById = {};
-        for (let result in results) {
-            if (results.hasOwnProperty(result)) {
-                result = results[result];
-                let id = result.id;
-                delete result[id];
-                resultsById[id] = result;
-            }
-        }
-        if (next != undefined) next(results);
+function getAccountsSummary(id, next) {
+    getInformation("privilege", "id", id, function(privilege) {
+        getInformation("username", "id", id, function(username) {
+            accountDatabase.all("SELECT id, username, enabled, privilege FROM accounts WHERE ? OR id = ? OR privilege < ? ORDER BY username COLLATE NOCASE", [username === "admin", id, privilege], function (results) {
+                let resultsById = {};
+                for (let result in results) {
+                    if (results.hasOwnProperty(result)) {
+                        result = results[result];
+                        let id = result.id;
+                        delete result[id];
+                        resultsById[id] = result;
+                    }
+                }
+                if (next != undefined) next(results);
+            });
+        });
     });
 }
 
@@ -162,6 +169,7 @@ function updatePassword(id, newPassword, next) {
 }
 
 function updatePrivilege(id, newPrivilege, next) {
+    if (newPrivilege >= 100) newPrivilege = 100;
     accountExists(id, false, function(result) {
         if (!result) {
             if (next !== undefined) next(false);

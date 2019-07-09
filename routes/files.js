@@ -39,7 +39,7 @@ router.get('/*', function(req, res, next) {
                                     res.render('directory', {
                                         username: username,
                                         hostname: os.hostname(),
-                                        directory: {path: urlFilePath, files: files}
+                                        directory: {path: filePath, files: files}
                                     });
 
                                 });

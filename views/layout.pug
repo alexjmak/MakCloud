@@ -4,6 +4,8 @@ html
     head
         title= "MakCloud"
         meta(name='viewport', content='width=device-width initial-scale=1 user-scalable=no')
+        link(rel='icon', type='image/png', href='/favicon.png')
+
         link(rel='stylesheet', type='text/css', href='/stylesheets/material-components-web.min.css')
         link(rel='stylesheet', type='text/css', href='/Material-Icons/material-icons.css')
         link(rel='stylesheet', type='text/css', href='/stylesheets/layout.css')
@@ -23,8 +25,8 @@ html
         block header
     body
 
-        header.mdc-top-app-bar
-            .mdc-top-app-bar__row.mdc-elevation--z4
+        header.mdc-top-app-bar.mdc-top-app-bar--fixed
+            .mdc-top-app-bar__row.mdc-elevation--z1
 
                 section.mdc-top-app-bar__section.mdc-top-app-bar__section--align-start
 
@@ -34,24 +36,10 @@ html
                     h3(id="currentUsername", style="font-weight: normal; cursor: pointer;")= username
                     button#accountButton.material-icons(type='submit' style="float: right; font-size: 36px; color: white; background-color: transparent; border: none; outline: none") perm_identity
 
-        aside.mdc-drawer.mdc-top-app-bar--fixed-adjust
-            .mdc-drawer__content
-                nav.mdc-list
-                    a.mdc-list-item.mdc-list-item--activated(href='/files')
-                        i.material-icons.mdc-list-item__graphic(aria-hidden='true') folder
-                        span.mdc-list-item__text File Manager
-                    a.mdc-list-item(href='/accounts')
-                        i.material-icons.mdc-list-item__graphic(aria-hidden='true') account_circle
-                        span.mdc-list-item__text Account Manager
+        block drawer
 
-                    .mdc-list-divider
-                    a.mdc-list-item(href='/logout')
-                        i.material-icons.mdc-list-item__graphic(aria-hidden='true') launch
-                        span.mdc-list-item__text Logout
         .mdc-drawer-app-content.mdc-top-app-bar--fixed-adjust
-
-
-            #accountCard.mdc-card.mdc-elevation--z10(style=" display:none; z-index:1;position:relative;width: 300px; float:right; margin-right: 20px;padding-bottom: 10px; padding-left: 16px; margin-top: 20px")
+            #accountCard.mdc-card.mdc-elevation--z10(style="display:none; z-index:1;position:absolute;width: 300px; float:right; right: 0px; margin-right: 10px;padding-bottom: 10px; padding-left: 16px; margin-top: 10px; padding-top: 15px")
                 .demo-card__primary
                     div(style="padding-right: 16px;")
                         i.material-icons.mdc-list-item__graphic(style='display:inline; float: left; font-size: 64px') account_circle
