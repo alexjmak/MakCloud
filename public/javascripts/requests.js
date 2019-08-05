@@ -1,7 +1,7 @@
 var request = function(method, url, data, callback, authorization) {
     var xmlHttpRequest = new XMLHttpRequest();
     xmlHttpRequest.open(method, url);
-	xmlHttpRequest.timeout = 10000
+	xmlHttpRequest.timeout = 10000;
     if (authorization != null) xmlHttpRequest.setRequestHeader("Authorization", authorization);
     xmlHttpRequest.onreadystatechange = function () {
         if (xmlHttpRequest.readyState == XMLHttpRequest.DONE) {

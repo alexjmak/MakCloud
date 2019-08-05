@@ -1,35 +1,22 @@
-#frame {
-    border-radius: 5px;
-    width: 80%;
-    position: fixed;
-    left: 0;
-    right: 0;
-    bottom: 3%;
-    top: 10%;
-    margin: auto;
-    padding: 20px 20px 35px 20px;
-}
-
-@media (max-height: 764px) {
-    #frame {
-        height: 75%;
-    }
-}
-
-@media (max-height: 600px) {
-    #frame {
-        height: 70%;
-    }
+body {
+    background-color: #f0f0f0;
 }
 
 #fileContents {
-    height: 80%;
-    width: 99%;
-    border-radius: 5px;
-    overflow: scroll;
-    padding: 5px;
+    background-color: white;
+    padding: 30px;
+    width: 800px;
+    margin: 0 auto;
+    margin-top: 50px;
+    margin-bottom: 50px;
+    outline: none;
+
 }
 
-button {
-    margin-right:5px;
+.mdc-drawer__header{
+    margin-bottom: -20px;
+}
+
+.mdc-drawer__title {
+    display: inline;
 }

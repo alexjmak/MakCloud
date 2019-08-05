@@ -17,10 +17,13 @@
 table {
     width:100%;
     overflow: scroll;
-    padding: 5px;
+    margin-top: 10px;
     border-collapse: collapse;
 }
 
+.first-column {
+    margin-left: 10px;
+}
 
 #accounts input[type="text"], #accounts input[type="password"]{
     width: 200px;

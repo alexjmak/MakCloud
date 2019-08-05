@@ -1,6 +1,7 @@
 const os = require("os");
 const fs = require('fs');
 const jwt = require("jsonwebtoken");
+const database = require("./databaseInit");
 const accountManager = require("./accountManager");
 
 const secretKey = fs.readFileSync('./keys/jwt/secret.key', 'utf8');
@@ -61,7 +62,7 @@ async function login(req, res) {
         const username = strauth.substring(0, splitIndex);
         const password = strauth.substring(splitIndex + 1);
 
-        accountManager.accountDatabase.get("SELECT * FROM accounts WHERE lower(username) = ?", username.toLowerCase(), function(result) {
+        database.get("SELECT * FROM accounts WHERE lower(username) = ?", username.toLowerCase(), function(result) {
             if (result !== false) {
                 let id = result["id"];
                 let hash = result["hash"];

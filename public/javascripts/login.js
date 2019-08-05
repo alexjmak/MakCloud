@@ -14,8 +14,8 @@ $(document).ready(function() {
     }
 
     $("#accountButton").hide();
-    $("#computername").text($.cookie("host"));
-    $.removeCookie("host");
+    $("#computername").text($.cookie("cert.cert"));
+    $.removeCookie("cert.cert");
 
     var login = function (xmlHttpRequest) {
         if (xmlHttpRequest.status == 200) {

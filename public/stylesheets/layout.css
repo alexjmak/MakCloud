@@ -14,6 +14,13 @@ body {
 
     margin: 0;
 
+    -webkit-touch-callout: none; /* iOS Safari */
+    -webkit-user-select: none; /* Safari */
+    -khtml-user-select: none; /* Konqueror HTML */
+    -moz-user-select: none; /* Firefox */
+    -ms-user-select: none; /* Internet Explorer/Edge */
+    user-select: none;
+
 }
 body {
     display: flex;
@@ -24,7 +31,6 @@ body {
     flex: auto;
     overflow: auto;
     position: relative;
-    margin: 7px
 }
 
 
@@ -80,4 +86,10 @@ pre {
 
 a:visited {
     color: blue;
+}
+
+button.material-icons {
+    background-color: transparent;
+    border: none;
+    outline: none
 }

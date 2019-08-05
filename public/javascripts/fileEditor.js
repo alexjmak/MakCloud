@@ -1,4 +1,5 @@
 var getFile = function(filePath) {
+    filePath += "?download";
     getRequest(filePath, function(xmlHttpRequest) {
         if (xmlHttpRequest.status == 200) {
             $("#fileContents").text(xmlHttpRequest.responseText);
@@ -24,8 +25,8 @@ var revert = function(event) {
     $("#fileContents").text(event.data.initialFileContents);
 };
 
-var raw = function(event) {
-    window.open(event.data.filePath, "_blank");
+var download = function(event) {
+    window.open(event.data.filePath + "?download", "_blank");
 };
 
 $(document).ready(function() {
@@ -35,6 +36,8 @@ $(document).ready(function() {
         mdc.ripple.MDCRipple.attachTo(x[i]);
     }
 
+    let pathSplit = filePath.split("/");
+    $(".mdc-drawer__title").text(pathSplit[pathSplit.length - 1]);
     var supportedTypes = ["txt", "json", "log", "properties", "yml"];
 
     var fileEditor = $("#fileContents");
@@ -56,8 +59,7 @@ $(document).ready(function() {
     } else {
         $("#save").remove();
         $("#revert").remove();
-        $("#raw").val("Download");
-        fileEditor.text("File editor not supported for this file type.\nClick to download below:");
+        fileEditor.text("Can't open file type");
         fileEditor.prop("contenteditable", false);
     }
 
@@ -65,5 +67,5 @@ $(document).ready(function() {
         window.open(location.pathname + "/..", "_self");
     });
     
-    $("#raw").click({filePath: filePath}, raw);
+    $("#download").click({filePath: filePath}, download);
 });

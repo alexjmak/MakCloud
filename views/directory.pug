@@ -3,7 +3,8 @@ extends layout
 block header
     link(rel='stylesheet', type='text/css', href='/stylesheets/directory.css')
     script.
-        let folderContents = "#{directory.files}".split(",");
+        let folderContents = JSON.parse("#{directory.files}".replace(/&quot;/g, "\""));
+        let directoryPath = "#{directory.path}";
     script(type='text/javascript', src= "/javascripts/directory.js")
 
 block drawer
@@ -23,10 +24,32 @@ block drawer
                     span.mdc-list-item__text Logout
 
 block content
-
-    h2(style='margin-bottom: 3px;') #{directory.path}
-    table#files(width=100)
-        tr
+    table#navigation-bar-table
+        tr#navigation-bar
             td
-                h4 Files
+                button#home.material-icons(onclick = "window.location = '/files'" style="background-color: transparent; border: none; outline: none") home
+                button#path-overflow(hidden style='font-size: 15px; margin-top: 7px; margin-left: 5px; border: none; outline: none; background-color: transparent')
+                    h4 ...
+
+
+
+    //h2(style='margin-bottom: 3px;') #{directory.path}
+    table#files
+        tr.underlinedTR
+            td.first-column
+
+                //.mdc-checkbox#select-all
+                    input.mdc-checkbox__native-control(type='checkbox')
+                    .mdc-checkbox__background
+                        svg.mdc-checkbox__checkmark(viewBox='0 0 24 24')
+                            path.mdc-checkbox__checkmark-path(fill='none', d='M1.73,12.91 8.1,19.28 22.79,4.59')
+                        .mdc-checkbox__mixedmark
+
+            td
+                h4 Name
+            td
+                h4 Size
+            td
+                h4 Modified
+
     //h3#computername.mdc-typography.mdc-typography--subtitle2(style='margin-top: 0; margin-bottom:5px')= hostname

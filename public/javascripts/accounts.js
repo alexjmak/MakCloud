@@ -19,7 +19,7 @@
         }
 
         accounts_inputs.append("<tr>" +
-            "<td><input class=\"account_usernames\" type=\"text\" autocomplete='off' autocapitalize=\"none\" name=\"" + accountID + "\" value=\"" + accountUsername + "\" placeholder='New username'></td>" +
+            "<td><input class=\"account_usernames first-column\" type=\"text\" autocomplete='off' autocapitalize=\"none\" name=\"" + accountID + "\" value=\"" + accountUsername + "\" placeholder='New username'></td>" +
             "<td><input class=\"account_passwords\" type=\"password\" name=\"" + accountID + "\" placeholder='••••••••••••••••••••••••' onfocus=\"this.placeholder = ''\" onblur=\"this.placeholder = '••••••••••••••••••••••••'\"></td>" +
             "<td><input class=\"account_privileges\" type=\"text\" maxlength=\"5\" autocomplete='off' autocapitalize=\"none\" name=\"" + accountID + "\" value='" + accountPrivilege + "' placeholder='New privilege'></td>" +
             "<td><div class=\"account_disable mdc-checkbox\" name=\"" + accountID + "\"> <input type=\"checkbox\" " + checked + " class=\"mdc-checkbox__native-control\"> <div class=\"mdc-checkbox__background\"> <svg class=\"mdc-checkbox__checkmark\" viewBox=\"0 0 24 24\"> <path class=\"mdc-checkbox__checkmark-path\" fill=\"none\" d=\"M1.73,12.91 8.1,19.28 22.79,4.59\"/> </svg> <div class=\"mdc-checkbox__mixedmark\"></div> </div> </div></td>" +
@@ -31,7 +31,7 @@
         $("#accounts_inputs").remove();
         accounts.append("<tbody id=\"accounts_inputs\"></tbody>");
         accounts_inputs = $("#accounts_inputs");
-        accounts_inputs.append("<tr><td><h4>Username</h4></td><td><h4>Password</h4></td><td><h4>Privilege Level</h4></td><td><h4>Enabled</h4></td><td></td></tr><hr>");
+        accounts_inputs.append("<tr><td><h4 class='first-column'>Username</h4></td><td><h4>Password</h4></td><td><h4>Privilege Level</h4></td><td><h4>Enabled</h4></td><td></td></tr><hr>");
 
         inputStorage = {};
         inputStorage["username"] = {};
@@ -97,7 +97,7 @@
 
                 if (currentPrivilege > 0 || currentUsername === "admin") {
                     accounts_inputs.append(//"<tr><td>New account username</td><td>New account password</td><td></td><td></td></tr>" +
-                        "</tr><tr><td><input id=\"new_account_username\" type=\"text\" autocomplete='off' autocapitalize=\"none\" placeholder='New account username'></td>" +
+                        "</tr><tr><td><input id=\"new_account_username\" class='first-column' type=\"text\" autocomplete='off' autocapitalize=\"none\" placeholder='New account username'></td>" +
                         "<td><input id=\"new_account_password\" type=\"password\" placeholder='New account password'></td>" +
                         "<td><input id=\"new_account_privilege\" type=\"text\" maxlength=\"5\" autocomplete='off' autocapitalize=\"none\" placeholder='New account privilege'></td>" +
                         "<td><button class=\"mdc-icon-button material-icons\" id=\"new_account_submit\">add</button></td><td></td>" +
@@ -169,7 +169,6 @@
             }
 
             if (xmlHttpRequest.status !== 200) showSnackbar(basicSnackbar, xmlHttpRequest.responseText);
-            console.log(data);
             if (xmlHttpRequest.status !== 200 || (xmlHttpRequest.status === 200 && (url === "delete" || url === "new"))) {
                 scrollHeight = accounts[0].scrollHeight - accounts.scrollTop();
                 getAccounts();
