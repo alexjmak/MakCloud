@@ -1,9 +1,17 @@
 $(document).ready(function() {
-    if (window.location.pathname === "/login") {
-        $('#accountButton').attr("disabled", true);
+    if (window.location.pathname === "/login" || $.cookie("token") === undefined) {
+        $('#accountButton').click(function() {
+            window.location.href = "/login";
+        });
     }
+
     const topAppBar = mdc.topAppBar.MDCTopAppBar.attachTo(document.querySelector('.mdc-top-app-bar'));
     const drawer = mdc.list.MDCList.attachTo(document.querySelector('.mdc-list'));
+    var textFields = document.getElementsByClassName('mdc-text-field');
+    var i;
+    for (i = 0; i < textFields.length; i++) {
+        new mdc.textField.MDCTextField(textFields[i]);
+    }
 
     /*
     let listItems = $(".mdc-list-item");
@@ -39,13 +47,13 @@ $(document).ready(function() {
     });
 
     $("#currentUsername").click(function() {
-        if (!accountCard.is(":visible")) {
+        if (!accountCard.is(":visible") && $.cookie("token") !== undefined) {
             accountCard.show();
         }
     });
 
     $("#accountButton").click(function() {
-        if (!accountCard.is(":visible")) {
+        if (!accountCard.is(":visible") && $.cookie("token") !== undefined) {
             accountCard.show();
         }
     });

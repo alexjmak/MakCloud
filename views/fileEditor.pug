@@ -22,12 +22,26 @@ block drawer
                     i.material-icons.mdc-list-item__graphic(aria-hidden='true') share
                     span.mdc-list-item__text Share
                 .mdc-list-divider
-                a.mdc-list-item(href='/logout')
+                a.mdc-list-item(href='.')#back
+                    i.material-icons.mdc-list-item__graphic(aria-hidden='true') arrow_back
+                    span.mdc-list-item__text Back
+                a.mdc-list-item#logout
                     i.material-icons.mdc-list-item__graphic(aria-hidden='true') launch
                     span.mdc-list-item__text Logout
 
 block content
-    pre#fileContents.mdc-elevation--z10
+    pre#fileContents(hidden).mdc-elevation--z10
+
+    #authorization.box.mdc-card.mdc-elevation--z8(style="display: none")
+        .demo-card__primary
+            h2#title.demo-card__title.mdc-typography.mdc-typography--headline4 Authorization Required
+        br
+        .mdc-text-field
+            input#password.mdc-text-field__input(type='password' tabindex=1)
+            .mdc-line-ripple
+            label.mdc-floating-label Password
+        p#message
+        button#submit.mdc-button.mdc-button--raised Submit
 
 
     

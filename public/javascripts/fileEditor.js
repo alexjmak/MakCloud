@@ -1,12 +1,33 @@
-var getFile = function(filePath) {
-    filePath += "?download";
-    getRequest(filePath, function(xmlHttpRequest) {
+var getFile = function(filePath, mode, authorization) {
+    console.log(filePath);
+    getRequest(filePath + "?" + mode, function(xmlHttpRequest) {
+        console.log(xmlHttpRequest.status);
         if (xmlHttpRequest.status == 200) {
-            $("#fileContents").text(xmlHttpRequest.responseText);
-            $("#revert").unbind();
-            $("#revert").click({initialFileContents: xmlHttpRequest.responseText}, revert)
+            hideAuthorization();
+
+            if (mode === "preview") {
+                var supportedTypes = ["txt", "json", "log", "properties", "yml"];
+
+                var fileEditor = $("#fileContents");
+                if (supportedTypes.includes(filePath.split(".").pop())) {
+                    getFile(filePath, "download");
+                } else {
+                    hideAuthorization();
+                    fileEditor.text("Can't open file type");
+                    fileEditor.prop("contenteditable", false);
+                }
+            }
+            if (mode == "download") {
+                $("#fileContents").text(xmlHttpRequest.responseText);
+            }
+
+        } else if (xmlHttpRequest.status == 401) {
+            showAuthorization();
+            if (authorization !== undefined) {
+                $("#message").text(xmlHttpRequest.responseText);
+            }
         }
-    });
+    }, authorization);
 };
 
 var save = function(event) {
@@ -26,7 +47,30 @@ var revert = function(event) {
 };
 
 var download = function(event) {
+    if ($("#fileContents").is(":hidden")) return;
     window.open(event.data.filePath + "?download", "_blank");
+};
+
+var share = function(event) {
+    if ($("#fileContents").is(":hidden")) return;
+};
+
+var authorize = function(event) {
+    let password = $("#password").val();
+    password = btoa(":"+ password);
+    getFile(event.data.filePath, "preview", "Bearer " + password)
+};
+
+var showAuthorization = function()  {
+    $("#fileContents").hide();
+    $("#authorization").show();
+    $("#password").focus();
+};
+
+var hideAuthorization = function()  {
+    $("#message").text("");
+    $("#authorization").hide();
+    $("#fileContents").show();
 };
 
 $(document).ready(function() {
@@ -37,35 +81,35 @@ $(document).ready(function() {
     }
 
     let pathSplit = filePath.split("/");
-    $(".mdc-drawer__title").text(pathSplit[pathSplit.length - 1]);
-    var supportedTypes = ["txt", "json", "log", "properties", "yml"];
-
-    var fileEditor = $("#fileContents");
-	//$("#file").text($("#file").text() + " " + filePath.substring("/files".length));
-
-    if (supportedTypes.includes(filePath.split(".").pop())) {
-        getFile(filePath);
-
-        var firstRun = true;
-
-        fileEditor.bind("DOMSubtreeModified", function() {
-            if (firstRun) {
-                firstRun = false;
-				$("#revert").click({initialFileContents: fileEditor.text()}, revert);
-			}
-        });
-        $("#save").click({filePath: filePath}, save);
-		
-    } else {
-        $("#save").remove();
-        $("#revert").remove();
-        fileEditor.text("Can't open file type");
-        fileEditor.prop("contenteditable", false);
+    if (pathSplit.length <= 1) {
+        $("#back").hide();
     }
+
+    filePath = pathSplit[pathSplit.length - 1];
+    $(".mdc-drawer__title").text(filePath);
+
+
+    getFile(filePath, "preview");
 
     $("#back").click(function() {
         window.open(location.pathname + "/..", "_self");
     });
     
     $("#download").click({filePath: filePath}, download);
+
+    $("#share").click({filePath: filePath}, share);
+
+    $(document).keypress(function(e) {
+        var key = e.which;
+        if (key == 13) {
+            authorize({data: {filePath: filePath}})
+        }
+    });
+
+    $("#submit").click({filePath: filePath}, authorize);
+
+    $("#logout").click(function() {
+        $.removeCookie("fileToken", { path: location.pathname.split("/").slice(0, 4).join("/") });
+        window.location.href = "/logout";
+    });
 });

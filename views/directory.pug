@@ -10,16 +10,20 @@ block header
 block drawer
     aside.mdc-drawer.mdc-top-app-bar--fixed-adjust
         .mdc-drawer__content
+            .mdc-drawer__header
+                h3.mdc-drawer__title
             nav.mdc-list
-                a.mdc-list-item.mdc-list-item--activated(href='/files')
+                a.mdc-list-item.mdc-list-item--activated(href='/files')#file-manager
                     i.material-icons.mdc-list-item__graphic(aria-hidden='true') folder
                     span.mdc-list-item__text File Manager
                 a.mdc-list-item(href='/accounts')
                     i.material-icons.mdc-list-item__graphic(aria-hidden='true') account_circle
                     span.mdc-list-item__text Account Manager
-
                 .mdc-list-divider
-                a.mdc-list-item(href='/logout')
+                a.mdc-list-item(href='.')#back
+                    i.material-icons.mdc-list-item__graphic(aria-hidden='true') arrow_back
+                    span.mdc-list-item__text Back
+                a.mdc-list-item#logout
                     i.material-icons.mdc-list-item__graphic(aria-hidden='true') launch
                     span.mdc-list-item__text Logout
 

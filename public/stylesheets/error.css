@@ -1,3 +1,7 @@
+body {
+    background-color: #f0f0f0;
+}
+
 .box {
     border-radius: 5px;
     width: 450px;
@@ -8,6 +12,7 @@
     top: 15%;
     margin: auto;
     padding: 20px 20px 55px 20px;
+    overflow: scroll;
 }
 
 #title {

@@ -5,19 +5,31 @@ $(document).ready(function() {
         mdc.ripple.MDCRipple.attachTo(x[i]);
     }
 
-    $("#folder").text(location.pathname);
-
     var files = $("#files");
 
-    const filesPath = "/files";
+    let filesPath = location.pathname.substring(1);
+    filesPath = filesPath.split("/");
+
+    if (filesPath[0] === "shared") filesPath = filesPath.slice(0, 2).join("/");
+    else filesPath = filesPath[0];
+
+    filesPath = "/" + filesPath;
+
+    let folderName = directoryPath.split("/").pop();
+    if (folderName === "") folderName = "My Files";
+    $(".mdc-drawer__title").text(folderName);
+
     let currentPath = filesPath;
-    let directoryPathSplit = directoryPath.substring(1).split("/");
+    if (directoryPath.startsWith("/")) directoryPath = directoryPath.substring(1);
+    let directoryPathSplit = directoryPath.split("/");
+    if (directoryPathSplit.length === 1 && directoryPathSplit[0] === "") {
+        $("#back").hide();
+    }
     if (directoryPathSplit.length > 3) {
         $("#navigation-bar").append("<td><div style='margin-top: 10px' class=\"navigation-arrow material-icons\">chevron_right</div></td>");
         $("#navigation-bar").append("<td><button class='mdc-menu-surface--anchor' id='path-overflow-button' style='font-size: 15px; margin-top: 7px; margin-left: 5px; border: none; outline: none; background-color: transparent'><h4>...</h4><div id='path-overflow-menu' class=\"mdc-menu mdc-menu-surface\"> <ul id='path-overflow-list' class=\"mdc-list\" role=\"menu\" aria-hidden=\"true\" aria-orientation=\"vertical\" tabindex=\"-1\"> </ul> </div></button></td>");
         const pathOverflowMenu = new mdc.menu.MDCMenu(document.querySelector('#path-overflow-menu'));
         pathOverflowMenu.listen("MDCMenu:selected", function() {
-            console.log(event.detail.index);
             let currentPath = filesPath;
 
             for (let i = 0; i <= event.detail.index; i++) {
@@ -30,6 +42,7 @@ $(document).ready(function() {
             pathOverflowMenu.open = true;
         });
     }
+
     for (var directoryIndex in directoryPathSplit) {
         var directory = directoryPathSplit[directoryIndex];
         currentPath += "/" + directory;
@@ -90,6 +103,11 @@ $(document).ready(function() {
 
     $("#back").click(function() {
         window.open(location.pathname + "/..", "_self");
+    });
+
+    $("#logout").click(function() {
+        $.removeCookie("fileToken", { path: location.pathname.split("/").slice(0, 4).join("/") });
+        window.location.href = "/logout";
     });
 
 });

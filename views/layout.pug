@@ -31,8 +31,8 @@ html
 
                 section.mdc-top-app-bar__section.mdc-top-app-bar__section--align-start
 
-                    button.material-icons(style="margin-left: 5px; color: white; background-color: transparent; border: none; outline: none") cloud
-                    h3(style="font-size: 22px;")= "MakCloud"
+                    button.material-icons(onclick="window.location.href='/'" style="margin-left: 5px; color: white; background-color: transparent; border: none; outline: none") cloud
+                    h3(onclick="window.location.href='/'" style="cursor: pointer; font-size: 22px;")= "MakCloud"
                 section.mdc-top-app-bar__section.mdc-top-app-bar__section--align-end
                     h3(id="currentUsername", style="font-weight: normal; cursor: pointer;")= username
                     button#accountButton.material-icons(type='submit' style="float: right; font-size: 36px; color: white; background-color: transparent; border: none; outline: none") perm_identity

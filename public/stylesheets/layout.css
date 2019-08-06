@@ -93,3 +93,11 @@ button.material-icons {
     border: none;
     outline: none
 }
+
+.mdc-drawer__header{
+    margin-bottom: -20px;
+}
+
+.mdc-drawer__title {
+    display: inline;
+}

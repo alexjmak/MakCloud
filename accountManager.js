@@ -2,6 +2,7 @@ const crypto = require("crypto");
 const fs = require("fs");
 const path = require("path");
 const rimraf = require("rimraf");
+const authorization = require("./authorization");
 const database = require("./databaseInit");
 
 const DEFAULT_FILES_LOCATION = "./files";
@@ -79,8 +80,8 @@ function newAccount(username, password, privilege, next) {
             return
         }
 
-        let salt = generateSalt();
-        let hash = getHash(password, salt);
+        let salt = authorization.generateSalt();
+        let hash = authorization.getHash(password, salt);
 
         nextID(function(id) {
             let filePath = path.join(DEFAULT_FILES_LOCATION, id.toString()).toString();
@@ -174,8 +175,8 @@ function updatePassword(id, newPassword, next) {
             return;
         }
 
-        let newSalt = generateSalt();
-        let newHash = getHash(newPassword, newSalt);
+        let newSalt = authorization.generateSalt();
+        let newHash = authorization.getHash(newPassword, newSalt);
 
         database.run("UPDATE accounts SET hash = ?, salt = ? WHERE id = ?", [newHash, newSalt, id], function(result) {
             if (next !== undefined) next(result);
@@ -198,13 +199,6 @@ function updatePrivilege(id, newPrivilege, next) {
     });
 }
 
-function generateSalt() {
-    return crypto.randomBytes(16).toString("hex");
-}
-
-function getHash(password, salt) {
-    return crypto.createHmac('sha512', salt).update(password).digest('hex');
-}
 
 module.exports = {
     database: database,
@@ -217,6 +211,5 @@ module.exports = {
     disableAccount: disableAccount,
     updateUsername: updateUsername,
     updatePassword: updatePassword,
-    updatePrivilege: updatePrivilege,
-    getHash: getHash
+    updatePrivilege: updatePrivilege
 };

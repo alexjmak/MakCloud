@@ -7,15 +7,12 @@ $(document).ready(function() {
 
     var initialMD5 = null;
     var scrollHeight = null;
-    var x = document.getElementsByClassName('mdc-text-field');
-    var i;
-    for (i = 0; i < x.length; i++) {
-        new mdc.textField.MDCTextField(x[i]);
-    }
 
-    $("#accountButton").hide();
-    $("#computername").text($.cookie("cert.cert"));
-    $.removeCookie("cert.cert");
+    var textFields = document.getElementsByClassName('mdc-text-field');
+    var i;
+    for (i = 0; i < textFields.length; i++) {
+        new mdc.textField.MDCTextField(textFields[i]);
+    }
 
     var login = function (xmlHttpRequest) {
         if (xmlHttpRequest.status == 200) {

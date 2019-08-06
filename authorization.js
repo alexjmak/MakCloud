@@ -2,6 +2,7 @@ const os = require("os");
 const fs = require('fs');
 const jwt = require("jsonwebtoken");
 const database = require("./databaseInit");
+const crypto = require("crypto");
 const accountManager = require("./accountManager");
 
 const secretKey = fs.readFileSync('./keys/jwt/secret.key', 'utf8');
@@ -21,9 +22,10 @@ function createToken(subject) {
     return jwt.sign({issuer: os.hostname(), subject: subject}, secretKey, {expiresIn: "7d"});
 }
 
-function getTokenSubject(req) {
-    if (req.cookies.token === undefined) return;
-    return verifyToken(req.cookies.token).subject;
+function getTokenSubject(req, cookieName) {
+    if (cookieName === undefined) cookieName = "token";
+    if (req.cookies[cookieName] === undefined) return;
+    return verifyToken(req.cookies[cookieName]).subject;
 }
 
 async function doAuthorization(req, res, next) {
@@ -37,14 +39,14 @@ async function doAuthorization(req, res, next) {
         });
     }
 
-    if (req.headers.authorization != undefined) {
+    if (req.headers.authorization !== undefined) {
         if (req.headers.authorization.startsWith("Bearer ")) {
             if (verifyToken(req.headers.authorization.substring("Bearer ".length))) {
                 checkAccount();
                 return;
             }
         }
-    } else if (req.cookies.token != undefined) {
+    } else if (req.cookies.token !== undefined) {
         if (verifyToken(req.cookies.token)) {
             checkAccount();
             return;
@@ -68,7 +70,7 @@ async function login(req, res) {
                 let hash = result["hash"];
                 let salt = result["salt"];
                 let enabled = result["enabled"] == 1;
-                if (hash === accountManager.getHash(password, salt)) {
+                if (hash === getHash(password, salt)) {
                     if (enabled) {
                         res.cookie("token", createToken(id), {path: "/", secure: true, sameSite: "strict"});
                         res.status(200).send();
@@ -79,17 +81,26 @@ async function login(req, res) {
                 }
             }
             res.status(401).send(response);
-            return;
         });
     } else {
-        res.status(401).send(response);
-        return;
+        res.redirect("/login");
     }
+}
+
+function generateSalt() {
+    return crypto.randomBytes(16).toString("hex");
+}
+
+function getHash(password, salt) {
+    return crypto.createHmac('sha512', salt).update(password).digest('hex');
 }
 
 module.exports = {
     verifyToken: verifyToken,
     getTokenSubject: getTokenSubject,
+    createToken: createToken,
     doAuthorization: doAuthorization,
-    login: login
+    login: login,
+    generateSalt: generateSalt,
+    getHash: getHash
 };

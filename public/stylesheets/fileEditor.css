@@ -10,13 +10,27 @@ body {
     margin-top: 50px;
     margin-bottom: 50px;
     outline: none;
-
+    overflow: scroll;
 }
 
-.mdc-drawer__header{
-    margin-bottom: -20px;
+.box {
+    padding: 20px;
+    width: 500px;
+    margin: 0 auto;
+    margin-top: 150px;
+    margin-bottom: 50px;
 }
 
-.mdc-drawer__title {
-    display: inline;
+#title {
+    margin-top: 5px;
+    margin-bottom: 0;
+}
+
+#computername {
+    margin-top: 7px;
+}
+
+#message {
+    color: red;
+    margin-top: 5px;
 }

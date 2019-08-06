@@ -16,7 +16,7 @@ const app = express();
 
 const accountsRouter = require('./routes/accounts');
 const filesRouter = require('./routes/files');
-const sharingRouter = require('./routes/sharing');
+const sharedRouter = require('./routes/shared');
 const indexRouter = require('./routes/index');
 const loginRouter = require('./routes/login');
 const logoutRouter = require('./routes/logout');
@@ -51,7 +51,7 @@ app.use('/logout', logoutRouter);
 
 app.use('/login', loginRouter);
 
-app.use("/sharing", sharingRouter);
+app.use("/shared", sharedRouter);
 
 app.use(authorization.doAuthorization);
 
