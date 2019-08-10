@@ -1,16 +1,40 @@
 $(document).ready(function() {
-    if (window.location.pathname === "/login" || $.cookie("token") === undefined) {
+    if (window.location.pathname === "/login" || $.cookie("loginToken") === undefined) {
         $('#accountButton').click(function() {
             window.location.href = "/login";
         });
     }
 
     const topAppBar = mdc.topAppBar.MDCTopAppBar.attachTo(document.querySelector('.mdc-top-app-bar'));
-    const drawer = mdc.list.MDCList.attachTo(document.querySelector('.mdc-list'));
-    var textFields = document.getElementsByClassName('mdc-text-field');
-    var i;
-    for (i = 0; i < textFields.length; i++) {
+
+    try {
+        const drawer = mdc.list.MDCList.attachTo(document.querySelector('.mdc-list'));
+        topAppBar.listen('MDCTopAppBar:nav', function () {
+            drawer.open = true;
+        });
+    } catch (e) {
+
+    }
+
+    let textFields = document.getElementsByClassName('mdc-text-field');
+    for (let i = 0; i < textFields.length; i++) {
         new mdc.textField.MDCTextField(textFields[i]);
+    }
+
+    let buttons = document.getElementsByClassName('mdc-button');
+    for (let i = 0; i < buttons.length; i++) {
+        mdc.ripple.MDCRipple.attachTo(buttons[i]);
+    }
+
+    let iconButtons = document.getElementsByClassName('mdc-icon-button');
+    for (let i = 0; i < iconButtons.length; i++) {
+        new mdc.ripple.MDCRipple(iconButtons[i]).unbounded = true;
+    }
+
+    let checkBoxes = $('.mdc-checkbox');
+    for (let i = 0; i < checkBoxes.length; i++) {
+        new mdc.checkbox.MDCCheckbox(checkBoxes[i]);
+
     }
 
     /*
@@ -26,13 +50,9 @@ $(document).ready(function() {
 
     */
 
-    topAppBar.listen('MDCTopAppBar:nav', function () {
-        drawer.open = true;
-    });
-
     let accountCard = $("#accountCard");
-    if ($.cookie("token") !== undefined) {
-        accountCard.first().find("h3").text("ID: " + parseJwt($.cookie("token")).subject);
+    if ($.cookie("loginToken") !== undefined) {
+        accountCard.first().find("h3").text("ID: " + parseJwt($.cookie("loginToken")).aud);
     }
 
     $(document).mouseup(function (e) {
@@ -47,13 +67,14 @@ $(document).ready(function() {
     });
 
     $("#currentUsername").click(function() {
-        if (!accountCard.is(":visible") && $.cookie("token") !== undefined) {
+        console.log(1);
+        if (!accountCard.is(":visible") && $.cookie("loginToken") !== undefined) {
             accountCard.show();
         }
     });
 
     $("#accountButton").click(function() {
-        if (!accountCard.is(":visible") && $.cookie("token") !== undefined) {
+        if (!accountCard.is(":visible") && $.cookie("loginToken") !== undefined) {
             accountCard.show();
         }
     });

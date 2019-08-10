@@ -1,11 +1,5 @@
 $(document).ready(function() {
-    var x = document.getElementsByClassName('mdc-button');
-    var i;
-    for (i = 0; i < x.length; i++) {
-        mdc.ripple.MDCRipple.attachTo(x[i]);
-    }
-
-    var files = $("#files");
+    let files = $("#files");
 
     let filesPath = location.pathname.substring(1);
     filesPath = filesPath.split("/");
@@ -43,8 +37,8 @@ $(document).ready(function() {
         });
     }
 
-    for (var directoryIndex in directoryPathSplit) {
-        var directory = directoryPathSplit[directoryIndex];
+    for (let directoryIndex in directoryPathSplit) {
+        let directory = directoryPathSplit[directoryIndex];
         currentPath += "/" + directory;
         if (directory.trim() === "") continue;
         if (directoryPathSplit.length > 3 && directoryIndex < directoryPathSplit.length - 2) {
@@ -54,30 +48,33 @@ $(document).ready(function() {
         $("#navigation-bar").append("<td><div style='margin-top: 10px' class=\"navigation-arrow material-icons\">chevron_right</div></td>");
         $("#navigation-bar").append("<td><button onclick=\"window.location.href = '" + currentPath + "';\"style='font-size: 15px; margin-top: 7px; margin-left: 5px; border: none; outline: none; background-color: transparent'><h4>" + directory + "</h4></button></td>");
     }
-    for (var fileIndex in folderContents) {
-        var file = folderContents[fileIndex];
-        if (file.name == "..") {
-            var backButton = $("#back");
-            backButton.click(function() {
-                window.open(location.pathname + "/..", "_self");
-            });
-            backButton.prop("hidden", false);
-            continue;
-        }
+    for (let fileIndex in folderContents) {
+        if (folderContents.hasOwnProperty(fileIndex)) {
+            let file = folderContents[fileIndex];
+            if (file.name === "..") {
+                let backButton = $("#back");
+                backButton.click(function() {
+                    window.open(location.pathname + "/..", "_self");
+                });
+                backButton.prop("hidden", false);
+                continue;
+            }
 
-        file.size = file.size.replace(".00", "");
-        file.date = file.date.split(".");
-        let month = file.date[0];
-        file.date[0] = file.date[1];
-        file.date[1] = month;
-        file.date = file.date.join("/");
-        let icon = "subject";
-        if (file.type === "directory") {
-            file.size = "----";
-            icon = "folder";
-        }
+            file.size = file.size.replace(".00", "");
+            file.date = file.date.split(".");
+            let month = file.date[0];
+            file.date[0] = file.date[1];
+            file.date[1] = month;
+            file.date = file.date.join("/");
+            let icon = "subject";
+            if (file.type === "directory") {
+                file.size = "----";
+                icon = "folder";
+            }
 
-        files.append("<tr class='underlinedTR file' id='" + file.name + "'><td><span class='file-icons material-icons'>" + icon + "</span></td><td><p>" + file.name + "</p></td><td><p>" + file.size.toUpperCase() + "</p></td><td><p>" + file.date + "</p></td></tr>");
+            files.append("<tr class='underlinedTR file' id='" + file.name + "'><td><span class='file-icons material-icons'>" + icon + "</span></td><td><p>" + file.name + "</p></td><td><p>" + file.size.toUpperCase() + "</p></td><td><p>" + file.date + "</p></td></tr>");
+
+        }
     }
 
     $(".file").dblclick(function() {
@@ -100,6 +97,9 @@ $(document).ready(function() {
     });
 
 
+    $("#upload").click(function() {
+        $("#uploadButton").trigger("click");
+    });
 
     $("#back").click(function() {
         window.open(location.pathname + "/..", "_self");

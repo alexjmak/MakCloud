@@ -8,7 +8,6 @@ const authorization = require('../authorization');
 const accountManager = require('../accountManager');
 const sharingManager = require('../sharingManager');
 const strftime = require('strftime');
-const webserver = require('../webServer');
 
 router.get('/*', function(req, res, next) {
     let link = decodeURIComponent(url.parse(req.url).pathname).substring(1);
@@ -16,16 +15,16 @@ router.get('/*', function(req, res, next) {
     let fileName = link.substring(link.indexOf("/") + 1, link.length);
 
     const download = req.url.endsWith("?download") === true;
-    const preview = req.url.endsWith("?preview") === true;
+    const authorize = req.url.endsWith("?authorize") === true;
 
 
-    sharingManager.linkExists(key, fileName, function(exists) {
-        if (exists) {
+    sharingManager.linkCheck(key, fileName, authorization.getLoginTokenAudience(req),function(exists) {
+        if (exists === true) {
             sharingManager.getRealFilePathLink(key, fileName,  function(realFilePath) {
-                accountManager.getInformation("username", "id", authorization.getTokenSubject(req), function (username) {
+                accountManager.getInformation("username", "id", authorization.getLoginTokenAudience(req), function (username) {
                     fs.stat(realFilePath, function (err, stats) {
-                        if (err == null) {
-                            if (!download && !preview) {
+                        if (err === null) {
+                            if (!download && !authorize) {
                                 if (stats.isDirectory()) {
                                     readify(realFilePath, {sort: 'type'}).then(function (files) {
                                         res.render('directory', {
@@ -34,15 +33,14 @@ router.get('/*', function(req, res, next) {
                                         });
                                     });
                                 } else {
-
                                     res.render('fileEditor', {
                                         username: username,
                                         file: {path: fileName},
                                     });
                                 }
                             } else {
-                                sharingManager.doAuthorization(key, fileName, req, res,function(result) {
-                                    if (result) {
+                                sharingManager.doAuthorization(key, fileName, req, res,function(token) {
+                                    if (token !== false) {
                                         if (download) {
                                             fs.readFile(realFilePath, function (err, contents) {
                                                 if (err === null) {
@@ -52,7 +50,7 @@ router.get('/*', function(req, res, next) {
                                                 }
                                             });
                                         } else {
-                                            res.sendStatus(200);
+                                            res.send(token);
                                         }
                                     } else {
                                         showError(createError(401), req, res);
@@ -68,7 +66,7 @@ router.get('/*', function(req, res, next) {
                 });
             });
         } else {
-            showError(createError(404), req, res);
+            showError(createError(exists), req, res);
         }
     });
 
@@ -80,7 +78,7 @@ function showError(err, req, res) {
     let text = req.originalUrl + " (" + (err.status || 500) + " " + err.message + ")";
     console.log("[Webserver] [" + strftime("%H:%M:%S") + "] [" + (req.ip) + "]: " + req.method + " " + text);
     res.status(err.status || 500);
-    accountManager.getInformation("username", "id", authorization.getTokenSubject(req), function(username) {
+    accountManager.getInformation("username", "id", authorization.getLoginTokenAudience(req), function(username) {
         res.render('error', {message: err.message, status: err.status, username: username});
     });
 }

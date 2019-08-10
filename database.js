@@ -1,7 +1,6 @@
 const sqlite3 = require("sqlite3");
 
 class Database {
-
     constructor(path) {
         this.database = new sqlite3.Database(path);
     }
@@ -13,7 +12,7 @@ class Database {
         var stmt = database.prepare(query, function (err) {
             if (err != null) {
                 console.log(err);
-                if (next != undefined) next(false);
+                if (next !== undefined) next(false);
             }
         });
 
@@ -22,9 +21,9 @@ class Database {
             stmt.finalize();
             if (err != null) {
                 console.log(err);
-                if (next != undefined) next(false);
+                if (next !== undefined) next(false);
             } else {
-                if (next != undefined) next(true);
+                if (next !== undefined) next(true);
             }
         });
 
@@ -35,7 +34,7 @@ class Database {
         let stmt = database.prepare(query, function (err) {
             if (err != null) {
                 console.log(err);
-                if (next != undefined) next(false);
+                if (next !== undefined) next(false);
             }
         });
 
@@ -46,10 +45,10 @@ class Database {
 
             if (err != null) {
                 console.log(err);
-                if (next != undefined) next(false);
+                if (next !== undefined) next(false);
             } else if (results === undefined) {
-                if (next != undefined) next(false);
-            } else if (next != undefined) next(results);
+                if (next !== undefined) next(false);
+            } else if (next !== undefined) next(results);
 
 
         });
@@ -60,7 +59,7 @@ class Database {
         let stmt = database.prepare(query, function (err) {
             if (err != null) {
                 console.log(err);
-                if (next != undefined) next(false);
+                if (next !== undefined) next(false);
             }
         });
 
@@ -70,10 +69,10 @@ class Database {
 
             if (err != null) {
                 console.log(err);
-                if (next != undefined) next(false);
+                if (next !== undefined) next(false);
             } else if (result === undefined) {
-                if (next != undefined) next(false);
-            } else if (next != undefined) next(result);
+                if (next !== undefined) next(false);
+            } else if (next !== undefined) next(result);
 
         });
     }

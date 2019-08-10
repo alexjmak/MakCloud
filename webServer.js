@@ -70,7 +70,7 @@ app.use(function(req, res, next) {
 app.use(function(err, req, res, next) {
     log(req, req.url + " (" + (err.status || 500) + " " + err.message + ")");
     res.status(err.status || 500);
-    accountManager.getInformation("username", "id", authorization.getTokenSubject(req), function(username) {
+    accountManager.getInformation("username", "id", authorization.getLoginTokenAudience(req), function(username) {
         res.render('error', {message: err.message, status: err.status, username: username});
     });
 

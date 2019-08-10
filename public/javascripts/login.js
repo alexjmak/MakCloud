@@ -1,44 +1,52 @@
+let usedCredentialsMemory;
+
 $(document).ready(function() {
-    var topAppBarElement = document.querySelector('.mdc-top-app-bar');
-    var topAppBar = new mdc.topAppBar.MDCTopAppBar(topAppBarElement);
-    var main = $("#main_");
-    var username = $("#username");
-    var password = $("#password");
+    let username = $("#username");
+    let password = $("#password");
 
-    var initialMD5 = null;
-    var scrollHeight = null;
-
-    var textFields = document.getElementsByClassName('mdc-text-field');
-    var i;
-    for (i = 0; i < textFields.length; i++) {
-        new mdc.textField.MDCTextField(textFields[i]);
-    }
-
-    var login = function (xmlHttpRequest) {
-        if (xmlHttpRequest.status == 200) {
+    let login = function (xmlHttpRequest) {
+        if (xmlHttpRequest.status === 200) {
             $("#message").html("");
-            var redirect = getQueryVariable("redirect");
+            let redirect = getQueryVariable("redirect");
             if (redirect != null) {
                 window.location = redirect;
             } else {
                 window.location = "/";
             }
 
+        } else if (xmlHttpRequest.status === 0) {
+            $("#message").text("No connection");
+            usedCredentialsMemory = "";
         } else {
             $("#message").text(xmlHttpRequest.responseText);
         }
 
     };
 
-    var submit = function() {
-      getRequest("/login/token", login, "Basic " + btoa(username.val().trim() + ":" + password.val()));
+    let randomNumberArray = new Uint32Array(1);
+    window.crypto.getRandomValues(randomNumberArray);
+
+    let submit = function() {
+        let usernameValue = username.val().trim();
+        let passwordValue = password.val();
+        if (usernameValue.trim() === "") {
+            $("#message").text("Enter your username");
+            return;
+        } else if (passwordValue.trim() === "") {
+            $("#message").text("Enter your password");
+            return;
+        }
+        if ($.md5(usernameValue + ":" + passwordValue, randomNumberArray[0]) === usedCredentialsMemory) return;
+        usedCredentialsMemory = $.md5(usernameValue + ":" + passwordValue, randomNumberArray[0]);
+        getRequest("/login/token", login, "Basic " + btoa(usernameValue + ":" + passwordValue));
     };
 
     $(document).keypress(function(e) {
-        var key = e.which;
-        if (key == 13) {
-            if ($("#username").is(":focus") && $("#password").val() === "") {
-                $("#password").focus();
+        let key = e.which;
+        if (key === 13) {
+            if (username.is(":focus") && password.val() === "") {
+                if ($("#message").text() !== "") $("#message").text("");
+                password.focus();
             } else {
                 submit();
             }

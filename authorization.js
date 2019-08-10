@@ -11,48 +11,60 @@ function verifyToken(rawToken){
     if (rawToken === undefined) return false;
     try {
         let token = jwt.verify(rawToken, secretKey);
-        if (token.issuer === os.hostname()) return token;
+        return token;
     } catch (err) {
         console.log(err);
     }
     return false;
 }
 
-function createToken(subject) {
-    return jwt.sign({issuer: os.hostname(), subject: subject}, secretKey, {expiresIn: "7d"});
+function createToken(payload) {
+    if (payload.hasOwnProperty("iss")) delete payload.iss;
+    payload = Object.assign({}, payload, {iss: os.hostname()});
+    return jwt.sign(payload, secretKey, {expiresIn: "7d"});
 }
 
-function getTokenSubject(req, cookieName) {
-    if (cookieName === undefined) cookieName = "token";
+function checkPayload(token, payload) {
+    if (token === false) return false;
+    for (let key in payload)  {
+        if (!payload.hasOwnProperty(key)) continue;
+        if (!token.hasOwnProperty(key)) return false;
+        if (payload[key] !== token[key]) return false;
+    }
+    if (token.iss !== os.hostname()) return false;
+    return true;
+}
+
+function getLoginTokenAudience(req, cookieName) {
+    if (cookieName === undefined) cookieName = "loginToken";
     if (req.cookies[cookieName] === undefined) return;
-    return verifyToken(req.cookies[cookieName]).subject;
+    return verifyToken(req.cookies[cookieName]).aud;
 }
 
 async function doAuthorization(req, res, next) {
     function checkAccount() {
-        accountManager.accountExists(getTokenSubject(req), true, function(exists) {
-            if (exists) {
-                next();
-            } else {
-                res.redirect("/login");
-            }
+        accountManager.accountExists(getLoginTokenAudience(req), true, function(exists) {
+            if (exists) if (next !== undefined) next();
+            else res.redirect("/logout");
         });
     }
-
     if (req.headers.authorization !== undefined) {
         if (req.headers.authorization.startsWith("Bearer ")) {
-            if (verifyToken(req.headers.authorization.substring("Bearer ".length))) {
+            let loginToken = verifyToken(req.headers.authorization.substring("Bearer ".length));
+            if (loginToken !== false && checkPayload(loginToken, {sub: "loginToken"})) {
                 checkAccount();
                 return;
             }
         }
-    } else if (req.cookies.token !== undefined) {
-        if (verifyToken(req.cookies.token)) {
+        res.redirect("/logout");
+    } else if (req.cookies.loginToken !== undefined) {
+        let loginToken = verifyToken(req.cookies.loginToken);
+        if (loginToken !== false && checkPayload(loginToken, {sub: "loginToken"})) {
             checkAccount();
             return;
         }
-    }
-    res.redirect("/login");
+        res.redirect("/logout");
+    } else res.redirect("/login");
 }
 
 async function login(req, res) {
@@ -72,7 +84,7 @@ async function login(req, res) {
                 let enabled = result["enabled"] == 1;
                 if (hash === getHash(password, salt)) {
                     if (enabled) {
-                        res.cookie("token", createToken(id), {path: "/", secure: true, sameSite: "strict"});
+                        res.cookie("loginToken", createToken({sub: "loginToken", aud: id}), {path: "/", secure: true, sameSite: "strict"});
                         res.status(200).send();
                         return;
                     } else {
@@ -97,10 +109,11 @@ function getHash(password, salt) {
 
 module.exports = {
     verifyToken: verifyToken,
-    getTokenSubject: getTokenSubject,
+    getLoginTokenAudience: getLoginTokenAudience,
+    checkPayload: checkPayload,
     createToken: createToken,
+    generateSalt: generateSalt,
     doAuthorization: doAuthorization,
     login: login,
-    generateSalt: generateSalt,
     getHash: getHash
 };

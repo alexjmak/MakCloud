@@ -1,7 +1,7 @@
  $(document).ready(function() {
     var main = $("#main_accounts");
     var accounts = $("#accounts");
-    var currentID = parseJwt($.cookie("token")).subject;
+    var currentID = parseJwt($.cookie("loginToken")).aud;
     var currentPrivilege;
     var initialMD5 = null;
     var scrollHeight = null;
@@ -38,8 +38,8 @@
         inputStorage["privilege"] = {};
 
         getRequest("/accounts/list", function(xmlHttpRequest) {
-            if (xmlHttpRequest.status == 200) {
-                if (xmlHttpRequest.responseURL.search("login") != -1) {
+            if (xmlHttpRequest.status === 200) {
+                if (xmlHttpRequest.responseURL.search("login") !== -1) {
                     window.location = "/logout";
                 }
 
@@ -49,6 +49,7 @@
                 currentPrivilege = currentAccount["privilege"];
                 var currentUsername = currentAccount["username"];
                 $("#currentUsername").text(currentUsername);
+
 
                 showNewAccount(currentID, currentUsername, currentPrivilege, true);
 
@@ -68,8 +69,6 @@
                     var accountEnabled = account["enabled"] === 1;
                     var accountPrivilege = account["privilege"];
                     if (accountID !== currentID) {
-
-
                         if ((currentPrivilege > 0 && currentPrivilege > accountPrivilege  && accountUsername !== "admin") || currentUsername === "admin") {
                             showNewAccount(accountID, accountUsername, accountPrivilege, accountEnabled);
                             if (accountPrivilege === 100) {
@@ -101,32 +100,21 @@
                         "<td><input id=\"new_account_password\" type=\"password\" placeholder='New account password'></td>" +
                         "<td><input id=\"new_account_privilege\" type=\"text\" maxlength=\"5\" autocomplete='off' autocapitalize=\"none\" placeholder='New account privilege'></td>" +
                         "<td><button class=\"mdc-icon-button material-icons\" id=\"new_account_submit\">add</button></td><td></td>" +
-                        "</tr>")
+                        "</tr>");
                     if (currentUsername !== "admin" && currentPrivilege === 1) {
                         $("#new_account_privilege").val("0");
                         $("#new_account_privilege").prop("disabled", true);
                     }
                 }
 
-                var x = document.getElementsByClassName('mdc-text-field');
-                for (var i = 0; i < x.length; i++) {
-                    new mdc.textField.MDCTextField(x[i]);
+                let iconButtons = document.getElementsByClassName('mdc-icon-button');
+                for (let i = 0; i < iconButtons.length; i++) {
+                    new mdc.ripple.MDCRipple(iconButtons[i]).unbounded = true;
                 }
 
-                x = document.getElementsByClassName('mdc-button');
-                for (var i = 0; i < x.length; i++) {
-                    mdc.ripple.MDCRipple.attachTo(x[i]);
-                }
-
-                x = document.getElementsByClassName('mdc-icon-button');
-                for (var i = 0; i < x.length; i++) {
-                    new mdc.ripple.MDCRipple(x[i]).unbounded = true;
-                }
-
-                x = $('.mdc-checkbox');
-                for (var i = 0; i < x.length; i++) {
-
-                    new mdc.checkbox.MDCCheckbox(x[i]);
+                let checkBoxes = $('.mdc-checkbox');
+                for (let i = 0; i < checkBoxes.length; i++) {
+                    new mdc.checkbox.MDCCheckbox(checkBoxes[i]);
 
                 }
 
@@ -203,19 +191,20 @@
                 if (currentUsername !== "admin" && inputStorage["privilege"][id] !== 100) newPrivilege -= 1;
             }
 
-            if (inputStorage["privilege"][id] != newPrivilege && newPrivilege != "") {
+
+            if (inputStorage["privilege"][id] !== Number(newPrivilege) && newPrivilege !== "") {
                 if (newPrivilege !== 100 && (isNaN(newPrivilege) || newPrivilege < 0)) {
                     showSnackbar(basicSnackbar, "Privilege level must be a positive number");
                     return true;
                 }
                 inputStorage["privilege"][id] = Number(newPrivilege);
-                if (id == currentID) {
+                if (id === currentID) {
                     currentPrivilege = newPrivilege;
                 }
                 if (newPrivilege === 100) newPrivilege = "ADMIN";
                 postDictionary[id]["new_privilege"] = newPrivilege;
             }
-            if (newPrivilege == "") {
+            if (newPrivilege === "") {
                 var oldPrivilege = inputStorage["privilege"][id];
                 if (oldPrivilege === 100) oldPrivilege = "ADMIN";
                 $(this).val(oldPrivilege);
@@ -230,7 +219,7 @@
             var id = $(this)[0].name;
             var newPassword = $(this).val();
 
-            if (newPassword.trim() != "") {
+            if (newPassword.trim() !== "") {
                 postDictionary[id]["new_password"] = newPassword;
             }
             $(this).val("");
@@ -241,14 +230,14 @@
             var id = $(this)[0].name;
             var newUsername = $(this).val().trim();
 
-            if (inputStorage["username"][id] != newUsername && newUsername != "") {
+            if (inputStorage["username"][id] !== newUsername && newUsername !== "") {
                 inputStorage["username"][id] = newUsername;
-                if (id == currentID) {
+                if (id === currentID) {
                     currentUsername = newUsername;
                 }
                 postDictionary[id]["new_username"] = newUsername;
 			}
-			if (newUsername == "") {
+			if (newUsername === "") {
 				$(this).val(inputStorage["username"][id]);
 			} else {
 				$(this).val(newUsername);
@@ -259,7 +248,7 @@
         for (var id in postDictionary) {
             if (postDictionary.hasOwnProperty(id)) {
                 var data = postDictionary[id];
-                if (Object.keys(data).length == 0) {
+                if (Object.keys(data).length === 0) {
                     continue;
                 }
                 noChange = false;
@@ -293,12 +282,12 @@
 
     var submitCheck = function() {
         getRequest("/accounts/list/hash", function (xmlHttpRequest) {
-            if (xmlHttpRequest.status == 200) {
-                if (xmlHttpRequest.responseURL.search("login") != -1) {
+            if (xmlHttpRequest.status === 200) {
+                if (xmlHttpRequest.responseURL.search("login") !== -1) {
                     window.location = "/logout";
                 }
                 var md5 = xmlHttpRequest.responseText;
-                if (initialMD5 == md5) {
+                if (initialMD5 === md5) {
                     submit();
                 } else {
                     showDialog(yesNoDialog, "MakCloud", "Changes have been made since you entered this site.\nDo you want to override those changes?", {"yes": function() {submit();}});
@@ -316,7 +305,7 @@
     });
 
     var newAccount = function() {
-		if (currentPrivilege > 0 || currentUsername == "admin") {
+		if (currentPrivilege > 0 || currentUsername === "admin") {
 
 			var usernameInput = $("#new_account_username");
 			var passwordInput = $("#new_account_password");
@@ -363,13 +352,13 @@
         var data = "id=" + encodeURIComponent(id);
 
         var prompt = "Are you sure you want to delete " + inputStorage["username"][id] + "?";
-        if (currentID == id) {
+        if (currentID === id) {
             prompt = "Are you sure you want to delete your account?";
         }
 
         showDialog(yesNoDialog, "MakCloud", prompt, {"yes": function() {
             updateAccount(data, "delete");
-            if (currentID == id) {
+            if (currentID === id) {
                 window.location = "/logout";
             }
         }});

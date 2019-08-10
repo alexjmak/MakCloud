@@ -1,13 +1,11 @@
-const crypto = require("crypto");
 const fs = require("fs");
 const path = require("path");
-const rimraf = require("rimraf");
-const authorization = require("./authorization");
 const database = require("./databaseInit");
 
 const DEFAULT_FILES_LOCATION = "./files";
 
 database.run("CREATE TABLE IF NOT EXISTS accounts (id INTEGER PRIMARY KEY, username TEXT NOT NULL UNIQUE, hash TEXT NOT NULL, salt TEXT NOT NULL, enabled INTEGER NOT NULL DEFAULT 1, privilege INTEGER NOT NULL DEFAULT 0);");
+database.run("CREATE TABLE IF NOT EXISTS deleted_accounts (id INTEGER PRIMARY KEY, username TEXT NOT NULL, hash TEXT NOT NULL, salt TEXT NOT NULL, privilege INTEGER NOT NULL, dateDeleted INTEGER NOT NULL);");
 
 newAccount("admin", "password", 100);
 getInformation("id", "username", "admin", function(id) {
@@ -50,7 +48,7 @@ function getAccountsSummary(id, next) {
                         resultsById[id] = result;
                     }
                 }
-                if (next != undefined) next(results);
+                if (next !== undefined) next(results);
             });
         });
     });
@@ -64,7 +62,7 @@ function getInformation(select, whereKey, whereValue, next) {
 
 
 function nextID(next) {
-    database.get("SELECT * FROM accounts ORDER BY id DESC", null, function(result) {
+    database.get("SELECT max(id) as id FROM (SELECT id FROM accounts UNION SELECT id FROM deleted_accounts);", null, function(result) {
         if (result !== false) {
             if (next !== undefined) next(result.id + 1);
         } else {
@@ -80,6 +78,7 @@ function newAccount(username, password, privilege, next) {
             return
         }
 
+        const authorization = require("./authorization");
         let salt = authorization.generateSalt();
         let hash = authorization.getHash(password, salt);
 
@@ -175,6 +174,7 @@ function updatePassword(id, newPassword, next) {
             return;
         }
 
+        const authorization = require("./authorization");
         let newSalt = authorization.generateSalt();
         let newHash = authorization.getHash(newPassword, newSalt);
 
@@ -201,7 +201,6 @@ function updatePrivilege(id, newPrivilege, next) {
 
 
 module.exports = {
-    database: database,
     accountExists: accountExists,
     getAccountsSummary: getAccountsSummary,
     getInformation: getInformation,

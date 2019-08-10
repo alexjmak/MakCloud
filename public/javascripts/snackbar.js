@@ -1,6 +1,6 @@
 
 String.format = function(format) {
-    var args = Array.prototype.slice.call(arguments, 1);
+    let args = Array.prototype.slice.call(arguments, 1);
     return format.replace(/{(\d+)}/g, function(match, number) {
         return typeof args[number] != 'undefined'
             ? args[number]
@@ -9,15 +9,15 @@ String.format = function(format) {
     });
 };
 
-var snackbar_;
-var basicSnackbar = "<div id=\"snackbar\" class=\"mdc-snackbar\"> <div class=\"mdc-snackbar__surface\"> <div class=\"mdc-snackbar__label\" role=\"status\" aria-live=\"polite\">{0}</div> </div> </div>";
-var actionSnackbar = "<div id=\"snackbar\" class=\"mdc-snackbar\"> <div class=\"mdc-snackbar__surface\"> <div class=\"mdc-snackbar__label\" role=\"status\" aria-live=\"polite\">{0}</div> <div class=\"mdc-snackbar__actions\"> <button type=\"button\" class=\"mdc-button mdc-snackbar__action\">{1}</button> </div> </div> </div>";
+let snackbar_;
+let basicSnackbar = "<div id=\"snackbar\" class=\"mdc-snackbar\"> <div class=\"mdc-snackbar__surface\"> <div class=\"mdc-snackbar__label\" role=\"status\" aria-live=\"polite\">{0}</div> </div> </div>";
+let actionSnackbar = "<div id=\"snackbar\" class=\"mdc-snackbar\"> <div class=\"mdc-snackbar__surface\"> <div class=\"mdc-snackbar__label\" role=\"status\" aria-live=\"polite\">{0}</div> <div class=\"mdc-snackbar__actions\"> <button type=\"button\" class=\"mdc-button mdc-snackbar__action\">{1}</button> </div> </div> </div>";
 
-var isOpen = false;
+let isOpen = false;
 
-var showSnackbar = function(type, body, actionText, actionFunction) {
+let showSnackbar = function(type, body, actionText, actionFunction) {
 
-    if (snackbar_ != undefined && isOpen) {
+    if (snackbar_ !== undefined && isOpen) {
         snackbar_.close("reopen");
 
     } else {
@@ -32,11 +32,11 @@ var showSnackbar = function(type, body, actionText, actionFunction) {
         isOpen = false;
         $("#snackbar").remove();
 
-        if (event.detail.reason == "action") {
-            if (actionFunction != undefined) actionFunction();
+        if (event.detail.reason === "action") {
+            if (actionFunction !== undefined) actionFunction();
         }
 
-        if (event.detail.reason == "reopen") {
+        if (event.detail.reason === "reopen") {
             showSnackbar(type, body, actionText, actionFunction);
 
         }

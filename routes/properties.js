@@ -9,7 +9,7 @@ const authorization = require('../authorization');
 const router = express.Router();
 
 router.get('/', function(req, res) {
-    accountManager.getInformation("username", "id", authorization.getTokenSubject(req), function(username) {
+    accountManager.getInformation("username", "id", authorization.getLoginTokenAudience(req), function(username) {
         res.render('properties', {username: username, hostname: os.hostname()});
     });
 });
@@ -20,7 +20,7 @@ router.get('/hash', function(req, res) {
 });
 
 router.post('/update', function(req, res) {
-    accountManager.getInformation("privilege", "id", authorization.getTokenSubject(req), function(privilege) {
+    accountManager.getInformation("privilege", "id", authorization.getLoginTokenAudience(req), function(privilege) {
         if (privilege > 0) {
             let fileContents = fs.readFileSync("./Minecraft/server.properties").toString();
             let keys = Object.keys(req.body);

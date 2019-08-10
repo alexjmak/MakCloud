@@ -8,19 +8,19 @@ const accountManager = require('../accountManager');
 const router = express.Router();
 
 router.get('/', function(req, res) {
-    accountManager.getInformation("username", "id", authorization.getTokenSubject(req), function(username) {
+    accountManager.getInformation("username", "id", authorization.getLoginTokenAudience(req), function(username) {
         res.render('accounts', {username: username, hostname: os.hostname()});
     });
 });
 
 router.get('/list', function(req, res) {
-    accountManager.getAccountsSummary(authorization.getTokenSubject(req), function (result) {
+    accountManager.getAccountsSummary(authorization.getLoginTokenAudience(req), function (result) {
         res.json(result);
     });
 });
 
 router.get('/list/hash', function(req, res) {
-    accountManager.getAccountsSummary(authorization.getTokenSubject(req), function (result) {
+    accountManager.getAccountsSummary(authorization.getLoginTokenAudience(req), function (result) {
         res.send(crypto.createHash('md5').update(JSON.stringify(result)).digest('hex'));
     })
 });
@@ -90,7 +90,7 @@ router.post('/disable', function(req, res) {
 
     if (!checkRequiredFields(res, id)) return;
 
-    if (Number(authorization.getTokenSubject(req)) === id) {
+    if (Number(authorization.getLoginTokenAudience(req)) === id) {
         res.status(404).send("Cannot disable your own account");
         return;
     }
@@ -104,7 +104,9 @@ router.post('/disable', function(req, res) {
                 res.status(404).send("Account not found");
             }
         });
+
     });
+
 });
 
 router.post('/update/username', function(req, res) {
@@ -172,7 +174,7 @@ function checkRequiredFields(res, ...fields) {
 }
 
 function checkPrivilege(req, res, accountID, next) {
-    let currentID = authorization.getTokenSubject(req);
+    let currentID = authorization.getLoginTokenAudience(req);
     accountManager.getInformation("username", "id", currentID, function(currentUsername) {
         accountManager.getInformation("username", "id", accountID, function(accountUsername) {
             accountManager.getInformation("privilege", "id", currentID, function(currentPrivilege) {
@@ -189,7 +191,6 @@ function checkPrivilege(req, res, accountID, next) {
             });
         });
     });
-
 }
 
 function checkChangePrivilege(req, res, new_privilege, next) {
@@ -198,8 +199,8 @@ function checkChangePrivilege(req, res, new_privilege, next) {
         return next(false);
     }
 
-    accountManager.getInformation("privilege", "id", authorization.getTokenSubject(req), function(currentPrivilege) {
-        accountManager.getInformation("username", "id", authorization.getTokenSubject(req), function (currentUsername) {
+    accountManager.getInformation("privilege", "id", authorization.getLoginTokenAudience(req), function(currentPrivilege) {
+        accountManager.getInformation("username", "id", authorization.getLoginTokenAudience(req), function (currentUsername) {
             if (currentUsername !== "admin" && currentPrivilege <= new_privilege) {
                 res.status(401).send("Insufficient privilege level");
                 return next(false);
