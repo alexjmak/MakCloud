@@ -5,8 +5,8 @@ const crypto = require("crypto");
 
 const DEFAULT_FILES_LOCATION = "./files";
 
-database.run("CREATE TABLE IF NOT EXISTS sharing (key TEXT NOT NULL, shared INTEGER NOT NULL, UNIQUE(key, shared));", function () {
-    database.run("CREATE TABLE IF NOT EXISTS links (parent TEXT NOT NULL, fileName TEXT NOT NULL, owner INTEGER NOT NULL, key TEXT NOT NULL UNIQUE, expiration INTEGER DEFAULT NULL, hash TEXT DEFAULT NULL, salt TEXT DEFAULT NULL, UNIQUE(parent, fileName, owner));", function() {
+database.run("CREATE TABLE IF NOT EXISTS sharing (key TEXT NOT NULL, shared INTEGER NOT NULL, access INTEGER NOT NULL DEFAULT 0, UNIQUE(key, shared));", [], function () {
+    database.run("CREATE TABLE IF NOT EXISTS links (parent TEXT NOT NULL, fileName TEXT NOT NULL, owner INTEGER NOT NULL, key TEXT NOT NULL UNIQUE, expiration INTEGER DEFAULT NULL, hash TEXT DEFAULT NULL, salt TEXT DEFAULT NULL, UNIQUE(parent, fileName, owner));", [], function() {
         database.run("DELETE FROM sharing WHERE key NOT IN (SELECT key FROM links);");
     });
 });
@@ -69,7 +69,7 @@ function createLink(parent, fileName, owner, options, next) {
             database.run("INSERT INTO links (parent, fileName, owner, key, expiration, hash, salt) VALUES (?, ?, ?, ?, ?, ?, ?)", [parent, fileName, owner, key, options.expiration, options.hash, options.salt], function(result) {
                 if (next !== undefined) {
                     if (next !== false) {
-                        let link = path.join("/", "shared", key, fileName);
+                        let link = "/" + ["shared", key, fileName].join("/");
                         next(link);
                     } else {
                         next(false);
@@ -179,17 +179,17 @@ function doAuthorization(key, fileName, req, res, next) {
 
                     if (req.cookies.fileToken !== undefined) {
                         let fileToken = authorization.verifyToken(req.cookies.fileToken);
-                        if (authorization.checkPayload(fileToken, {sub: "fileToken", path: key + "/" + fileName})) {
+                        if (authorization.checkPayload(fileToken, {sub: "fileToken", path: [key, fileName].join("/")})) {
                             if (next !== undefined) next(true);
                         } else {
-                            res.clearCookie("fileToken", {path: key + "/" + fileName});
+                            res.clearCookie("fileToken", {path: [key, fileName].join("/")});
                             res.status(401).send("Invalid token");
                         }
                         return;
                     } else if (req.headers.authorization !== undefined) {
                         if (req.headers.authorization.startsWith("Bearer ")) {
                             let fileToken = authorization.verifyToken(req.headers.authorization.substring(7));
-                            if (authorization.checkPayload(fileToken, {sub: "fileToken", path: key + "/" + fileName})) {
+                            if (authorization.checkPayload(fileToken, {sub: "fileToken", path: [key, fileName].join("/")})) {
                                 if (next !== undefined) next(true);
                                 return;
                             } else {
@@ -220,18 +220,14 @@ function checkPassword(req, res, key, fileName, hash, salt, next) {
     }
 
     if ((hash === null && salt === null) || hash === authorization.getHash(password, salt)) {
-        let fileToken = authorization.createToken({sub: "fileToken", path: key + "/" + fileName});
+        let fileToken = authorization.createToken({sub: "fileToken", path: [key, fileName].join("/")});
         res.cookie("fileToken", fileToken, {
-            path: "/shared/" + key + "/" + fileName,
+            path: "/" + ["shared", key, fileName].join("/"),
             secure: true,
             sameSite: "strict"
         });
         if (next !== undefined) next(fileToken);
-        return;
-    } else {
-        res.status(401).send("Invalid password");
-        return;
-    }
+    } else res.status(401).send("Invalid password");
 }
 
 function generateKey() {

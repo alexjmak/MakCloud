@@ -44,8 +44,9 @@ function getLoginTokenAudience(req, cookieName) {
 async function doAuthorization(req, res, next) {
     function checkAccount() {
         accountManager.accountExists(getLoginTokenAudience(req), true, function(exists) {
-            if (exists) if (next !== undefined) next();
-            else res.redirect("/logout");
+            if (exists) {
+                if (next !== undefined) next();
+            } else res.redirect("/logout");
         });
     }
     if (req.headers.authorization !== undefined) {

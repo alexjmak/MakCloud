@@ -5,12 +5,9 @@ body {
 .box {
     border-radius: 5px;
     width: 450px;
-    position: fixed;
-    left: 0;
-    right: 0;
-    bottom: 60%;
-    top: 15%;
-    margin: auto;
+    height: 125px;
+    margin: 100px auto;
+
     padding: 20px 20px 55px 20px;
     overflow: scroll;
 }

@@ -36,6 +36,10 @@ table {
     outline: none;
 }
 
+#accounts input[type="text"]:disabled {
+    background: transparent;
+}
+
 tr {
     border-bottom: 1px solid darkgray;
 }

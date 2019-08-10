@@ -78,7 +78,7 @@ $(document).ready(function() {
     }
 
     $(".file").dblclick(function() {
-        window.location = location.pathname + "/" + this.id;
+        window.location = [location.pathname, this.id].join("/");
     });
 
     $(document).click(function (e) {

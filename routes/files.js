@@ -13,8 +13,8 @@ const DEFAULT_FILES_LOCATION = "./files";
 
 router.get('/*', function(req, res, next) {
     let filePath = decodeURIComponent(url.parse(req.url).pathname);
-    let realFilePath = path.join(DEFAULT_FILES_LOCATION, authorization.getLoginTokenAudience(req).toString(), filePath);
-    let urlFilePath = path.join(req.baseUrl, filePath);
+    let realFilePath = [DEFAULT_FILES_LOCATION, authorization.getLoginTokenAudience(req).toString(), filePath].join("/");
+    let urlFilePath = [req.baseUrl, filePath].join("/");
 
     fs.stat(realFilePath, function(err, stats) {
         if (err == null) {
@@ -67,7 +67,6 @@ router.get('/*', function(req, res, next) {
             } else next();
         }
     });
-
 });
 
 router.post("/*", function(req, res, next) {

@@ -4,13 +4,13 @@ const database = require("./databaseInit");
 
 const DEFAULT_FILES_LOCATION = "./files";
 
-database.run("CREATE TABLE IF NOT EXISTS accounts (id INTEGER PRIMARY KEY, username TEXT NOT NULL UNIQUE, hash TEXT NOT NULL, salt TEXT NOT NULL, enabled INTEGER NOT NULL DEFAULT 1, privilege INTEGER NOT NULL DEFAULT 0);");
-database.run("CREATE TABLE IF NOT EXISTS deleted_accounts (id INTEGER PRIMARY KEY, username TEXT NOT NULL, hash TEXT NOT NULL, salt TEXT NOT NULL, privilege INTEGER NOT NULL, dateDeleted INTEGER NOT NULL);");
-
-newAccount("admin", "password", 100);
-getInformation("id", "username", "admin", function(id) {
-    updatePrivilege(id, 100);
+database.run("CREATE TABLE IF NOT EXISTS accounts (id INTEGER PRIMARY KEY, username TEXT NOT NULL UNIQUE, hash TEXT NOT NULL, salt TEXT NOT NULL, enabled INTEGER NOT NULL DEFAULT 1, privilege INTEGER NOT NULL DEFAULT 0);", [], function() {
+    newAccount("admin", "password", 100);
+    getInformation("id", "username", "admin", function(id) {
+        updatePrivilege(id, 100);
+    });
 });
+database.run("CREATE TABLE IF NOT EXISTS deleted_accounts (id INTEGER PRIMARY KEY, username TEXT NOT NULL, hash TEXT NOT NULL, salt TEXT NOT NULL, privilege INTEGER NOT NULL, dateDeleted INTEGER NOT NULL);");
 
 function accountExists(usernameOrID, enabledCheck, next) {
     let query;
@@ -63,7 +63,7 @@ function getInformation(select, whereKey, whereValue, next) {
 
 function nextID(next) {
     database.get("SELECT max(id) as id FROM (SELECT id FROM accounts UNION SELECT id FROM deleted_accounts);", null, function(result) {
-        if (result !== false) {
+        if (result.id !== null) {
             if (next !== undefined) next(result.id + 1);
         } else {
             if (next !== undefined) next(0);
