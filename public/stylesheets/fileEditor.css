@@ -35,3 +35,45 @@ body {
     color: red;
     margin-top: 5px;
 }
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+
+}
+
+:root {
+    --mdc-dialog-container-fill-color: gray;
+}
+
+tr {
+    border-bottom: 1px solid darkgray;
+}
+
+#link {
+    padding-bottom:10px;
+    border-bottom: 1px solid darkgray;
+}
+
+
+
+
+
+p {
+    margin: 0;
+}
+
+#accounts-table input[type="text"]:disabled {
+    background: transparent;
+}
+
+#accounts-table input[type="text"], #accounts-table input[type="number"], #accounts-table input[type="date"]{
+    width: 155px;
+    border: none;
+    font-size: 15px;
+
+}
+
+#accounts-table input:focus {
+    outline: none;
+}

@@ -16,6 +16,8 @@ router.get('/*', function(req, res, next) {
     let realFilePath = [DEFAULT_FILES_LOCATION, authorization.getLoginTokenAudience(req).toString(), filePath].join("/");
     let urlFilePath = [req.baseUrl, filePath].join("/");
 
+    const sharing = req.url.endsWith("?sharing") === true;
+
     fs.stat(realFilePath, function(err, stats) {
         if (err == null) {
             if (Object.keys(req.query)[0] === "download") {
@@ -46,15 +48,25 @@ router.get('/*', function(req, res, next) {
 
                     });
                 } else {
-                    accountManager.getInformation("username", "id", authorization.getLoginTokenAudience(req), function (username) {
-                        fs.readFile(realFilePath, function (err, contents) {
-                            res.render('fileEditor', {
-                                username: username,
-                                hostname: os.hostname(),
-                                file: {path: urlFilePath}
+                    if (sharing) {
+                        let filePathSplit = filePath.split("/");
+                        let fileName = filePathSplit.pop();
+                        let parent = filePathSplit.join("/");
+                        let owner = authorization.getLoginTokenAudience(req);
+                        sharingManager.getLinkSummary(parent, fileName, owner, function(result) {
+                            res.json(result);
+                        })
+                    } else {
+                        accountManager.getInformation("username", "id", authorization.getLoginTokenAudience(req), function (username) {
+                            fs.readFile(realFilePath, function (err, contents) {
+                                res.render('fileEditor', {
+                                    username: username,
+                                    hostname: os.hostname(),
+                                    file: {path: urlFilePath}
+                                });
                             });
                         });
-                    });
+                    }
                 }
 
             }
@@ -79,23 +91,39 @@ router.post("/*", function(req, res, next) {
     const sharing = req.url.endsWith("?sharing") === true;
 
     if (sharing) {
-        let link = JSON.parse(req.body.link);
+        let action = (req.body.action !== undefined) ? req.body.action : null;
+        let expiration = (req.body.expiration !== undefined) ? req.body.expiration : null;
+        let password = (req.body.password !== undefined) ? req.body.password : null;
+        let access = (req.body.access !== undefined) ? req.body.access : null;
+        let id = (req.body.id !== undefined) ? req.body.id : undefined;
 
         //let users = JSON.parse(req.body.users);
 
-        if (link !== undefined) {
-            if (link.expiration === undefined) link.expiration = null;
-            if (link.password === undefined) link.password = null;
-            if (link.action === "create") {
-                sharingManager.createLink(parent, fileName, owner, {expiration: link.expiration, password: link.password}, function(link) {
-                    sharingManager.getLinkKey(parent, fileName, owner, function(key) {
-                        sharingManager.addLinkAccess(key, undefined, function(result) {
-                            if (link !== false) res.status(201).send(link);
-                            else res.sendStatus(409);
-                       });
-                    });
+        if (action === "create") {
+            sharingManager.createLink(parent, fileName, owner, {expiration: expiration, password: password}, function(link) {
+                sharingManager.getLinkKey(parent, fileName, owner, function(key) {
+                    if (link !== false) res.status(201).send(link);
+                    else res.sendStatus(409);
+                    /*
+                    sharingManager.addLinkAccess(key, undefined, function(result) {
+                        if (link !== false) res.status(201).send(link);
+                        else res.sendStatus(409);
+                   });
+                   */
+
                 });
-            }
+            });
+        } else if (action === "delete") {
+            sharingManager.deleteLink(parent, fileName, owner, function(result) {
+                res.sendStatus(200)
+            })
+        } else if (action === "update") {
+            sharingManager.addLinkAccess(parent, fileName, owner, id, access, expiration,function(result) {
+                if (result) res.sendStatus(200);
+                else res.sendStatus(400);
+            })
+        } else {
+            res.send(404);
         }
     }
 });
