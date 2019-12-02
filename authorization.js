@@ -82,18 +82,22 @@ async function login(req, res) {
                 let id = result["id"];
                 let hash = result["hash"];
                 let salt = result["salt"];
-                let enabled = result["enabled"] == 1;
+                let enabled = result["enabled"] === 1;
                 if (hash === getHash(password, salt)) {
                     if (enabled) {
                         res.cookie("loginToken", createToken({sub: "loginToken", aud: id}), {path: "/", secure: true, sameSite: "strict"});
                         res.status(200).send();
                         return;
                     } else {
-                        response = "Your account is disabled";
+                        res.status(403).send("Your account is disabled");
                     }
+                } else {
+                    res.status(401).send(response);
                 }
+            } else {
+                res.status(401).send(response);
             }
-            res.status(401).send(response);
+
         });
     } else {
         res.redirect("/login");

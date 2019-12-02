@@ -18,6 +18,7 @@ $(document).ready(function() {
             $("#message").text("No connection");
             usedCredentialsMemory = "";
         } else {
+            if (xmlHttpRequest.status === 403) usedCredentialsMemory = "";
             $("#message").text(xmlHttpRequest.responseText);
         }
 

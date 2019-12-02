@@ -186,11 +186,11 @@
             postDictionary[id] = {};
 
             if (newPrivilege.toUpperCase() === "ADMIN") newPrivilege = 100;
-            if (newPrivilege > 100) {
+            if (newPrivilege >= 100) {
                 newPrivilege = 100;
                 if (currentUsername !== "admin" && inputStorage["privilege"][id] !== 100) newPrivilege -= 1;
-            }
 
+            }
 
             if (inputStorage["privilege"][id] !== Number(newPrivilege) && newPrivilege !== "") {
                 if (newPrivilege !== 100 && (isNaN(newPrivilege) || newPrivilege < 0)) {

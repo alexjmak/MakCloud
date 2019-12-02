@@ -14,6 +14,9 @@ $(document).ready(function() {
     $(".mdc-drawer__title").text(folderName);
 
     let currentPath = filesPath;
+
+    let selectedItem;
+
     if (directoryPath.startsWith("/")) directoryPath = directoryPath.substring(1);
     let directoryPathSplit = directoryPath.split("/");
     if (directoryPathSplit.length === 1 && directoryPathSplit[0] === "") {
@@ -72,20 +75,61 @@ $(document).ready(function() {
                 icon = "folder";
             }
 
-            files.append("<tr class='underlinedTR file' id='" + file.name + "'><td><span class='file-icons material-icons'>" + icon + "</span></td><td><p>" + file.name + "</p></td><td><p>" + file.size.toUpperCase() + "</p></td><td><p>" + file.date + "</p></td></tr>");
+            files.append("<tr class='underlinedTR file' id='" + fileIndex + "' name='" + file.name + "'><td><span class='file-icons material-icons'>" + icon + "</span></td><td><p>" + file.name + "</p></td><td><p>" + file.size.toUpperCase() + "</p></td><td><p>" + file.date + "</p></td></tr>");
 
         }
     }
 
+    $(document).keydown(function(e) {
+        switch (e.keyCode) {
+            case 38:
+                console.log("up");
+                $(".file").css("background-color", "");
+                if (selectedItem === undefined) {
+                    $(".file").eq(0).css("background-color", "#e6e6e6");
+                    selectedItem = $(".file").get(0);
+                } else {
+                    $(".file").eq((parseInt(selectedItem.id) - 1) % $(".file").length).css("background-color", "#e6e6e6");
+                    selectedItem = $(".file").get((parseInt(selectedItem.id) - 1) % $(".file").length);
+
+                }
+                break;
+
+            case 40:
+                console.log("down");
+                $(".file").css("background-color", "");
+                if (selectedItem === undefined) {
+                    $(".file").eq(0).css("background-color", "#e6e6e6");
+                    selectedItem = $(".file").get(0);
+                } else {
+                    $(".file").eq((parseInt(selectedItem.id) + 1) % $(".file").length).css("background-color", "#e6e6e6");
+                    selectedItem = $(".file").get((parseInt(selectedItem.id) + 1) % $(".file").length);
+                }
+                break;
+        }
+    });
+
+    $(document).keypress(function(e) {
+        console.log(e.which);
+        switch (e.which) {
+            case 13:
+                window.location = [location.pathname, $(selectedItem).attr("name")].join("/");
+                break;
+
+        }
+    });
+
     $(".file").dblclick(function() {
-        window.location = [location.pathname, this.id].join("/");
+        window.location = [location.pathname, $(this).attr("name")].join("/");
     });
 
     $(document).click(function (e) {
         if (!$(".file").is(e.target) && $(".file").has(e.target).length === 0) {
             setTimeout(function() {
+                selectedItem = undefined;
                 $(".file").css("background-color", "")
-            }, 0)
+            }, 0);
+
 
         }
 
@@ -94,6 +138,7 @@ $(document).ready(function() {
     $(".file").click(function() {
         $(".file").css("background-color", "");
         $(this).css("background-color", "#e6e6e6");
+        selectedItem = this;
     });
 
 

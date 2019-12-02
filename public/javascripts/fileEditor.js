@@ -55,7 +55,6 @@ var download = function(event) {
 };
 
 var setAccess = function(event) {
-    console.log(event);
     let accessIndex = event.detail.index;
     let id = (event.detail.id !== undefined) ? event.detail.id : -1;
     postRequest(event.data.filePath + "?sharing", "action=update&access=" + accessIndex + "&id=" + id, function(xmlHttpRequest) {
@@ -96,31 +95,31 @@ var share = function(event) {
                 }
             }
 
-            dialogBody = dialogBody.replace("*public_expiration*", "None");
-
-            dialogBody += "<tr><td><input type='text' class='sharing_username' name='new' placeholder='Share with...'></td><td><input type='text' class='sharing_expiration' name='new' value='None' placeholder='New expiration'></td><td><div class=\"sharing_access mdc-select mdc-select--outlined\"><input type=\"hidden\" name=\"enhanced-select\"><i class=\"mdc-select__dropdown-icon\"></i><div class=\"mdc-select__selected-text\"></div><div class=\"mdc-select__menu mdc-menu mdc-menu-surface\"><ul class=\"mdc-list\"><li class=\"mdc-list-item\">No access</li> <li class=\"mdc-list-item\">Read access</li> <li class=\"mdc-list-item\">Read & write access</li></ul></div><div class=\"mdc-line-ripple\"></div></div></td><td><button class=\"sharing_add mdc-icon-button material-icons\" name='new'>add</button></td></tr>"
+            dialogBody += "<tr><td><input type='text' class='sharing_username' name='new' placeholder='Share with...'></td><td><input type='text' class='sharing_expiration' name='new' value='None' placeholder='New expiration'></td><td><div class=\"sharing_access mdc-select mdc-select--outlined\"><input type=\"hidden\" name=\"enhanced-select\"><i class=\"mdc-select__dropdown-icon\"></i><div class=\"mdc-select__selected-text\"></div><div class=\"mdc-select__menu mdc-menu mdc-menu-surface\"><ul class=\"mdc-list\"><li class=\"mdc-list-item\">Read access</li> <li class=\"mdc-list-item\">Read & write access</li></ul></div><div class=\"mdc-line-ripple\"></div></div></td><td><button class=\"sharing_add mdc-icon-button material-icons\" name='new'>add</button></td></tr>"
 
             dialogBody += "</table>";
 
             showDialog(okDialog, "Share " + event.data.filePath, dialogBody);
 
+            let publicMenu;
+            let newShareMenu;
+
             let selectMenus = document.getElementsByClassName('mdc-select');
             for (let i = 0; i < selectMenus.length; i++) {
                 let selectMenu = new mdc.select.MDCSelect(selectMenus[i]);
+                if (i === 0) publicMenu = selectMenu;
+                if (i === selectMenus.length - 1) newShareMenu = selectMenu;
                 selectMenu.listen('MDCSelect:change', function(selectEvent) {
-                    selectEvent.data = {};
+                    if (i !== selectMenus.length - 1) {
+                        selectEvent.data = {};
+                        selectEvent.detail.id = sharing[i].id;
+                        selectEvent.data.filePath = event.data.filePath;
+                        setAccess(selectEvent)
+                    }
 
-
-
-                    if (sharing === null || sharing.length === 0) selectEvent.detail.id = -1;
-                    else selectEvent.detail.id = sharing[i].id;
-                    selectEvent.data.filePath = event.data.filePath;
-                    setAccess(selectEvent)
                 });
-                if (sharing === null || sharing.length === 0) {
+                if (i === selectMenus.length - 1) {
                     selectMenu.selectedIndex = 0;
-                } else if (i === selectMenus.length - 1) {
-                    selectMenu.selectedIndex = 1;
                 } else {
                     selectMenu.selectedIndex = sharing[i].access;
                 }
@@ -144,6 +143,8 @@ var share = function(event) {
                             $("#enable-sharing").removeAttr("disabled");
                             $("#enable-sharing").first().html("Disable Sharing");
                             $(".account-row").remove();
+                            publicMenu.selectedIndex = 0;
+                            newShareMenu.selectedIndex = 0;
                             $("#link").first().first().text(xmlHttpRequest.responseText);
                             $("#link").show();
                             $("#accounts-table").show();
@@ -175,7 +176,6 @@ var share = function(event) {
                 $("#accounts-table").hide();
             } else {
                 $("#enable-sharing").first().html("Disable Sharing");
-                $("#enable-sharing").attr("checked", true);
             }
 
         } else {
