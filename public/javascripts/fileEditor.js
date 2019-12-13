@@ -49,6 +49,21 @@ var revert = function(event) {
     $("#fileContents").text(event.data.initialFileContents);
 };
 
+var deleteFile = function(event) {
+    if ($("#fileContents").is(":hidden")) return;
+    let fileName = event.data.filePath.split("/").pop();
+    showDialog(yesNoDialog, "MakCloud", "Are you sure you want to delete " + fileName  + "?", {"yes": function() {
+            deleteRequest(event.data.filePath, function(xmlHttpRequest) {
+                if (xmlHttpRequest.status === 200)  {
+                    showSnackbar(basicSnackbar, "Deleted " + fileName);
+                    window.location.href = '.';
+                } else {
+                    showSnackbar(basicSnackbar, "Error deleting " + fileName);
+                }
+            });
+        }});
+};
+
 var download = function(event) {
     if ($("#fileContents").is(":hidden")) return;
     window.open(event.data.filePath + "?download", "_blank");
@@ -78,7 +93,7 @@ var share = function(event) {
             if (sharing === null || sharing.length === 0) {
                 sharing = [{"id": -1, "access": 0}];
             }
-            let dialogBody = "<p id='link'>" + window.location.protocol + "//" + window.location.host + link + "</p>" +
+            let dialogBody = "<p id='link' class='selectable'>" + window.location.protocol + "//" + window.location.host + link + "</p>" +
                 "<br>" +
                 "<table id='accounts-table'>" +
                 "<tr><td><p>Account</p></td><td><p>Expiration</p></td><td>Access</td><td></td></tr>" +
@@ -242,6 +257,8 @@ $(document).ready(function() {
     $("#download").click({filePath: filePath}, download);
 
     $("#share").click({filePath: filePath}, share);
+
+    $("#delete").click({filePath: filePath}, deleteFile);
 
     $(document).keypress(function(e) {
         var key = e.which;

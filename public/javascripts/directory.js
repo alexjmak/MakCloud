@@ -22,6 +22,7 @@ $(document).ready(function() {
     if (directoryPathSplit.length === 1 && directoryPathSplit[0] === "") {
         $("#back").hide();
     }
+
     if (directoryPathSplit.length > 3) {
         $("#navigation-bar").append("<td><div style='margin-top: 10px' class=\"navigation-arrow material-icons\">chevron_right</div></td>");
         $("#navigation-bar").append("<td><button class='mdc-menu-surface--anchor' id='path-overflow-button' style='font-size: 15px; margin-top: 7px; margin-left: 5px; border: none; outline: none; background-color: transparent'><h4>...</h4><div id='path-overflow-menu' class=\"mdc-menu mdc-menu-surface\"> <ul id='path-overflow-list' class=\"mdc-list\" role=\"menu\" aria-hidden=\"true\" aria-orientation=\"vertical\" tabindex=\"-1\"> </ul> </div></button></td>");
@@ -32,6 +33,7 @@ $(document).ready(function() {
             for (let i = 0; i <= event.detail.index; i++) {
                 currentPath += "/" + directoryPathSplit[i];
             }
+
             window.location.href = currentPath;
         });
 
@@ -51,6 +53,19 @@ $(document).ready(function() {
         $("#navigation-bar").append("<td><div style='margin-top: 10px' class=\"navigation-arrow material-icons\">chevron_right</div></td>");
         $("#navigation-bar").append("<td><button onclick=\"window.location.href = '" + currentPath + "';\"style='font-size: 15px; margin-top: 7px; margin-left: 5px; border: none; outline: none; background-color: transparent'><h4>" + directory + "</h4></button></td>");
     }
+
+    $("#navigation-bar").append("<td hidden id='actionButtons' style='position: absolute; right: 20px;'><div id='share' style='margin-top: 10px;' class=\"material-icons\">share</div><div id='delete' style='margin-left: 15px; margin-top: 10px;' class=\"material-icons\">delete</div></td>");
+
+
+    for (let fileIndex in folderContents) {
+        if (folderContents.hasOwnProperty(fileIndex)) {
+            let file = folderContents[fileIndex];
+            if (file.name === ".trash") {
+                folderContents.splice(fileIndex, 1);
+            }
+        }
+    }
+
     for (let fileIndex in folderContents) {
         if (folderContents.hasOwnProperty(fileIndex)) {
             let file = folderContents[fileIndex];
@@ -76,18 +91,25 @@ $(document).ready(function() {
             }
 
             files.append("<tr class='underlinedTR file' id='" + fileIndex + "' name='" + file.name + "'><td><span class='file-icons material-icons'>" + icon + "</span></td><td><p>" + file.name + "</p></td><td><p>" + file.size.toUpperCase() + "</p></td><td><p>" + file.date + "</p></td></tr>");
-
         }
     }
+
+    $(".file").click(function() {
+        fileClick(this);
+    });
+
+    $(".file").dblclick(function() {
+        fileDblClick(this)
+    });
 
     $(document).keydown(function(e) {
         switch (e.keyCode) {
             case 38:
-                console.log("up");
                 $(".file").css("background-color", "");
                 if (selectedItem === undefined) {
                     $(".file").eq(0).css("background-color", "#e6e6e6");
                     selectedItem = $(".file").get(0);
+                    $("#actionButtons").show()
                 } else {
                     $(".file").eq((parseInt(selectedItem.id) - 1) % $(".file").length).css("background-color", "#e6e6e6");
                     selectedItem = $(".file").get((parseInt(selectedItem.id) - 1) % $(".file").length);
@@ -96,11 +118,11 @@ $(document).ready(function() {
                 break;
 
             case 40:
-                console.log("down");
                 $(".file").css("background-color", "");
                 if (selectedItem === undefined) {
                     $(".file").eq(0).css("background-color", "#e6e6e6");
                     selectedItem = $(".file").get(0);
+                    $("#actionButtons").show()
                 } else {
                     $(".file").eq((parseInt(selectedItem.id) + 1) % $(".file").length).css("background-color", "#e6e6e6");
                     selectedItem = $(".file").get((parseInt(selectedItem.id) + 1) % $(".file").length);
@@ -110,37 +132,46 @@ $(document).ready(function() {
     });
 
     $(document).keypress(function(e) {
-        console.log(e.which);
         switch (e.which) {
             case 13:
                 window.location = [location.pathname, $(selectedItem).attr("name")].join("/");
                 break;
-
         }
-    });
-
-    $(".file").dblclick(function() {
-        window.location = [location.pathname, $(this).attr("name")].join("/");
     });
 
     $(document).click(function (e) {
+
         if (!$(".file").is(e.target) && $(".file").has(e.target).length === 0) {
+
             setTimeout(function() {
                 selectedItem = undefined;
-                $(".file").css("background-color", "")
+                $(".file").css("background-color", "");
+                $("#actionButtons").hide()
             }, 0);
-
-
         }
-
     });
 
-    $(".file").click(function() {
-        $(".file").css("background-color", "");
-        $(this).css("background-color", "#e6e6e6");
-        selectedItem = this;
+
+    $("#delete").click(function () {
+
+        let fileName = $(selectedItem).attr("name");
+        let fileId = $(selectedItem).attr("id");
+        showDialog(yesNoDialog, "MakCloud", "Are you sure you want to delete " + fileName  + "?", {"yes": function() {
+            deleteRequest([location.pathname, fileName].join("/"), function(xmlHttpRequest) {
+                    if (xmlHttpRequest.status === 200)  {
+                        folderContents.splice(fileId, 1);
+                        reload();
+                        showSnackbar(basicSnackbar, "Deleted " + fileName)
+                    } else {
+                        showSnackbar(basicSnackbar, "Error deleting " + fileName)
+                    }
+                });
+            }});
     });
 
+    $("#share").click(function () {
+        console.log("share: " + [location.pathname, $(selectedItem).attr("name")].join("/"))
+    });
 
     $("#upload").click(function() {
         $("#uploadButton").trigger("click");
@@ -155,7 +186,47 @@ $(document).ready(function() {
         window.location.href = "/logout";
     });
 
+    function fileClick(file) {
+        $(".file").css("background-color", "");
+        $(file).css("background-color", "#e6e6e6");
+        $("#actionButtons").show();
+        selectedItem = file;
+    }
+
+    function fileDblClick(file) {
+        window.location = [location.pathname, $(file).attr("name")].join("/");
+    }
+
+
+    function reload() {
+        $(".file").remove();
+
+        for (let fileIndex in folderContents) {
+            if (folderContents.hasOwnProperty(fileIndex)) {
+                let file = folderContents[fileIndex];
+
+                let icon = "subject";
+                if (file.type === "directory") {
+                    file.size = "----";
+                    icon = "folder";
+                }
+
+                files.append("<tr class='underlinedTR file' id='" + fileIndex + "' name='" + file.name + "'><td><span class='file-icons material-icons'>" + icon + "</span></td><td><p>" + file.name + "</p></td><td><p>" + file.size.toUpperCase() + "</p></td><td><p>" + file.date + "</p></td></tr>");
+            }
+        }
+
+        $(".file").click(function() {
+            fileClick(this);
+        });
+        $(".file").dblclick(function() {
+            fileDblClick(this)
+        });
+    }
+
 });
+
+
+
 
 function deselectAll() {
 

@@ -12,11 +12,12 @@ const authorization = require('../authorization');
 const DEFAULT_FILES_LOCATION = "./files";
 
 router.get('/*', function(req, res, next) {
-    let filePath = decodeURIComponent(url.parse(req.url).pathname);
+    let filePath = decodeURIComponent(url.parse(req.url).pathname).substring(1);
     let realFilePath = [DEFAULT_FILES_LOCATION, authorization.getLoginTokenAudience(req).toString(), filePath].join("/");
     let urlFilePath = [req.baseUrl, filePath].join("/");
 
     const sharing = req.url.endsWith("?sharing") === true;
+
 
     fs.stat(realFilePath, function(err, stats) {
         if (err == null) {
@@ -126,5 +127,37 @@ router.post("/*", function(req, res, next) {
             res.send(404);
         }
     }
+});
+
+router.delete("/*", function(req, res, next) {
+    let filePath = decodeURIComponent(url.parse(req.url).pathname).substring(1);
+    let realFilePath = [DEFAULT_FILES_LOCATION, authorization.getLoginTokenAudience(req).toString(), filePath].join("/");
+    let deleteFilePath = [DEFAULT_FILES_LOCATION, authorization.getLoginTokenAudience(req).toString(), ".trash", filePath].join("/");
+    let deleteFilePathParent = deleteFilePath.split("/");
+    deleteFilePathParent.pop();
+    deleteFilePathParent = deleteFilePathParent.join("/");
+
+    if (fs.existsSync(realFilePath)) {
+        fs.mkdir(deleteFilePathParent, {recursive: true }, function(err) {
+            if (err) {
+                console.log(err);
+                res.sendStatus(404)
+            } else {
+                fs.rename(realFilePath, deleteFilePath, function (err) {
+                    if (err) {
+                        console.log(err);
+                        res.sendStatus(404)
+                    } else {
+                        res.sendStatus(200)
+                    }
+                });
+            }
+
+        });
+    } else {
+        res.sendStatus(404)
+    }
+
+
 });
 module.exports = router;

@@ -121,9 +121,12 @@ function deleteAccount(id, next) {
                 if (next !== undefined) next(false);
                 return
             }
-
+            let dateDeleted = Math.floor(Date.now()/1000);
             let filePath = path.join(DEFAULT_FILES_LOCATION, id.toString()).toString();
-            rimraf(filePath, function () {
+            let newFilePath = path.join(DEFAULT_FILES_LOCATION, "deleted", id.toString() + "-" + (dateDeleted).toString()).toString();
+            fs.rename(filePath, newFilePath, function () {
+                database.run("INSERT INTO deleted_accounts SELECT id, username, hash, salt, privilege, " + dateDeleted + " as dateDeleted FROM accounts WHERE id = ?;", id);
+
                 if (sambaIntegration) {
                     try {
                         fs.unlinkSync(path.join("..", "Files", username.toLowerCase()).toString());
@@ -278,5 +281,6 @@ module.exports = {
     disableAccount: disableAccount,
     updateUsername: updateUsername,
     updatePassword: updatePassword,
-    updatePrivilege: updatePrivilege
+    updatePrivilege: updatePrivilege,
+    sambaIntegration: sambaIntegration
 };

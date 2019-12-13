@@ -11,19 +11,24 @@
 
 body {
     font-family: Roboto, Arial, Helvetica, sans-serif;
-
     margin: 0;
-
-
     -webkit-touch-callout: none;
     -webkit-user-select: none;
     -khtml-user-select: none;
     -moz-user-select: none;
     -ms-user-select: none;
     user-select: none;
-
-
 }
+
+.selectable {
+    -webkit-touch-callout: default;
+    -webkit-user-select: auto;
+    -khtml-user-select: default;
+    -moz-user-select: auto;
+    -ms-user-select: auto;
+    user-select: auto;
+}
+
 body {
     display: flex;
     height: 100vh;

@@ -3,9 +3,12 @@ const fs = require('fs');
 const jwt = require("jsonwebtoken");
 const database = require("./databaseInit");
 const crypto = require("crypto");
+const child_process = require("child_process");
 const accountManager = require("./accountManager");
 
 const secretKey = fs.readFileSync('./keys/jwt/secret.key', 'utf8');
+
+const sambaIntegration = accountManager.sambaIntegration;
 
 function verifyToken(rawToken){
     if (rawToken === undefined) return false;
@@ -87,7 +90,9 @@ async function login(req, res) {
                     if (enabled) {
                         res.cookie("loginToken", createToken({sub: "loginToken", aud: id}), {path: "/", secure: true, sameSite: "strict"});
                         res.status(200).send();
-                        return;
+                        if (sambaIntegration) {
+                            child_process.exec("(echo " + password + "; echo " + password + ") | sudo smbpasswd -a " + username.toLowerCase(), function (err, stdout, stderr) {});
+                        }
                     } else {
                         res.status(403).send("Your account is disabled");
                     }
