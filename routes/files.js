@@ -54,6 +54,8 @@ router.get('/*', function(req, res, next) {
                         let fileName = filePathSplit.pop();
                         let parent = filePathSplit.join("/");
                         let owner = authorization.getLoginTokenAudience(req);
+                        if (!parent.startsWith("/")) parent = "/" + parent;
+
                         sharingManager.getLinkSummary(parent, fileName, owner, function(result) {
                             res.json(result);
                         })
@@ -124,7 +126,7 @@ router.post("/*", function(req, res, next) {
                 else res.sendStatus(400);
             })
         } else {
-            res.send(404);
+            res.sendStatus(404);
         }
     }
 });
@@ -132,7 +134,7 @@ router.post("/*", function(req, res, next) {
 router.delete("/*", function(req, res, next) {
     let filePath = decodeURIComponent(url.parse(req.url).pathname).substring(1);
     let realFilePath = [DEFAULT_FILES_LOCATION, authorization.getLoginTokenAudience(req).toString(), filePath].join("/");
-    let deleteFilePath = [DEFAULT_FILES_LOCATION, authorization.getLoginTokenAudience(req).toString(), ".trash", filePath].join("/");
+    let deleteFilePath = [DEFAULT_FILES_LOCATION, authorization.getLoginTokenAudience(req).toString(), ".recycle", filePath].join("/");
     let deleteFilePathParent = deleteFilePath.split("/");
     deleteFilePathParent.pop();
     deleteFilePathParent = deleteFilePathParent.join("/");

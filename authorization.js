@@ -97,10 +97,10 @@ async function login(req, res) {
                         res.status(403).send("Your account is disabled");
                     }
                 } else {
-                    res.status(401).send(response);
+                    res.status(403).send(response);
                 }
             } else {
-                res.status(401).send(response);
+                res.status(403).send(response);
             }
 
         });

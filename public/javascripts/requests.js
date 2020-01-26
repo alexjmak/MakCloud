@@ -25,6 +25,10 @@ let postRequest = function(url, data, callback, authorization) {
     request("POST", url, data, callback, authorization);
 };
 
+let patchRequest = function(url, data, callback, authorization) {
+    request("PATCH", url, data, callback, authorization);
+};
+
 let deleteRequest = function(url, callback, authorization) {
     request("DELETE", url, null, callback, authorization);
 };

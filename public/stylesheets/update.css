@@ -1,0 +1,28 @@
+body {
+    background-color: #f0f0f0;
+}
+
+.box {
+    width: 500px;
+    position: fixed;
+    left: 0;
+    right: 0;
+    top: 25%;
+
+    margin: auto;
+    padding: 20px;
+}
+
+#title {
+    margin-top: 5px;
+    margin-bottom: 0;
+}
+
+#computername {
+    margin-top: 7px;
+}
+
+#message {
+    color: red;
+    margin-top: 5px;
+}

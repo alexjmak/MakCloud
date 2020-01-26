@@ -58,6 +58,25 @@ function getAccountsSummary(id, next) {
     });
 }
 
+function getDeletedAccountsSummary(id, next) {
+    getInformation("privilege", "id", id, function(privilege) {
+        getInformation("username", "id", id, function(username) {
+            database.all("SELECT id, username, privilege, dateDeleted FROM deleted_accounts WHERE ? OR id = ? OR privilege < ? ORDER BY username COLLATE NOCASE", [username === "admin", id, privilege], function (results) {
+                let resultsById = {};
+                for (let result in results) {
+                    if (results.hasOwnProperty(result)) {
+                        result = results[result];
+                        let id = result.id;
+                        delete result[id];
+                        resultsById[id] = result;
+                    }
+                }
+                if (next !== undefined) next(results);
+            });
+        });
+    });
+}
+
 function getInformation(select, whereKey, whereValue, next) {
     database.get("SELECT " + select + " FROM accounts WHERE " + whereKey + " = ?", whereValue, function(result) {
         if (next !== undefined) next(result[select]);
@@ -124,7 +143,7 @@ function deleteAccount(id, next) {
             let dateDeleted = Math.floor(Date.now()/1000);
             let filePath = path.join(DEFAULT_FILES_LOCATION, id.toString()).toString();
             let newFilePath = path.join(DEFAULT_FILES_LOCATION, "deleted", id.toString() + "-" + (dateDeleted).toString()).toString();
-            fs.rename(filePath, newFilePath, function () {
+            fs.rename(filePath, newFilePath, function() {
                 database.run("INSERT INTO deleted_accounts SELECT id, username, hash, salt, privilege, " + dateDeleted + " as dateDeleted FROM accounts WHERE id = ?;", id);
 
                 if (sambaIntegration) {
@@ -135,10 +154,10 @@ function deleteAccount(id, next) {
                     child_process.exec("sudo smbpasswd -x " + username.toLowerCase() + "; sudo userdel -r " + username.toLowerCase(), function (err, stdout, stderr) {
                     });
                 }
-            });
 
-            database.run("DELETE FROM accounts WHERE id = ?", id, function (result) {
-                if (next !== undefined) next(result);
+                database.run("DELETE FROM accounts WHERE id = ?", id, function (result) {
+                    if (next !== undefined) next(result);
+                });
             });
         })
     });
@@ -274,6 +293,7 @@ function updatePrivilege(id, newPrivilege, next) {
 module.exports = {
     accountExists: accountExists,
     getAccountsSummary: getAccountsSummary,
+    getDeletedAccountsSummary: getDeletedAccountsSummary,
     getInformation: getInformation,
     newAccount: newAccount,
     deleteAccount: deleteAccount,

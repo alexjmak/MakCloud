@@ -20,7 +20,7 @@ const sharedRouter = require('./routes/shared');
 const indexRouter = require('./routes/index');
 const loginRouter = require('./routes/login');
 const logoutRouter = require('./routes/logout');
-const propertiesRouter = require('./routes/properties');
+const updateRouter = require('./routes/update');
 
 log("Starting server...");
 
@@ -29,6 +29,7 @@ app.use(cookieParser());
 app.use(express.urlencoded({
     extended: true
 }));
+
 
 app.use(function(req, res, next) {
     if (req.path.endsWith("/") && req.path !== "/") {
@@ -58,7 +59,7 @@ app.use(authorization.doAuthorization);
 app.use('/', indexRouter);
 app.use("/files", filesRouter);
 app.use("/accounts", accountsRouter);
-app.use("/properties", propertiesRouter);
+app.use("/update", updateRouter);
 
 
 app.enable("trust proxy");

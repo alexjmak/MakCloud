@@ -1,3 +1,5 @@
+process.chdir(__dirname);
+
 let log = [];
 
 function getLog() {
@@ -17,4 +19,3 @@ const webServer = require("./webServer");
 webServer.start();
 
 //process.stdin.on("data", command);
-

@@ -53,11 +53,9 @@ router.get('/*', function(req, res, next) {
                                             res.send(token);
                                         }
                                     } else {
-                                        showError(createError(401), req, res);
+                                        showError(createError(403), req, res);
                                     }
-
                                 });
-
                             }
                         } else {
                             showError(createError(404), req, res);

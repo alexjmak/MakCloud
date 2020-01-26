@@ -54,13 +54,13 @@ $(document).ready(function() {
         $("#navigation-bar").append("<td><button onclick=\"window.location.href = '" + currentPath + "';\"style='font-size: 15px; margin-top: 7px; margin-left: 5px; border: none; outline: none; background-color: transparent'><h4>" + directory + "</h4></button></td>");
     }
 
-    $("#navigation-bar").append("<td hidden id='actionButtons' style='position: absolute; right: 20px;'><div id='share' style='margin-top: 10px;' class=\"material-icons\">share</div><div id='delete' style='margin-left: 15px; margin-top: 10px;' class=\"material-icons\">delete</div></td>");
+    $("#navigation-bar").append("<td hidden id='actionButtons' style='position: absolute; right: 20px;'><div id='download' style='margin-top: 10px;' class=\"material-icons\">cloud_download</div><div id='share' style='margin-left: 15px; margin-top: 10px;' class=\"material-icons\">share</div><div id='delete' style='margin-left: 15px; margin-top: 10px;' class=\"material-icons\">delete</div></td>");
 
 
     for (let fileIndex in folderContents) {
         if (folderContents.hasOwnProperty(fileIndex)) {
             let file = folderContents[fileIndex];
-            if (file.name === ".trash") {
+            if (file.name === ".recycle") {
                 folderContents.splice(fileIndex, 1);
             }
         }
@@ -151,6 +151,11 @@ $(document).ready(function() {
         }
     });
 
+
+    $("#download").click(function () {
+        let fileName = $(selectedItem).attr("name");
+        window.open([location.pathname, fileName].join("/") + "?download", "_blank");
+    });
 
     $("#delete").click(function () {
 

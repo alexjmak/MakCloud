@@ -9,7 +9,19 @@ const router = express.Router();
 
 router.get('/', function(req, res) {
     accountManager.getInformation("username", "id", authorization.getLoginTokenAudience(req), function(username) {
-        res.render('accounts', {username: username, hostname: os.hostname()});
+        res.render('accounts', {username: username, hostname: os.hostname(), recover: false});
+    });
+});
+
+router.get('/recover', function(req, res) {
+    accountManager.getInformation("username", "id", authorization.getLoginTokenAudience(req), function(username) {
+        res.render('accounts', {username: username, hostname: os.hostname(), recover: true});
+    });
+});
+
+router.get('/recover/list', function(req, res) {
+    accountManager.getDeletedAccountsSummary(authorization.getLoginTokenAudience(req), function (result) {
+        res.json(result);
     });
 });
 
@@ -66,6 +78,10 @@ router.post('/delete', function(req, res) {
         });
     });
 
+});
+
+router.post('/recover', function(req, res) {
+    //todo
 });
 
 router.post('/enable', function(req, res) {

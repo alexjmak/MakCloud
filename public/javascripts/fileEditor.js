@@ -21,7 +21,7 @@ var getFile = function(filePath, mode, authorization) {
                 hideAuthorization();
             }
 
-        } else if (xmlHttpRequest.status === 401) {
+        } else if (xmlHttpRequest.status === 401 || xmlHttpRequest.status === 403) {
             showAuthorization();
             if (authorization !== undefined) {
                 $("#message").text(xmlHttpRequest.responseText);
@@ -216,14 +216,16 @@ window.crypto.getRandomValues(randomNumberArray);
 
 var authorize = function(event) {
     let password = $("#password").val();
+
     if (password.trim() === "") {
-        $("#message").text("Enter the password");
-        return;
+        $("#password").focus()
+    } else {
+        if ($.md5(password, randomNumberArray[0]) === usedPasswordMemory) return;
+        usedPasswordMemory = $.md5(password, randomNumberArray[0]);
+        password = btoa(":"+ password);
+        getFile(event.data.filePath, "authorize", "Basic " + password)
     }
-    if ($.md5(password, randomNumberArray[0]) === usedPasswordMemory) return;
-    usedPasswordMemory = $.md5(password, randomNumberArray[0]);
-    password = btoa(":"+ password);
-    getFile(event.data.filePath, "authorize", "Basic " + password)
+
 };
 
 var showAuthorization = function()  {

@@ -21,7 +21,7 @@ function linkCheck(key, filePath, currentID, next) {
                 if (result !== false) {
                     if (next !== undefined) next(true);
                 } else {
-                    if (next !== undefined) next(401);
+                    if (next !== undefined) next(403);
                 }
             });
         } else {
@@ -213,7 +213,7 @@ function doAuthorization(key, fileName, req, res, next) {
                             if (next !== undefined) next(true);
                         } else {
                             res.clearCookie("fileToken", {path: [key, fileName].join("/")});
-                            res.status(401).send("Invalid token");
+                            res.status(403).send("Invalid token");
                         }
                         return;
                     } else if (req.headers.authorization !== undefined) {
@@ -223,7 +223,7 @@ function doAuthorization(key, fileName, req, res, next) {
                                 if (next !== undefined) next(true);
                                 return;
                             } else {
-                                res.status(401).send("Invalid password");
+                                res.status(403).send("Invalid password");
                                 return;
                             }
                         } else {
@@ -257,7 +257,7 @@ function checkPassword(req, res, key, fileName, hash, salt, next) {
             sameSite: "strict"
         });
         if (next !== undefined) next(fileToken);
-    } else res.status(401).send("Invalid password");
+    } else res.status(403).send("Invalid password");
 }
 
 function generateKey() {
