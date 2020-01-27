@@ -66,7 +66,7 @@ let showDialog = function(type, title, body, actionFunctions) {
     $("body").append(String.format(type, title, body));
     let dialog = new mdc.dialog.MDCDialog(document.querySelector('#dialog'));
 
-    dialog.listen('MDCDialog:closed', function() {
+    dialog.listen('MDCDialog:closed', function(event) {
         $("#dialog").remove();
 
         if (actionFunctions !== undefined) {

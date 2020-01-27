@@ -17,7 +17,6 @@ router.get('/*', function(req, res, next) {
     const download = req.url.endsWith("?download") === true;
     const authorize = req.url.endsWith("?authorize") === true;
 
-
     sharingManager.linkCheck(key, fileName, authorization.getLoginTokenAudience(req),function(exists) {
         if (exists === true) {
             sharingManager.getRealFilePathLink(key, fileName,  function(realFilePath) {

@@ -125,6 +125,18 @@ router.post("/*", function(req, res, next) {
                 if (result) res.sendStatus(200);
                 else res.sendStatus(400);
             })
+        } else if (action === "setPassword") {
+            if (password !== null) {
+                sharingManager.updateLinkPassword(parent, fileName, owner, password, function(result) {
+                    if (result) res.sendStatus(200);
+                    else res.sendStatus(400);
+                })
+            }
+        } else if (action === "deletePassword") {
+            sharingManager.deleteLinkPassword(parent, fileName, owner, function(result) {
+                if (result) res.sendStatus(200);
+                else res.sendStatus(400);
+            })
         } else {
             res.sendStatus(404);
         }

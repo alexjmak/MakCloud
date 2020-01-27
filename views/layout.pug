@@ -22,6 +22,7 @@ html
         script(type='text/javascript', src='/javascripts/requests.js')
         script(type='text/javascript', src='/javascripts/dialog.js')
         script(type='text/javascript', src='/javascripts/snackbar.js')
+        script(type='text/javascript', src='/javascripts/sharing.js')
         block header
         script(type='text/javascript', src='/javascripts/layout.js')
     body
@@ -44,8 +45,8 @@ html
                 .demo-card__primary
                     div(style="padding-right: 16px;")
                         i.material-icons.mdc-list-item__graphic(style='display:inline; float: left; font-size: 64px') account_circle
-                        h2.mdc-typography.mdc-typography--headline6(style="text-align: right; margin-bottom: 0")= username
-                        h3.mdc-typography.mdc-typography--subtitle2(style="text-align: right; margin-top: 0")
+                        h2.selectable.mdc-typography.mdc-typography--headline6(style="text-align: right; margin-bottom: 0")= username
+                        h3.selectable.mdc-typography.mdc-typography--subtitle2(style="text-align: right; margin-top: 0")
 
                     .mdc-card__action-buttons(style="float: right; padding-right: 7px;")
                         a(href="/accounts")

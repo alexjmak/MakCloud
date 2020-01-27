@@ -174,8 +174,9 @@ $(document).ready(function() {
             }});
     });
 
+
     $("#share").click(function () {
-        console.log("share: " + [location.pathname, $(selectedItem).attr("name")].join("/"))
+        share({"data": {"filePath": [location.pathname, $(selectedItem).attr("name")].join("/")}});
     });
 
     $("#upload").click(function() {

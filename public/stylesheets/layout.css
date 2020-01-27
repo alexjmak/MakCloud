@@ -108,3 +108,38 @@ button.material-icons {
 .mdc-drawer__title {
     display: inline;
 }
+
+
+#accounts-table input[type="text"]:disabled {
+    background: transparent;
+}
+
+#accounts-table input[type="text"], #accounts-table input[type="number"], #accounts-table input[type="date"]{
+    width: 155px;
+    border: none;
+    font-size: 15px;
+
+}
+
+#accounts-table input:focus {
+    outline: none;
+}
+
+#link {
+    padding-bottom:10px;
+    border-bottom: 1px solid darkgray;
+}
+
+
+#accounts-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.sharing-tr {
+    border-bottom: 1px solid darkgray;
+}
+
+.sharing-p {
+    margin: 0;
+}

@@ -145,6 +145,12 @@ function updateLinkPassword(parent, fileName, owner, newPassword, next) {
     });
 }
 
+function deleteLinkPassword(parent, fileName, owner, next) {
+    database.run("UPDATE links SET hash = ?, salt = ? WHERE parent = ? AND fileName = ? AND owner = ?", [null, null, parent, fileName, owner], function (result) {
+        if (next !== undefined) next(result);
+    });
+}
+
 function getLinkSummary(parent, fileName, owner, next) {
     let linkSummary = {};
     getLinkKey(parent, fileName, owner, function(key)  {
@@ -271,6 +277,7 @@ module.exports = {linkCheck: linkCheck,
                     addLinkAccess: addLinkAccess,
                     updateLinkAccess: updateLinkAccess,
                     updateLinkPassword: updateLinkPassword,
+                    deleteLinkPassword: deleteLinkPassword,
                     getLinkSummary: getLinkSummary,
                     getLinkInformation: getLinkInformation,
                     getSharingInformation: getSharingInformation,
