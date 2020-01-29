@@ -99,6 +99,7 @@ router.post("/*", function(req, res, next) {
         let password = (req.body.password !== undefined) ? req.body.password : null;
         let access = (req.body.access !== undefined) ? req.body.access : null;
         let id = (req.body.id !== undefined) ? req.body.id : undefined;
+        let username = (req.body.username !== undefined) ? req.body.username : undefined;
 
         //let users = JSON.parse(req.body.users);
 
@@ -120,8 +121,23 @@ router.post("/*", function(req, res, next) {
             sharingManager.deleteLink(parent, fileName, owner, function(result) {
                 res.sendStatus(200)
             })
-        } else if (action === "update") {
-            sharingManager.addLinkAccess(parent, fileName, owner, id, access, expiration,function(result) {
+        } else if (action === "addAccess") {
+            let addLinkAccess = function(id) {
+                sharingManager.addLinkAccess(parent, fileName, owner, id, access, expiration,function(result) {
+                    if (result) res.sendStatus(200);
+                    else res.sendStatus(400);
+                })
+            };
+            if (id === undefined && username !== undefined) {
+                accountManager.getInformation("id", "username", username, function(id) {
+                    if (id === undefined) res.sendStatus(404);
+                    else addLinkAccess(id);
+                })
+            } else {
+                addLinkAccess(id);
+            }
+        } else if (action === "removeAccess")  {
+            sharingManager.removeLinkAccess(parent, fileName, owner, id, function(result) {
                 if (result) res.sendStatus(200);
                 else res.sendStatus(400);
             })
@@ -171,7 +187,6 @@ router.delete("/*", function(req, res, next) {
     } else {
         res.sendStatus(404)
     }
-
 
 });
 module.exports = router;

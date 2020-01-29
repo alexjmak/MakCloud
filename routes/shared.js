@@ -66,9 +66,6 @@ router.get('/*', function(req, res, next) {
             showError(createError(exists), req, res);
         }
     });
-
-
-
 });
 
 function showError(err, req, res) {

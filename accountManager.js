@@ -77,6 +77,21 @@ function getDeletedAccountsSummary(id, next) {
     });
 }
 
+function searchAccounts(query, next) {
+    database.all("SELECT id, username FROM accounts WHERE username LIKE ?", "%" + query + "%", function (results) {
+        let resultsById = {};
+        for (let result in results) {
+            if (results.hasOwnProperty(result)) {
+                result = results[result];
+                let id = result.id;
+                delete result[id];
+                resultsById[id] = result;
+            }
+        }
+        if (next !== undefined) next(results);
+    });
+}
+
 function getInformation(select, whereKey, whereValue, next) {
     database.get("SELECT " + select + " FROM accounts WHERE " + whereKey + " = ?", whereValue, function(result) {
         if (next !== undefined) next(result[select]);
@@ -294,6 +309,7 @@ module.exports = {
     accountExists: accountExists,
     getAccountsSummary: getAccountsSummary,
     getDeletedAccountsSummary: getDeletedAccountsSummary,
+    searchAccounts: searchAccounts,
     getInformation: getInformation,
     newAccount: newAccount,
     deleteAccount: deleteAccount,

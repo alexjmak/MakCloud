@@ -17,13 +17,17 @@ function linkCheck(key, filePath, currentID, next) {
 
     database.get("SELECT * FROM links WHERE key = ? AND fileName = ?", [key, filePath], function(result) {
         if (result !== false) {
-            database.get("SELECT * FROM sharing WHERE key = ? AND (id = ? OR id = -1) AND access > 0 AND (expiration > ? OR expiration IS NULL)", [key, currentID, Date.now()/1000], function(result) {
-                if (result !== false) {
-                    if (next !== undefined) next(true);
-                } else {
-                    if (next !== undefined) next(403);
-                }
-            });
+            if (result.owner === currentID) {
+                if (next !== undefined) next(true);
+            } else {
+                database.get("SELECT * FROM sharing WHERE key = ? AND (id = ? OR id = -1) AND access > 0 AND (expiration > ? OR expiration IS NULL)", [key, currentID, Date.now()/1000], function(result) {
+                    if (result !== false) {
+                        if (next !== undefined) next(true);
+                    } else {
+                        if (next !== undefined) next(403);
+                    }
+                });
+            }
         } else {
             if (next !== undefined) next(404);
         }
@@ -136,6 +140,14 @@ function updateLinkAccess(key, id, newAccess, newExpiration, next) {
 
 }
 
+function removeLinkAccess(parent, fileName, owner, id, next) {
+    getLinkKey(parent, fileName, owner, function(key) {
+        database.run("DELETE FROM sharing WHERE key = ? AND id = ?", [key, id], function (accessResult) {
+            if (next !== undefined) next(accessResult);
+        });
+    });
+}
+
 function updateLinkPassword(parent, fileName, owner, newPassword, next) {
     let salt = authorization.generateSalt();
     let hash = authorization.getHash(newPassword, salt);
@@ -201,7 +213,7 @@ function doAuthorization(key, fileName, req, res, next) {
     let currentID = authorization.getLoginTokenAudience(req);
     if (currentID === undefined) currentID = -1;
 
-    database.get("SELECT sharing.key, id, owner FROM sharing JOIN links ON sharing.key = links.key WHERE sharing.key = ? AND ((id >= 0 AND id = ?) OR (owner = ?))", [key, currentID, currentID], function(result) {
+    database.get("SELECT sharing.key, id, owner FROM sharing JOIN links ON sharing.key = links.key WHERE sharing.key = ? AND ((id >= 0 AND id = ?) OR (owner = ?)) AND access > 0 AND (expiration > ? OR expiration IS NULL)", [key, currentID, currentID, Date.now()/1000], function(result) {
         if (result !== false) next(true);
         else {
             database.get("SELECT hash, salt FROM links WHERE key = ? AND fileName = ?", [key, fileName], function(result) {
@@ -276,6 +288,7 @@ module.exports = {linkCheck: linkCheck,
                     getLinkKey: getLinkKey,
                     addLinkAccess: addLinkAccess,
                     updateLinkAccess: updateLinkAccess,
+                    removeLinkAccess: removeLinkAccess,
                     updateLinkPassword: updateLinkPassword,
                     deleteLinkPassword: deleteLinkPassword,
                     getLinkSummary: getLinkSummary,

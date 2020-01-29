@@ -1,7 +1,7 @@
 const express = require('express');
 const os = require('os');
 const crypto = require('crypto');
-
+const createError = require('http-errors');
 const authorization = require('../authorization');
 const accountManager = require('../accountManager');
 
@@ -35,6 +35,17 @@ router.get('/list/hash', function(req, res) {
     accountManager.getAccountsSummary(authorization.getLoginTokenAudience(req), function (result) {
         res.send(crypto.createHash('md5').update(JSON.stringify(result)).digest('hex'));
     })
+});
+
+router.get('/search', function(req, res, next) {
+    let query = req.query.q;
+    if (query === undefined || query === "") {
+        next(createError(400));
+    } else {
+        accountManager.searchAccounts(query, function (result) {
+            res.json(result);
+        });
+    }
 });
 
 router.post('/new', function(req, res) {

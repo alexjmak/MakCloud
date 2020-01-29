@@ -5,12 +5,16 @@
     --mdc-theme-primary: #15438c;
 }
 
+* :not(pre) {
+    font-family: Roboto, Arial, Helvetica, sans-serif;
+}
+
 .mdc-drawer {
     height: auto;
 }
 
 body {
-    font-family: Roboto, Arial, Helvetica, sans-serif;
+
     margin: 0;
     -webkit-touch-callout: none;
     -webkit-user-select: none;
@@ -19,6 +23,7 @@ body {
     -ms-user-select: none;
     user-select: none;
 }
+
 
 .selectable {
     -webkit-touch-callout: default;
@@ -50,6 +55,7 @@ body {
     z-index: 7;
     /*background-color: #15438c;*/
 }
+
 
 .box {
     background-color: #ffffff;
@@ -127,7 +133,13 @@ button.material-icons {
 
 #link {
     padding-bottom:10px;
+    margin-bottom: 20px;
+    border: none;
     border-bottom: 1px solid darkgray;
+    outline: none;
+    font-size: 1rem;
+    color: rgba(0,0,0,.6);
+    width: 100%;
 }
 
 
@@ -142,4 +154,8 @@ button.material-icons {
 
 .sharing-p {
     margin: 0;
+}
+
+@media(min-width: 592px) {
+    .mdc-dialog .mdc-dialog__surface{max-width:100%}
 }

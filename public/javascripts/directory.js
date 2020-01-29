@@ -51,11 +51,15 @@ $(document).ready(function() {
             continue;
         }
         $("#navigation-bar").append("<td><div style='margin-top: 10px' class=\"navigation-arrow material-icons\">chevron_right</div></td>");
-        $("#navigation-bar").append("<td><button onclick=\"window.location.href = '" + currentPath + "';\"style='font-size: 15px; margin-top: 7px; margin-left: 5px; border: none; outline: none; background-color: transparent'><h4>" + directory + "</h4></button></td>");
+        $("#navigation-bar").append("<td><button onclick=\"window.location.href = '" + currentPath + "';\"style='font-size: 16px; margin-top: 7px; margin-left: 5px; border: none; outline: none; background-color: transparent'><h4>" + directory + "</h4></button></td>");
     }
 
-    $("#navigation-bar").append("<td hidden id='actionButtons' style='position: absolute; right: 20px;'><div id='download' style='margin-top: 10px;' class=\"material-icons\">cloud_download</div><div id='share' style='margin-left: 15px; margin-top: 10px;' class=\"material-icons\">share</div><div id='delete' style='margin-left: 15px; margin-top: 10px;' class=\"material-icons\">delete</div></td>");
+    $("#navigation-bar").append("<td hidden id='actionButtons' style='position: absolute; right: 7px;'><button id='download' class=\"mdc-icon-button material-icons\">cloud_download</button><button id='share' class=\"mdc-icon-button material-icons\">share</button><button id='delete' class=\"mdc-icon-button material-icons\">delete</button></td>");
 
+    let iconButtons = document.getElementsByClassName('mdc-icon-button');
+    for (let i = 0; i < iconButtons.length; i++) {
+        new mdc.ripple.MDCRipple(iconButtons[i]).unbounded = true;
+    }
 
     for (let fileIndex in folderContents) {
         if (folderContents.hasOwnProperty(fileIndex)) {
