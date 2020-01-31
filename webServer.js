@@ -54,12 +54,14 @@ app.use('/login', loginRouter);
 
 app.use("/shared", sharedRouter);
 
+app.use("/update", updateRouter);
+
 app.use(authorization.doAuthorization);
 
 app.use('/', indexRouter);
 app.use("/files", filesRouter);
 app.use("/accounts", accountsRouter);
-app.use("/update", updateRouter);
+
 
 
 app.enable("trust proxy");

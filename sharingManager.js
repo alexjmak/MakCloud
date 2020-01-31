@@ -2,8 +2,7 @@ const database = require("./databaseInit");
 const authorization = require("./authorization");
 const path = require("path");
 const crypto = require("crypto");
-
-const DEFAULT_FILES_LOCATION = "./files";
+const preferences = require("./preferences");
 
 database.run("CREATE TABLE IF NOT EXISTS sharing (key TEXT NOT NULL, id INTEGER NOT NULL, access INTEGER NOT NULL DEFAULT 0, expiration INTEGER DEFAULT NULL, UNIQUE(key, id));", [], function () {
     database.run("CREATE TABLE IF NOT EXISTS links (parent TEXT NOT NULL, fileName TEXT NOT NULL, owner INTEGER NOT NULL, key TEXT NOT NULL UNIQUE, hash TEXT DEFAULT NULL, salt TEXT DEFAULT NULL, UNIQUE(parent, fileName, owner));", [], function() {
@@ -195,7 +194,7 @@ function getSharingInformation(select, whereKey, whereValue, next) {
 }
 
 function getRealFilePath(parent, fileName, owner) {
-    return path.join(DEFAULT_FILES_LOCATION, owner.toString(), parent, fileName);
+    return path.join(preferences.get()["files"], owner.toString(), parent, fileName);
 }
 
 function getRealFilePathLink(key, fileName, next) {

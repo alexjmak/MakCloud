@@ -3,10 +3,7 @@ const path = require("path");
 const rimraf = require("rimraf");
 const database = require("./databaseInit");
 const child_process = require('child_process');
-
-const DEFAULT_FILES_LOCATION = "./files";
-
-const sambaIntegration = false;
+const preferences = require("./preferences");
 
 database.run("CREATE TABLE IF NOT EXISTS accounts (id INTEGER PRIMARY KEY, username TEXT NOT NULL UNIQUE, hash TEXT NOT NULL, salt TEXT NOT NULL, enabled INTEGER NOT NULL DEFAULT 1, privilege INTEGER NOT NULL DEFAULT 0);", [], function() {
     newAccount("admin", "password", 100);
@@ -121,16 +118,18 @@ function newAccount(username, password, privilege, next) {
         let hash = authorization.getHash(password, salt);
 
         nextID(function(id) {
-            let filePath = path.join(DEFAULT_FILES_LOCATION, id.toString()).toString();
+            let filePath = path.join(preferences.get()["files"], id.toString()).toString();
             fs.stat(filePath, function(err) {
                 if (err != null) {
                     fs.mkdir(filePath, function() {
-                        if (sambaIntegration) {
+                        if (preferences.get()["sambaIntegration"]) {
                             try {
-                                fs.symlinkSync(path.join(__dirname, "files", id.toString()), path.join("..", "Files", username.toLowerCase()), "dir");
+                                fs.symlinkSync(path.join(preferences.get()["files"], id.toString()), path.join(preferences.get()["files"], "smb", username.toLowerCase()), "dir");
                             } catch (err) {
+                                console.log(err);
                             }
                             child_process.exec("sudo useradd -G makcloud --no-create-home --no-user-group --system " + username.toLowerCase() + "; (echo " + password + "; echo " + password + ") | sudo smbpasswd -a " + username.toLowerCase(), function (err, stdout, stderr) {
+                                    if (stderr !== "") console.log(stderr);
                             });
                         }
                     });
@@ -156,17 +155,18 @@ function deleteAccount(id, next) {
                 return
             }
             let dateDeleted = Math.floor(Date.now()/1000);
-            let filePath = path.join(DEFAULT_FILES_LOCATION, id.toString()).toString();
-            let newFilePath = path.join(DEFAULT_FILES_LOCATION, "deleted", id.toString() + "-" + (dateDeleted).toString()).toString();
+            let filePath = path.join(preferences.get()["files"], id.toString()).toString();
+            let newFilePath = path.join(preferences.get()["files"], "deleted", id.toString() + "-" + (dateDeleted).toString()).toString();
             fs.rename(filePath, newFilePath, function() {
                 database.run("INSERT INTO deleted_accounts SELECT id, username, hash, salt, privilege, " + dateDeleted + " as dateDeleted FROM accounts WHERE id = ?;", id);
 
-                if (sambaIntegration) {
+                if (preferences.get()["sambaIntegration"]) {
                     try {
-                        fs.unlinkSync(path.join("..", "Files", username.toLowerCase()).toString());
+                        fs.unlinkSync(path.join(preferences.get()["files"], "smb", username.toLowerCase()).toString());
                     } catch (err) {
                     }
                     child_process.exec("sudo smbpasswd -x " + username.toLowerCase() + "; sudo userdel -r " + username.toLowerCase(), function (err, stdout, stderr) {
+                        if (stderr !== "") console.log(stderr);
                     });
                 }
 
@@ -185,14 +185,16 @@ function enableAccount(id, next) {
             return;
         }
 
-        if (sambaIntegration) {
+        if (preferences.get()["sambaIntegration"]) {
             getInformation("username", "id", id, function (username) {
                 try {
-                    fs.symlinkSync(path.join(__dirname, "files", id.toString()), path.join("..", "Files", username.toLowerCase()), "dir");
+                    fs.symlinkSync(path.join(preferences.get()["files"], id.toString()), path.join(preferences.get()["files"], "smb", username.toLowerCase()), "dir");
                 } catch (err) {
+                    console.log(err);
                 }
 
                 child_process.exec("sudo smbpasswd -e " + username.toLowerCase(), function (err, stdout, stderr) {
+                    if (stderr !== "") console.log(stderr);
                 });
             });
         }
@@ -211,13 +213,15 @@ function disableAccount(id, next) {
             return;
         }
 
-        if (sambaIntegration) {
+        if (preferences.get()["sambaIntegration"]) {
             getInformation("username", "id", id, function (username) {
                 try {
-                    fs.unlinkSync(path.join("..", "Files", username.toLowerCase()).toString());
+                    fs.unlinkSync(path.join(preferences.get()["files"], "smb", username.toLowerCase()).toString());
                 } catch (err) {
+                    console.log(err);
                 }
                 child_process.exec("sudo smbpasswd -d " + username.toLowerCase(), function (err, stdout, stderr) {
+                    if (stderr !== "") console.log(stderr);
                 });
             });
         }
@@ -242,12 +246,14 @@ function updateUsername(id, newUsername, next) {
                 return;
             }
 
-            if (sambaIntegration) {
+            if (preferences.get()["sambaIntegration"]) {
                 try {
-                    fs.renameSync(path.join("..", "Files", username.toLowerCase()).toString(), path.join("..", "Files", newUsername.toLowerCase()).toString());
+                    fs.renameSync(path.join(preferences.get()["files"], "smb", username.toLowerCase()).toString(), path.join(preferences.get()["files"], "smb", newUsername.toLowerCase()).toString());
                 } catch (err) {
+                    console.log(err);
                 }
                 child_process.exec("sudo smbpasswd -x " + username.toLowerCase() + "; sudo usermod -l " + newUsername.toLowerCase() + " " + username.toLowerCase(), function (err, stdout, stderr) {
+                    if (stderr !== "") console.log(stderr);
                 });
             }
 
@@ -270,13 +276,15 @@ function updatePassword(id, newPassword, next) {
         let newSalt = authorization.generateSalt();
         let newHash = authorization.getHash(newPassword, newSalt);
 
-        if (sambaIntegration) {
+        if (preferences.get()["sambaIntegration"]) {
             getInformation("username", "id", id, function (username) {
                 child_process.exec("(echo " + newPassword + "; echo " + newPassword + ") | sudo smbpasswd -a " + username.toLowerCase(), function (err, stdout, stderr) {
+                    if (stderr !== "") console.log(stderr);
                 });
                 getInformation("enabled", "id", id, function (enabled) {
                     if (!enabled) {
                         child_process.exec("sudo smbpasswd -d " + username.toLowerCase(), function (err, stdout, stderr) {
+                            if (stderr !== "") console.log(stderr);
                         });
                     }
                 });
@@ -318,5 +326,4 @@ module.exports = {
     updateUsername: updateUsername,
     updatePassword: updatePassword,
     updatePrivilege: updatePrivilege,
-    sambaIntegration: sambaIntegration
 };

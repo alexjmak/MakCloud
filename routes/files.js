@@ -8,12 +8,11 @@ const readify = require('readify');
 const accountManager = require('../accountManager');
 const sharingManager = require('../sharingManager');
 const authorization = require('../authorization');
-
-const DEFAULT_FILES_LOCATION = "./files";
+const preferences = require("../preferences");
 
 router.get('/*', function(req, res, next) {
     let filePath = decodeURIComponent(url.parse(req.url).pathname).substring(1);
-    let realFilePath = [DEFAULT_FILES_LOCATION, authorization.getLoginTokenAudience(req).toString(), filePath].join("/");
+    let realFilePath = [preferences.get()["files"], authorization.getLoginTokenAudience(req).toString(), filePath].join("/");
     let urlFilePath = [req.baseUrl, filePath].join("/");
 
     const sharing = req.url.endsWith("?sharing") === true;
@@ -75,8 +74,8 @@ router.get('/*', function(req, res, next) {
             }
         } else {
             if (filePath === "/") {
-                fs.mkdir(DEFAULT_FILES_LOCATION, function() {
-                    fs.mkdir(path.join(DEFAULT_FILES_LOCATION, authorization.getLoginTokenAudience(req).toString()), function() {res.redirect('back')});
+                fs.mkdir(preferences.get()["files"], function() {
+                    fs.mkdir(path.join(preferences.get()["files"], authorization.getLoginTokenAudience(req).toString()), function() {res.redirect('back')});
                 });
 
             } else next();
@@ -161,8 +160,8 @@ router.post("/*", function(req, res, next) {
 
 router.delete("/*", function(req, res, next) {
     let filePath = decodeURIComponent(url.parse(req.url).pathname).substring(1);
-    let realFilePath = [DEFAULT_FILES_LOCATION, authorization.getLoginTokenAudience(req).toString(), filePath].join("/");
-    let deleteFilePath = [DEFAULT_FILES_LOCATION, authorization.getLoginTokenAudience(req).toString(), ".recycle", filePath].join("/");
+    let realFilePath = [preferences.get()["files"], authorization.getLoginTokenAudience(req).toString(), filePath].join("/");
+    let deleteFilePath = [preferences.get()["files"], authorization.getLoginTokenAudience(req).toString(), ".recycle", filePath].join("/");
     let deleteFilePathParent = deleteFilePath.split("/");
     deleteFilePathParent.pop();
     deleteFilePathParent = deleteFilePathParent.join("/");

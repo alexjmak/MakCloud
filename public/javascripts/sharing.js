@@ -16,7 +16,6 @@ var share = function(event) {
                 "<tr class='sharing-tr'><td><p class='sharing-p'>Account</p></td><td><p class='sharing-p'>Expiration</p></td><td><p class='sharing-p' style='margin-left: 17px'>Access</p></td><td></td></tr>" +
                 "<tr class='sharing-tr'><td><input readonly type='text' class='sharing_username' name='-1' value='Public'></td><td><input type='text' class='sharing_expiration' name='-1' placeholder='New expiration' value='None'></td><td><div class=\"sharing_access mdc-select mdc-select--outlined\"><input type=\"hidden\" name=\"enhanced-select\"><i class=\"mdc-select__dropdown-icon\"></i><div class=\"mdc-select__selected-text\"></div><div class=\"mdc-select__menu mdc-menu mdc-menu-surface\"><ul class=\"mdc-list\"><li class=\"mdc-list-item\">No access</li> <li class=\"mdc-list-item\">Read access</li> <li class=\"mdc-list-item\">Read & write access</li></ul></div><div class=\"mdc-line-ripple\"></div></div></td><td><button class=\"sharing_delete mdc-icon-button material-icons\" name='-1'>delete</button></td></tr>";
 
-
             for (let sharingIndex in sharing) {
                 if (sharing.hasOwnProperty(sharingIndex)) {
                     let account = sharing[sharingIndex];
@@ -31,18 +30,17 @@ var share = function(event) {
 
             dialogBody += "</table>";
 
-
             let shareDialog = showDialog(okDialog, "Share " + event.data.filePath.split("/").pop(), dialogBody);
 
-            let count = 0;
             let newShare = $(".sharing_username[name='new']");
-            $(".sharing-tr").last().append("<div class=\"mdc-card mdc-elevation--z10\" id=\"search\" style=\"overflow: scroll; z-index:20;position:absolute; left: 23px; top: 313px; max-height: 200px; padding-bottom: 8px; padding-top: 2px\"><ul id='search-list' class='mdc-list'></ul></div>");
+
+            $(".sharing-tr").last().append("<div class=\"mdc-card mdc-elevation--z10\" id=\"search\" style=\"overflow: scroll; z-index:20;position:absolute; left: 23px; margin-top: 58px; max-height: 200px; padding-bottom: 8px; padding-top: 2px\"><ul id='search-list' class='mdc-list'></ul></div>");
             let searchList = $("#search-list");
             newShare.keyup(function() {
                 let newShareValue = newShare.val();
                 if (newShareValue.trim() === "") {
                     searchList.empty();
-                } else if (count % 3 === 0 || newShareValue.length === 1) {
+                } else {
                     getRequest("/accounts/search?q=" + newShareValue, function(xmlHttpRequest) {
                         if (xmlHttpRequest.status === 200) {
                             searchList.empty();
@@ -64,7 +62,6 @@ var share = function(event) {
                         }
                     });
                 }
-                count++;
             });
 
             $("#link").click(function() {
@@ -99,7 +96,6 @@ var share = function(event) {
             }
 
             $(".sharing_add").click(function() {
-
                 let username = newShare.val();
                 let access = newShareMenu.selectedIndex;
 

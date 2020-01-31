@@ -11,9 +11,13 @@ console.log = function(text) {
     log.push(text);
 };
 
+require("./preferences");
+
 module.exports = {
     getLog: getLog
 };
+
+process.env["NODE_TLS_REJECT_UNAUTHORIZED"] = 0;
 
 const webServer = require("./webServer");
 webServer.start();

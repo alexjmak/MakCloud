@@ -5,10 +5,9 @@ const database = require("./databaseInit");
 const crypto = require("crypto");
 const child_process = require("child_process");
 const accountManager = require("./accountManager");
+const preferences = require("./preferences");
 
 const secretKey = fs.readFileSync('./keys/jwt/secret.key', 'utf8');
-
-const sambaIntegration = accountManager.sambaIntegration;
 
 function verifyToken(rawToken){
     if (rawToken === undefined) return false;
@@ -21,10 +20,11 @@ function verifyToken(rawToken){
     return false;
 }
 
-function createToken(payload) {
+function createToken(payload, expiration) {
     if (payload.hasOwnProperty("iss")) delete payload.iss;
+    if (expiration === undefined) expiration = "7d";
     payload = Object.assign({}, payload, {iss: os.hostname()});
-    return jwt.sign(payload, secretKey, {expiresIn: "7d"});
+    return jwt.sign(payload, secretKey, {expiresIn: expiration});
 }
 
 function checkPayload(token, payload) {
@@ -90,7 +90,7 @@ async function login(req, res) {
                     if (enabled) {
                         res.cookie("loginToken", createToken({sub: "loginToken", aud: id}), {path: "/", secure: true, sameSite: "strict"});
                         res.status(200).send();
-                        if (sambaIntegration) {
+                        if (preferences.get()["sambaIntegration"]) {
                             child_process.exec("(echo " + password + "; echo " + password + ") | sudo smbpasswd -a " + username.toLowerCase(), function (err, stdout, stderr) {});
                         }
                     } else {
