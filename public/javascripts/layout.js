@@ -67,7 +67,6 @@ $(document).ready(function() {
     });
 
     $("#currentUsername").click(function() {
-        console.log(1);
         if (!accountCard.is(":visible") && $.cookie("loginToken") !== undefined) {
             accountCard.show();
         }

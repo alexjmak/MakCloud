@@ -10,7 +10,6 @@ const helmet = require("helmet");
 
 const authorization = require('./authorization');
 const accountManager = require('./accountManager');
-const sharingManager = require('./sharingManager');
 
 const app = express();
 
@@ -21,6 +20,8 @@ const indexRouter = require('./routes/index');
 const loginRouter = require('./routes/login');
 const logoutRouter = require('./routes/logout');
 const updateRouter = require('./routes/update');
+
+let serverInstances = [];
 
 log("Starting server...");
 
@@ -41,12 +42,11 @@ app.use(function(req, res, next) {
 
 app.use(express.static(path.join(__dirname, "public")));
 
-const noLog = ["/status", "/log", "/log/hash", "/properties/hash", "/accounts/list/hash"];
+const noLog = ["/accounts/list/hash"];
 app.use(function(req, res, next) {
     if (noLog.indexOf(req.path) === -1) log(req, req.url);
     next();
 });
-
 
 app.use('/logout', logoutRouter);
 
@@ -61,8 +61,6 @@ app.use(authorization.doAuthorization);
 app.use('/', indexRouter);
 app.use("/files", filesRouter);
 app.use("/accounts", accountsRouter);
-
-
 
 app.enable("trust proxy");
 
@@ -90,9 +88,28 @@ function start() {
     }, app);
     httpsServer.listen(443);
 
-    httpRedirectServer();
+    let httpServer = httpRedirectServer();
 
-    return httpsServer;
+    serverInstances.push(httpsServer, httpServer);
+
+    return serverInstances;
+}
+
+function stop(next) {
+    for (let server in serverInstances) {
+        if (serverInstances.hasOwnProperty(server)) {
+            server = serverInstances[server];
+            server.close();
+        }
+    }
+    log("Server stopped");
+    if (next !== undefined) next();
+}
+
+function restart() {
+    stop(function() {
+        start();
+    })
 }
 
 function httpRedirectServer() {
@@ -100,7 +117,7 @@ function httpRedirectServer() {
     httpServer.get('*', function(req, res) {
         res.redirect('https://' + req.headers.host + req.url);
     });
-    httpServer.listen(80);
+    httpServer = httpServer.listen(80);
     return httpServer;
 }
 
@@ -114,5 +131,7 @@ function log(req, text) {
 }
 
 module.exports = {
-    start: start
+    start: start,
+    stop: stop,
+    restart: restart
 };

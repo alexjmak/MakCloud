@@ -1,14 +1,15 @@
 const express = require('express');
 const os = require("os");
 const createError = require('http-errors');
-const authorization = require("../authorization");
-const accountManager = require("../accountManager");
-const router = express.Router();
 const request = require('request');
-var archiver = require('archiver');
+const archiver = require('archiver');
 const fs = require('fs');
 const path = require('path');
 const unzipper = require('unzipper');
+const authorization = require("../authorization");
+const accountManager = require("../accountManager");
+
+const router = express.Router();
 
 router.get('/files', function(req, res, next) {
     let token = req.headers.authorization;
@@ -21,7 +22,6 @@ router.get('/files', function(req, res, next) {
         res.sendFile(path.join(__dirname, "..", "tmp.zip"), function() {
             fs.unlinkSync(path.join(__dirname, "..", "tmp.zip"));
         });
-
     });
 
     zip.pipe(fileOutput);
@@ -49,13 +49,10 @@ router.get('/', function(req, res, next) {
             accountManager.getInformation("username", "id", authorization.getLoginTokenAudience(req), function (username) {
                 res.render('update', {hostname: os.hostname(), username: username});
             });
-
         } else {
-            next(createError(401));
+            next(createError(403));
         }
     });
-
-
 });
 
 router.post('/', function(req, res) {
@@ -69,8 +66,5 @@ router.post('/', function(req, res) {
     });
 
 });
-
-
-
 
 module.exports = router;

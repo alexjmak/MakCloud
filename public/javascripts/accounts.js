@@ -9,7 +9,6 @@
 
     var inputStorage;
 
-
     var showNewAccount = function(accountID, accountUsername, accountPrivilege, enabled) {
         var checked;
         if (enabled) {
@@ -63,7 +62,6 @@
 
                 for (var account in accountsList) {
                     account = accountsList[account];
-
                     var accountID = account["id"];
                     var accountUsername = account["username"];
                     var accountEnabled = account["enabled"] === 1;
@@ -141,11 +139,12 @@
 
                 $(".account_delete").click(deleteAccount);
 
-
+                $("#new_account_username").focus();
 
                 if (scrollHeight != null) accounts.scrollTop(accounts[0].scrollHeight - scrollHeight);
             }
         });
+
     };
 
     var updateAccount = function(data, url) {

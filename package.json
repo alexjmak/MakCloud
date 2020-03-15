@@ -18,7 +18,6 @@
     "helmet": "^3.21.2",
     "http-errors": "latest",
     "jsonwebtoken": "^8.5.1",
-    "mobile-detect": "^1.4.4",
     "pidusage": "^2.0.17",
     "pug": "^2.0.4",
     "pug-cli": "^1.0.0-alpha6",
@@ -26,9 +25,9 @@
     "request": "^2.88.0",
     "rimraf": "^2.7.1",
     "sass": "^1.25.0",
+    "sqlite3": "latest",
     "strftime": "^0.10.0",
-    "unzipper": "^0.10.7",
-    "xmlhttprequest": "^1.8.0"
+    "unzipper": "^0.10.7"
   },
   "nodemonConfig": {
     "ext": "none",

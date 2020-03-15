@@ -13,7 +13,7 @@ html
         link(rel='stylesheet', type='text/css', href='/stylesheets/layout.css')
         script.
             let currentUsername = "#{username}";
-        script(type='text/javascript', src='/javascripts/jquery-3.3.1.js')
+        script(type='text/javascript', src='/javascripts/jquery-3.4.1.js')
         script(type='text/javascript', src='/javascripts/jquery.md5.js')
         script(type='text/javascript', src='/javascripts/jquery.cookie.js')
         script(type='text/javascript', src='/javascripts/material-components-web.min.js')
@@ -29,9 +29,7 @@ html
 
         header.mdc-top-app-bar.mdc-top-app-bar--fixed
             .mdc-top-app-bar__row.mdc-elevation--z1
-
                 section.mdc-top-app-bar__section.mdc-top-app-bar__section--align-start
-
                     button.material-icons(onclick="window.location.href='/'" style="margin-left: 5px; color: white; background-color: transparent; border: none; outline: none") cloud
                     h3(onclick="window.location.href='/'" style="cursor: pointer; font-size: 22px;")= "MakCloud"
                 section.mdc-top-app-bar__section.mdc-top-app-bar__section--align-end

@@ -1,13 +1,27 @@
-const os = require("os");
 const fs = require('fs');
 const jwt = require("jsonwebtoken");
 const database = require("./databaseInit");
 const crypto = require("crypto");
 const child_process = require("child_process");
+const strftime = require('strftime');
 const accountManager = require("./accountManager");
 const preferences = require("./preferences");
 
 const secretKey = fs.readFileSync('./keys/jwt/secret.key', 'utf8');
+let serverID;
+
+function loadServerID() {
+    fs.readFile("SERVER_ID", function (err, data) {
+        if (err) {
+            fs.writeFileSync("SERVER_ID", generateSalt());
+            return loadServerID();
+        }
+        data = data.toString();
+        serverID = data;
+    });
+}
+
+loadServerID();
 
 function verifyToken(rawToken){
     if (rawToken === undefined) return false;
@@ -15,7 +29,7 @@ function verifyToken(rawToken){
         let token = jwt.verify(rawToken, secretKey);
         return token;
     } catch (err) {
-        console.log(err);
+        log(err);
     }
     return false;
 }
@@ -23,7 +37,7 @@ function verifyToken(rawToken){
 function createToken(payload, expiration) {
     if (payload.hasOwnProperty("iss")) delete payload.iss;
     if (expiration === undefined) expiration = "7d";
-    payload = Object.assign({}, payload, {iss: os.hostname()});
+    payload = Object.assign({}, payload, {iss: serverID});
     return jwt.sign(payload, secretKey, {expiresIn: expiration});
 }
 
@@ -34,7 +48,8 @@ function checkPayload(token, payload) {
         if (!token.hasOwnProperty(key)) return false;
         if (payload[key] !== token[key]) return false;
     }
-    if (token.iss !== os.hostname()) return false;
+    if (token.iss !== serverID) return false;
+
     return true;
 }
 
@@ -115,6 +130,15 @@ function generateSalt() {
 
 function getHash(password, salt) {
     return crypto.createHmac('sha512', salt).update(password).digest('hex');
+}
+
+function log(req, text) {
+    if (typeof req === "string") {
+        text = req;
+        console.log("[Authorization] [" + strftime("%H:%M:%S") + "]: " + text);
+    } else {
+        console.log("[Authorization] [" + strftime("%H:%M:%S") + "] [" + (req.ip) + "]: " + req.method + " " + text);
+    }
 }
 
 module.exports = {

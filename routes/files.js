@@ -105,15 +105,9 @@ router.post("/*", function(req, res, next) {
         if (action === "create") {
             sharingManager.createLink(parent, fileName, owner, {expiration: expiration, password: password}, function(link) {
                 sharingManager.getLinkKey(parent, fileName, owner, function(key) {
+                    sharingManager.addLinkAccess(parent, fileName, owner, -1, 0, null,function(result) {});
                     if (link !== false) res.status(201).send(link);
                     else res.sendStatus(409);
-                    /*
-                    sharingManager.addLinkAccess(key, undefined, function(result) {
-                        if (link !== false) res.status(201).send(link);
-                        else res.sendStatus(409);
-                   });
-                   */
-
                 });
             });
         } else if (action === "delete") {
@@ -123,7 +117,7 @@ router.post("/*", function(req, res, next) {
         } else if (action === "addAccess") {
             let addLinkAccess = function(id) {
                 sharingManager.addLinkAccess(parent, fileName, owner, id, access, expiration,function(result) {
-                    if (result) res.sendStatus(200);
+                    if (result) res.status(200).send(id.toString());
                     else res.sendStatus(400);
                 })
             };
@@ -135,6 +129,11 @@ router.post("/*", function(req, res, next) {
             } else {
                 addLinkAccess(id);
             }
+        } else if (action === "updateAccess") {
+            sharingManager.updateLinkAccess(parent, fileName, owner, id, access, expiration, function(result) {
+                if (result) res.status(200).send(id.toString());
+                else res.sendStatus(400);
+            })
         } else if (action === "removeAccess")  {
             sharingManager.removeLinkAccess(parent, fileName, owner, id, function(result) {
                 if (result) res.sendStatus(200);
@@ -181,7 +180,6 @@ router.delete("/*", function(req, res, next) {
                     }
                 });
             }
-
         });
     } else {
         res.sendStatus(404)

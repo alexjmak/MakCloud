@@ -1,3 +1,13 @@
+let sharing;
+
+let setUpdateSharingListeners = function(event) {
+    $(".sharing_delete").click(function() {
+        let id = $(this).attr("name");
+        removeAccess({"data": event.data, "detail": {"id": id}});
+        $(".sharing-tr[id='" + id + "']").remove();
+    });
+};
+
 var share = function(event) {
     if ($("#fileContents").is(":hidden")) return;
     getRequest(event.data.filePath + "?sharing", function(xmlHttpRequest) {
@@ -5,24 +15,20 @@ var share = function(event) {
             let sharingInfo = JSON.parse(xmlHttpRequest.responseText);
             let link = (sharingInfo !== null) ? sharingInfo.link : null;
             let passwordEnabled = (sharingInfo !== null) ? sharingInfo.passwordEnabled : null;
-            let sharing = (sharingInfo !== null) ? sharingInfo.sharing : null;
+            sharing = (sharingInfo !== null) ? sharingInfo.sharing : null;
 
-            if (sharing === null || sharing.length === 0) {
-                sharing = [{"id": -1, "access": 0}];
-            }
             let dialogBody = "<input readonly autofocus=false class='sharing-p selectable' id='link' value='" + window.location.protocol + "//" + window.location.host + link + "'>" +
-                "<br>" +
-                "<table id='accounts-table'>" +
-                "<tr class='sharing-tr'><td><p class='sharing-p'>Account</p></td><td><p class='sharing-p'>Expiration</p></td><td><p class='sharing-p' style='margin-left: 17px'>Access</p></td><td></td></tr>" +
-                "<tr class='sharing-tr'><td><input readonly type='text' class='sharing_username' name='-1' value='Public'></td><td><input type='text' class='sharing_expiration' name='-1' placeholder='New expiration' value='None'></td><td><div class=\"sharing_access mdc-select mdc-select--outlined\"><input type=\"hidden\" name=\"enhanced-select\"><i class=\"mdc-select__dropdown-icon\"></i><div class=\"mdc-select__selected-text\"></div><div class=\"mdc-select__menu mdc-menu mdc-menu-surface\"><ul class=\"mdc-list\"><li class=\"mdc-list-item\">No access</li> <li class=\"mdc-list-item\">Read access</li> <li class=\"mdc-list-item\">Read & write access</li></ul></div><div class=\"mdc-line-ripple\"></div></div></td><td><button class=\"sharing_delete mdc-icon-button material-icons\" name='-1'>delete</button></td></tr>";
+                             "<br>" +
+                             "<table id='accounts-table'>" +
+                             "<tr class='sharing-tr'><td><p class='sharing-p'>Account</p></td><td><p class='sharing-p'>Expiration</p></td><td><p class='sharing-p' style='margin-left: 17px'>Access</p></td><td></td></tr>";
 
             for (let sharingIndex in sharing) {
                 if (sharing.hasOwnProperty(sharingIndex)) {
                     let account = sharing[sharingIndex];
                     if (account.expiration === null) account.expiration = "None";
-                    if (account.id !== -1) {
-                        dialogBody += "<tr class='sharing-tr'><td><input readonly type='text' class='sharing_username' name='" + account.id + "' value='" + account.username + "' placeholder='New username' autocomplete='off' autocapitalize='none'></td><td><input type='text' class='sharing_expiration' name='" + account.id + "' value='" + account.expiration + "' placeholder='New expiration'></td><td><div class=\"sharing_access mdc-select mdc-select--outlined\"><input type=\"hidden\" name=\"enhanced-select\"><i class=\"mdc-select__dropdown-icon\"></i><div class=\"mdc-select__selected-text\"></div><div class=\"mdc-select__menu mdc-menu mdc-menu-surface\"><ul class=\"mdc-list\"><li class=\"mdc-list-item\">Same as public</li> <li class=\"mdc-list-item\">Read access</li> <li class=\"mdc-list-item\">Read & write access</li></ul></div><div class=\"mdc-line-ripple\"></div></div></td><td><button class=\"sharing_delete mdc-icon-button material-icons\" name='" + account.id + "'>delete</button></td></tr>"
-                    }
+                    let sharingAccess0Text = "Same as public";
+                    if (account.id === -1) sharingAccess0Text = "No access";
+                    dialogBody += "<tr class='sharing-tr' id='" + account.id + "'><td><input readonly type='text' class='sharing_username' name='" + account.id + "' value='" + account.username + "' placeholder='New username' autocomplete='off' autocapitalize='none'></td><td><input type='text' class='sharing_expiration' name='" + account.id + "' value='" + account.expiration + "' placeholder='New expiration'></td><td><div class=\"sharing_access mdc-select mdc-select--outlined\" name='" + account.id + "'><input type=\"hidden\" name=\"enhanced-select\"><i class=\"mdc-select__dropdown-icon\"></i><div class=\"mdc-select__selected-text\"></div><div class=\"mdc-select__menu mdc-menu mdc-menu-surface\"><ul class=\"mdc-list\"><li class=\"mdc-list-item\">" + sharingAccess0Text + "</li> <li class=\"mdc-list-item\">Read access</li> <li class=\"mdc-list-item\">Read & write access</li></ul></div><div class=\"mdc-line-ripple\"></div></div></td><td><button class=\"sharing_delete mdc-icon-button material-icons\" name='" + account.id + "'>delete</button></td></tr>";
                 }
             }
 
@@ -31,8 +37,10 @@ var share = function(event) {
             dialogBody += "</table>";
 
             let shareDialog = showDialog(okDialog, "Share " + event.data.filePath.split("/").pop(), dialogBody);
-
             let newShare = $(".sharing_username[name='new']");
+
+            $(".sharing_delete[name='-1']").prop("disabled", true);
+
 
             $(".sharing-tr").last().append("<div class=\"mdc-card mdc-elevation--z10\" id=\"search\" style=\"overflow: scroll; z-index:20;position:absolute; left: 23px; margin-top: 58px; max-height: 200px; padding-bottom: 8px; padding-top: 2px\"><ul id='search-list' class='mdc-list'></ul></div>");
             let searchList = $("#search-list");
@@ -76,36 +84,34 @@ var share = function(event) {
             let selectMenus = document.getElementsByClassName('mdc-select');
             for (let i = 0; i < selectMenus.length; i++) {
                 let selectMenu = new mdc.select.MDCSelect(selectMenus[i]);
-                if (i === 0) publicMenu = selectMenu;
-                if (i === selectMenus.length - 1) newShareMenu = selectMenu;
+
+                if (i === selectMenus.length - 1) {
+                    newShareMenu = selectMenu;
+                    selectMenu.selectedIndex = 1;
+                } else {
+                    if (sharing[i].id === -1) publicMenu = selectMenu;
+                    selectMenu.selectedIndex = sharing[i].access;
+                }
                 selectMenu.listen('MDCSelect:change', function(selectEvent) {
-                    if (i !== selectMenus.length - 1) {
+                    if ($(this).attr("name") !== "new") {
                         selectEvent.data = {};
                         selectEvent.detail.id = sharing[i].id;
                         selectEvent.data.filePath = event.data.filePath;
-                        setAccess(selectEvent)
+                        updateAccess(selectEvent)
                     }
 
                 });
-                if (i === selectMenus.length - 1) {
-                    selectMenu.selectedIndex = 1;
-                } else {
-                    selectMenu.selectedIndex = sharing[i].access;
-                }
-
             }
+
 
             $(".sharing_add").click(function() {
                 let username = newShare.val();
                 let access = newShareMenu.selectedIndex;
-
-                setAccessUsername({"data": event.data, "detail": {"username": username, "index": access}})
+                addAccess({"data": event.data, "detail": {"username": username, "index": access}});
             });
 
-            $(".sharing_delete").click(function() {
-                let id = $(this).attr("name");
-                removeAccess({"data": event.data, "detail": {"id": id}});
-            });
+
+            setUpdateSharingListeners(event);
 
             let iconButtons = document.getElementsByClassName('mdc-icon-button');
             for (let i = 0; i < iconButtons.length; i++) {
@@ -140,9 +146,9 @@ var share = function(event) {
                             }
                             $("#password-button").show();
                             $(".account-row").remove();
-                            publicMenu.selectedIndex = 0;
+                            if (publicMenu !== undefined) publicMenu.selectedIndex = 0;
                             newShareMenu.selectedIndex = 0;
-                            $("#link").first().first().text(window.location.protocol + "//" + window.location.host + xmlHttpRequest.responseText);
+                            $("#link").val(location.protocol + '//' + location.hostname + xmlHttpRequest.responseText);
                             $("#link").show();
                             $("#accounts-table").show();
                         } else {
@@ -197,23 +203,36 @@ postRequest(event.data.filePath + "?sharing", "link={\"action\": \"create\",  \"
 */
 };
 
-var setAccess = function(event) {
+var updateAccess = function(event) {
     let accessIndex = event.detail.index;
     let id = (event.detail.id !== undefined) ? event.detail.id : -1;
-    postRequest(event.data.filePath + "?sharing", "action=addAccess&access=" + accessIndex + "&id=" + id, function(xmlHttpRequest) {
+    postRequest(event.data.filePath + "?sharing", "action=updateAccess&access=" + accessIndex + "&id=" + id, function(xmlHttpRequest) {
         if (xmlHttpRequest.status !== 200) {
             showSnackbar(basicSnackbar, "Couldn't change access");
         }
     })
 };
 
-var setAccessUsername = function(event) {
+var addAccess = function(event) {
     let accessIndex = event.detail.index;
     let username = event.detail.username;
+    let expiration = "None"; //event.detail.expiration; f
     if (username === undefined) return;
     postRequest(event.data.filePath + "?sharing", "action=addAccess&access=" + accessIndex + "&username=" + username, function(xmlHttpRequest) {
         if (xmlHttpRequest.status !== 200) {
-            showSnackbar(basicSnackbar, "Couldn't change access");
+            showSnackbar(basicSnackbar, "Couldn't add account");
+        } else {
+            let id = xmlHttpRequest.responseText;
+            sharing.splice(sharing.length - 2, 0, {"username": username, "id": id, "access": accessIndex, "expiration": expiration});
+            $(".sharing-tr").last().before("<tr class='sharing-tr' id='" + id + "'><td><input readonly type='text' class='sharing_username' name='" + id + "' value='" + username + "' placeholder='New username' autocomplete='off' autocapitalize='none'></td><td><input type='text' class='sharing_expiration' name='" + id + "' value='" + expiration + "' placeholder='New expiration'></td><td><div class=\"sharing_access mdc-select mdc-select--outlined\"><input type=\"hidden\" name=\"enhanced-select\"><i class=\"mdc-select__dropdown-icon\"></i><div class=\"mdc-select__selected-text\"></div><div class=\"mdc-select__menu mdc-menu mdc-menu-surface\"><ul class=\"mdc-list\"><li class=\"mdc-list-item\">Same as public</li> <li class=\"mdc-list-item\">Read access</li> <li class=\"mdc-list-item\">Read & write access</li></ul></div><div class=\"mdc-line-ripple\"></div></div></td><td><button class=\"sharing_delete mdc-icon-button material-icons\" name='" + id + "'>delete</button></td></tr>");
+            let selectMenu = new mdc.select.MDCSelect($(".sharing-tr[id='" + id + "']").find(".mdc-select")[0]);
+           // new mdc.ripple.MDCRipple($(".sharing-tr[id='" + id + "']").last().find('.mdc-icon-button')[0]).unbounded = true;
+            selectMenu.selectedIndex = accessIndex;
+            $(".sharing-tr").last().find(".sharing_username").val("");
+            $(".sharing-tr").last().find(".sharing_expiration").val("None");
+
+
+            setUpdateSharingListeners(event);
         }
     })
 };
