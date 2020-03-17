@@ -60,11 +60,13 @@ function getLoginTokenAudience(req, cookieName) {
 }
 
 async function doAuthorization(req, res, next) {
+    let redirect = req.originalUrl.startsWith("/") ? req.originalUrl.substring(1) : req.originalUrl;
+    if (redirect !== "") redirect = "?redirect=" + redirect;
     function checkAccount() {
         accountManager.accountExists(getLoginTokenAudience(req), true, function(exists) {
             if (exists) {
                 if (next !== undefined) next();
-            } else res.redirect("/logout");
+            } else res.redirect("/logout" + redirect);
         });
     }
     if (req.headers.authorization !== undefined) {
@@ -75,15 +77,17 @@ async function doAuthorization(req, res, next) {
                 return;
             }
         }
-        res.redirect("/logout");
+        res.redirect("/logout" + originalUrl);
     } else if (req.cookies.loginToken !== undefined) {
         let loginToken = verifyToken(req.cookies.loginToken);
         if (loginToken !== false && checkPayload(loginToken, {sub: "loginToken"})) {
             checkAccount();
             return;
         }
-        res.redirect("/logout");
-    } else res.redirect("/login");
+        res.redirect("/logout" + redirect);
+    } else {
+        res.redirect("/login" + redirect);
+    }
 }
 
 async function login(req, res) {

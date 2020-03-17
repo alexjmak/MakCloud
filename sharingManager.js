@@ -23,7 +23,8 @@ function linkCheck(key, filePath, currentID, next) {
                     if (result !== false) {
                         if (next !== undefined) next(true);
                     } else {
-                        if (next !== undefined) next(403);
+                        if(currentID === -1) next(false);
+                        else if (next !== undefined) next(403);
                     }
                 });
             }

@@ -42,7 +42,6 @@ router.get('/files', function(req, res, next) {
 router.use(authorization.doAuthorization);
 
 router.get('/', function(req, res, next) {
-
     let id = authorization.getLoginTokenAudience(req);
     accountManager.getInformation("privilege", "id", id, function(privilege) {
         if (privilege === 100) {
@@ -56,8 +55,8 @@ router.get('/', function(req, res, next) {
 });
 
 router.post('/', function(req, res) {
-    //send post request to update server
-    request(req.protocol + "://" + req.body.server + "/update/files", {encoding: "binary", headers: {authorization: authorization.createToken({sub: "updateToken"}, "1m")}}, function(err, response, body) {
+    let authorizationToken = authorization.createToken({sub: "updateToken"}, "10s");
+    request(req.protocol + "://" + req.body.server + "/update/files", {encoding: "binary", headers: {authorization: authorizationToken}}, function(err, response, body) {
         fs.writeFile("update.zip", body, "binary", function(err) {
             fs.createReadStream('update.zip').pipe(unzipper.Extract({ path: path.join(__dirname, "..") }));
             res.sendStatus(200);

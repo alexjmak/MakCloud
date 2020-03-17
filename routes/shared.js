@@ -63,7 +63,8 @@ router.get('/*', function(req, res, next) {
                 });
             });
         } else {
-            showError(createError(exists), req, res);
+            if (exists === false) res.redirect("/login?redirect=shared/" + key + "/" + fileName);
+            else showError(createError(exists), req, res);
         }
     });
 });
