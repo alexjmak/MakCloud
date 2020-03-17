@@ -75,6 +75,8 @@ $(document).ready(function() {
     $("#accountButton").click(function() {
         if (!accountCard.is(":visible") && $.cookie("loginToken") !== undefined) {
             accountCard.show();
+        } else if ($.cookie("loginToken") === undefined) {
+            window.location = "/accounts";
         }
     });
 
