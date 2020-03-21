@@ -15,6 +15,7 @@ const app = express();
 
 const accountsRouter = require('./routes/accounts');
 const filesRouter = require('./routes/files');
+const photosRouter = require('./routes/photos');
 const sharedRouter = require('./routes/shared');
 const indexRouter = require('./routes/index');
 const loginRouter = require('./routes/login');
@@ -60,6 +61,7 @@ app.use(authorization.doAuthorization);
 
 app.use('/', indexRouter);
 app.use("/files", filesRouter);
+app.use("/photos", photosRouter);
 app.use("/accounts", accountsRouter);
 
 app.enable("trust proxy");

@@ -12,7 +12,7 @@ const preferences = require("../preferences");
 
 router.get('/*', function(req, res, next) {
     let filePath = decodeURIComponent(url.parse(req.url).pathname).substring(1);
-    let realFilePath = [preferences.get()["files"], authorization.getLoginTokenAudience(req).toString(), filePath].join("/");
+    let realFilePath = [preferences.get()["files"], authorization.getLoginTokenAudience(req).toString(), "files", filePath].join("/");
     let urlFilePath = [req.baseUrl, filePath].join("/");
 
     const sharing = req.url.endsWith("?sharing") === true;
@@ -75,9 +75,14 @@ router.get('/*', function(req, res, next) {
         } else {
             if (filePath === "/") {
                 fs.mkdir(preferences.get()["files"], function() {
-                    fs.mkdir(path.join(preferences.get()["files"], authorization.getLoginTokenAudience(req).toString()), function() {res.redirect('back')});
+                    fs.mkdir(path.join(preferences.get()["files"], authorization.getLoginTokenAudience(req).toString()), function() {
+                        fs.mkdir(path.join(preferences.get()["files"], authorization.getLoginTokenAudience(req).toString(), "files"), function() {
+                            fs.mkdir(path.join(preferences.get()["files"], authorization.getLoginTokenAudience(req).toString(), "photos"), function() {
+                                res.redirect('back');
+                            });
+                        });
+                    });
                 });
-
             } else next();
         }
     });
@@ -159,8 +164,8 @@ router.post("/*", function(req, res, next) {
 
 router.delete("/*", function(req, res, next) {
     let filePath = decodeURIComponent(url.parse(req.url).pathname).substring(1);
-    let realFilePath = [preferences.get()["files"], authorization.getLoginTokenAudience(req).toString(), filePath].join("/");
-    let deleteFilePath = [preferences.get()["files"], authorization.getLoginTokenAudience(req).toString(), ".recycle", filePath].join("/");
+    let realFilePath = [preferences.get()["files"], authorization.getLoginTokenAudience(req).toString(), "files", filePath].join("/");
+    let deleteFilePath = [preferences.get()["files"], authorization.getLoginTokenAudience(req).toString(), "files", ".recycle", filePath].join("/");
     let deleteFilePathParent = deleteFilePath.split("/");
     deleteFilePathParent.pop();
     deleteFilePathParent = deleteFilePathParent.join("/");

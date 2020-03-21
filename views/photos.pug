@@ -1,0 +1,38 @@
+extends layout
+
+block header
+    link(rel='stylesheet', type='text/css', href='/stylesheets/photos.css')
+    script(type='text/javascript', src= "/javascripts/photos.js")
+
+block drawer
+    aside.mdc-drawer.mdc-top-app-bar--fixed-adjust
+        .mdc-drawer__content
+            nav.mdc-list
+                a.mdc-list-item(href='/files')#file-manager
+                    i.material-icons.mdc-list-item__graphic(aria-hidden='true') folder
+                    span.mdc-list-item__text File Manager
+                a.mdc-list-item.mdc-list-item.mdc-list-item--activated(href='/photos')#photos
+                    i.material-icons.mdc-list-item__graphic(aria-hidden='true') perm_media
+                    span.mdc-list-item__text Photos
+                a.mdc-list-item#upload
+                    i.material-icons.mdc-list-item__graphic(aria-hidden='true') cloud_upload
+                    span.mdc-list-item__text Upload
+                input#uploadButton(hidden type="file")
+                a.mdc-list-item(href='/shared?me')
+                    i.material-icons.mdc-list-item__graphic(aria-hidden='true') person
+                    span.mdc-list-item__text Shared with me
+                a.mdc-list-item(href='/shared?others')
+                    i.material-icons.mdc-list-item__graphic(aria-hidden='true') people
+                    span.mdc-list-item__text Shared with others
+                a.mdc-list-item(href='/files/.recycle')
+                    i.material-icons.mdc-list-item__graphic(aria-hidden='true') delete
+                    span.mdc-list-item__text Trash
+                .mdc-list-divider
+                a.mdc-list-item(href='/logout')#logout
+                    i.material-icons.mdc-list-item__graphic(aria-hidden='true') launch
+                    span.mdc-list-item__text Logout
+
+block content
+
+
+

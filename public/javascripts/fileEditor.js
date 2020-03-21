@@ -5,11 +5,17 @@ var getFile = function(filePath, mode, authorization) {
         if (xmlHttpRequest.status === 200) {
 
             if (mode === "authorize") {
-                var supportedTypes = ["txt", "json", "log", "properties", "yml"];
+                var supportedTypes = ["txt", "json", "log", "properties", "yml", "pdf"];
+
 
                 var fileEditor = $("#fileContents");
-                if (supportedTypes.includes(filePath.split(".").pop())) {
-                    getFile(filePath, "download");
+                var extension = filePath.split(".").pop().toLowerCase();
+                if (supportedTypes.includes(extension)) {
+                    unsupportedFile = false;
+                    if (extension === "pdf") {
+                        fileEditor.after("<object data='/pdfjs/web/viewer.html?file=" + window.location.pathname + "?download'></object>")
+                    } else getFile(filePath, "download");
+
                 } else {
                     fileEditor.text("Can't open file type");
                     fileEditor.prop("contenteditable", false);
@@ -50,7 +56,6 @@ var revert = function(event) {
 };
 
 var deleteFile = function(event) {
-    if ($("#fileContents").is(":hidden")) return;
     let fileName = event.data.filePath.split("/").pop();
     showDialog(yesNoDialog, "MakCloud", "Are you sure you want to delete " + fileName  + "?", {"yes": function() {
             deleteRequest(event.data.filePath, function(xmlHttpRequest) {
@@ -65,7 +70,6 @@ var deleteFile = function(event) {
 };
 
 var download = function(event) {
-    if ($("#fileContents").is(":hidden")) return;
     window.open(event.data.filePath + "?download", "_blank");
 };
 

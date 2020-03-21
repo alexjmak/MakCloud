@@ -9,7 +9,6 @@ let setUpdateSharingListeners = function(event) {
 };
 
 var share = function(event) {
-    if ($("#fileContents").is(":hidden")) return;
     getRequest(event.data.filePath + "?sharing", function(xmlHttpRequest) {
         if (xmlHttpRequest.status === 200) {
             let sharingInfo = JSON.parse(xmlHttpRequest.responseText);
