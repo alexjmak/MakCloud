@@ -21,6 +21,7 @@ const indexRouter = require('./routes/index');
 const loginRouter = require('./routes/login');
 const logoutRouter = require('./routes/logout');
 const updateRouter = require('./routes/update');
+const errorRouter = require('./routes/error');
 
 let serverInstances = [];
 
@@ -63,6 +64,7 @@ app.use('/', indexRouter);
 app.use("/files", filesRouter);
 app.use("/photos", photosRouter);
 app.use("/accounts", accountsRouter);
+app.use("/error", errorRouter);
 
 app.enable("trust proxy");
 
@@ -76,7 +78,6 @@ app.use(function(err, req, res, next) {
     accountManager.getInformation("username", "id", authorization.getLoginTokenAudience(req), function(username) {
         res.render('error', {message: err.message, status: err.status, username: username});
     });
-
 });
 
 app.set('views', path.join(__dirname, 'views'));

@@ -1,28 +1,39 @@
 let usedPasswordMemory;
+let authorized = false;
 
 var getFile = function(filePath, mode, authorization) {
     getRequest(filePath + "?" + mode, function(xmlHttpRequest) {
         if (xmlHttpRequest.status === 200) {
-
+            var content = $("#content");
+            content.show();
             if (mode === "authorize") {
-                var supportedTypes = ["txt", "json", "log", "properties", "yml", "pdf"];
-
-
-                var fileEditor = $("#fileContents");
+                authorized = true;
+                var supportedTypes = ["txt", "json", "log", "properties", "yml", "pdf", "apng", "bmp", "gif", "ico", "cur", "jpg", "jpeg", "pjpeg", "pjp", "png", ".svg", "webp"];
                 var extension = filePath.split(".").pop().toLowerCase();
                 if (supportedTypes.includes(extension)) {
-                    unsupportedFile = false;
-                    if (extension === "pdf") {
-                        fileEditor.after("<object data='/pdfjs/web/viewer.html?file=" + window.location.pathname + "?download'></object>")
-                    } else getFile(filePath, "download");
+
+                    switch (extension) {
+                        default:
+                            getFile(filePath, "download");
+                            break;
+                        case "pdf":
+                            content.append("<object data='/pdfjs/web/viewer.html?file=" + window.location.pathname + "?download'></object>")
+                            break;
+                        case "apng": case "bmp": case "gif": case "ico": case "cur": case "jpg":
+                        case "jpeg":case "pjpeg": case "pjp": case "png": case ".svg": case "webp":
+                            content.append("<img class='mdc-elevation--z10' src='" + window.location.pathname + "?download'>");
+                            break;
+                    }
 
                 } else {
-                    fileEditor.text("Can't open file type");
-                    fileEditor.prop("contenteditable", false);
+                    content.append("<pre id='fileContents' class='selectable mdc-elevation--z10'></pre>");
+                    $("#fileContents").text("Can't open file type");
+                    $("#fileContents").prop("contenteditable", false);
                     hideAuthorization();
                 }
             }
             if (mode === "download") {
+                content.append("<pre id='fileContents' class='selectable mdc-elevation--z10'></pre>");
                 $("#fileContents").text(xmlHttpRequest.responseText);
                 hideAuthorization();
             }
@@ -56,6 +67,7 @@ var revert = function(event) {
 };
 
 var deleteFile = function(event) {
+    if (window.location.pathname.startsWith("/shared")) return;
     let fileName = event.data.filePath.split("/").pop();
     showDialog(yesNoDialog, "MakCloud", "Are you sure you want to delete " + fileName  + "?", {"yes": function() {
             deleteRequest(event.data.filePath, function(xmlHttpRequest) {
@@ -70,6 +82,7 @@ var deleteFile = function(event) {
 };
 
 var download = function(event) {
+    if (!authorized) return;
     window.open(event.data.filePath + "?download", "_blank");
 };
 
@@ -94,12 +107,13 @@ var showAuthorization = function()  {
     $("#fileContents").hide();
     $("#authorization").show();
     $("#password").focus();
+    authorized = false;
 };
 
 var hideAuthorization = function()  {
     $("#message").text("");
     $("#authorization").hide();
-    $("#fileContents").show();
+    authorized = true;
 };
 
 $(document).ready(function() {

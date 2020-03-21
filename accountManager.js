@@ -133,6 +133,8 @@ function newAccount(username, password, privilege, next) {
                                     if (stderr !== "") log(stderr);
                             });
                         }
+                        fs.mkdirSync(path.join(filePath, "files"));
+                        fs.mkdirSync(path.join(filePath, "photos"));
                     });
                 }
             });

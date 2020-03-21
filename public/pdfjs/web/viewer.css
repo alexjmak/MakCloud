@@ -287,7 +287,8 @@
   direction: ltr;
   width: 816px;
   height: 1056px;
-  margin: 1px auto -8px auto;
+  margin: 15px auto -8px auto;
+
   position: relative;
   overflow: visible;
   border: 9px solid;
@@ -1855,7 +1856,7 @@ html[dir='rtl'] .outlineItemToggler::before {
   font-size: 0.8em;
 }
 .loadingInProgress #errorWrapper {
-  top: 37px;
+  top: 4px;
 }
 
 #errorMessageLeft {
