@@ -8,11 +8,11 @@ body {
 }
 
 img {
-    margin: 30px auto 30px auto;
+    margin: auto;
+    transform: translateY(5%);
     max-width: 90%;
     max-height: 90%;
     display: block;
-
 }
 
 object {
@@ -27,7 +27,6 @@ object {
     margin: 0 auto;
     margin-top: 50px;
     margin-bottom: 50px;
-
     outline: none;
     overflow: scroll;
 }
