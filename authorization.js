@@ -48,9 +48,7 @@ function checkPayload(token, payload) {
         if (!token.hasOwnProperty(key)) return false;
         if (payload[key] !== token[key]) return false;
     }
-    if (token.iss !== serverID) return false;
-
-    return true;
+    return token.iss === serverID;
 }
 
 function getLoginTokenAudience(req, cookieName) {

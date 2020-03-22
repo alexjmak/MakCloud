@@ -2,11 +2,15 @@ extends layout
 
 block header
     link(rel='stylesheet', type='text/css', href='/stylesheets/photos.css')
+    script.
+        let photos = "#{photos}".split(",");
     script(type='text/javascript', src= "/javascripts/photos.js")
 
 block drawer
     aside.mdc-drawer.mdc-top-app-bar--fixed-adjust
         .mdc-drawer__content
+            .mdc-drawer__header
+                h3.mdc-drawer__title My Photos
             nav.mdc-list
                 a.mdc-list-item(href='/files')#file-manager
                     i.material-icons.mdc-list-item__graphic(aria-hidden='true') folder
@@ -33,6 +37,7 @@ block drawer
                     span.mdc-list-item__text Logout
 
 block content
+    #content
 
 
 

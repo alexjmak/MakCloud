@@ -51,15 +51,10 @@ app.use(function(req, res, next) {
 });
 
 app.use('/logout', logoutRouter);
-
 app.use('/login', loginRouter);
-
 app.use("/shared", sharedRouter);
-
 app.use("/update", updateRouter);
-
 app.use(authorization.doAuthorization);
-
 app.use('/', indexRouter);
 app.use("/files", filesRouter);
 app.use("/photos", photosRouter);

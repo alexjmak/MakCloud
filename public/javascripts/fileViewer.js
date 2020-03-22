@@ -1,17 +1,16 @@
 let usedPasswordMemory;
 let authorized = false;
 
-var getFile = function(filePath, mode, authorization) {
+let getFile = function(filePath, mode, authorization) {
     getRequest(filePath + "?" + mode, function(xmlHttpRequest) {
         if (xmlHttpRequest.status === 200) {
-            var content = $("#content");
+            let content = $("#content");
             content.show();
             if (mode === "authorize") {
                 authorized = true;
-                var supportedTypes = ["txt", "json", "log", "properties", "yml", "pdf", "apng", "bmp", "gif", "ico", "cur", "jpg", "jpeg", "pjpeg", "pjp", "png", ".svg", "webp"];
-                var extension = filePath.split(".").pop().toLowerCase();
+                let supportedTypes = ["txt", "json", "log", "properties", "yml", "pdf", "apng", "bmp", "gif", "ico", "cur", "jpg", "jpeg", "pjpeg", "pjp", "png", "svg", "webp", "mp3", "m4a"];
+                let extension = filePath.split(".").pop().toLowerCase();
                 if (supportedTypes.includes(extension)) {
-
                     switch (extension) {
                         default:
                             getFile(filePath, "download");
@@ -20,8 +19,12 @@ var getFile = function(filePath, mode, authorization) {
                             content.append("<object data='/pdfjs/web/viewer.html?file=" + window.location.pathname + "?download'></object>")
                             break;
                         case "apng": case "bmp": case "gif": case "ico": case "cur": case "jpg":
-                        case "jpeg":case "pjpeg": case "pjp": case "png": case ".svg": case "webp":
+                        case "jpeg": case "pjpeg": case "pjp": case "png": case ".svg": case "webp":
                             content.append("<img class='mdc-elevation--z10' src='" + window.location.pathname + "?download'>");
+                            break;
+                        case "mp3": case "m4a":
+                            let audio = new Audio(window.location.pathname + "?download");
+                            audio.play();
                             break;
                     }
 

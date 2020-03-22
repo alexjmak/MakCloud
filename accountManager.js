@@ -6,7 +6,7 @@ const database = require("./databaseInit");
 const child_process = require('child_process');
 const preferences = require("./preferences");
 
-database.run("CREATE TABLE IF NOT EXISTS accounts (id INTEGER PRIMARY KEY, username TEXT NOT NULL UNIQUE, hash TEXT NOT NULL, salt TEXT NOT NULL, enabled INTEGER NOT NULL DEFAULT 1, privilege INTEGER NOT NULL DEFAULT 0);", [], function() {
+database.run("CREATE TABLE IF NOT EXISTS accounts (id INTEGER PRIMARY KEY, username TEXT NOT NULL UNIQUE, hash TEXT NOT NULL, salt TEXT NOT NULL, enabled INTEGER NOT NULL DEFAULT 1, privilege INTEGER NOT NULL DEFAULT 0);", [], function(result) {
     newAccount("admin", "password", 100);
     getInformation("id", "username", "admin", function(id) {
         updatePrivilege(id, 100);

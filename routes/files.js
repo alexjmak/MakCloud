@@ -1,89 +1,83 @@
 const express = require('express');
 const router = express.Router();
-const path = require("path");
 const fs = require("fs");
 const os = require('os');
+const path = require("path");
 const url = require('url');
 const readify = require('readify');
 const accountManager = require('../accountManager');
 const sharingManager = require('../sharingManager');
+const fileManager = require('../fileManager');
 const authorization = require('../authorization');
 const preferences = require("../preferences");
 
 router.get('/*', function(req, res, next) {
     let filePath = decodeURIComponent(url.parse(req.url).pathname).substring(1);
-    let realFilePath = [preferences.get()["files"], authorization.getLoginTokenAudience(req).toString(), "files", filePath].join("/");
-    let urlFilePath = [req.baseUrl, filePath].join("/");
+    let realFilePath = path.join(preferences.get()["files"], authorization.getLoginTokenAudience(req).toString(), "files", filePath);
+    let urlFilePath = path.join(req.baseUrl, filePath);
 
-    const sharing = req.url.endsWith("?sharing") === true;
-
+    const parameter = Object.keys(req.query)[0];
 
     fs.stat(realFilePath, function(err, stats) {
-        if (err == null) {
-            if (Object.keys(req.query)[0] === "download") {
-                if (stats.isDirectory()) {
-                    res.redirect(urlFilePath);
-                } else {
+        if (err !== null) return next();
+        if (stats.isDirectory()) {
+            switch(parameter) {
+                case "download":
+                    fileManager.createFolderArchive("files", filePath, authorization.getLoginTokenAudience(req), function(archivePath) {
+                        res.download(archivePath, path.basename(filePath, "zip"), function() {
+                            fs.unlinkSync(archivePath);
+                        });
+                    });
+                    break;
+                case "sharing":
+                    //TODO
+                default:
+                    fs.readdir(realFilePath, function (err, files) {
+                        if (err !== null) return next();
+                        accountManager.getInformation("username", "id", authorization.getLoginTokenAudience(req), function (username) {
+                            readify(realFilePath, {sort: 'type'}).then(function (files) {
+                                res.render('directory', {
+                                    username: username,
+                                    hostname: os.hostname(),
+                                    directory: {path: filePath, files: JSON.stringify(files.files)}
+                                });
+                            });
+                        });
+                    });
+                    break;
+            }
+        } else {
+            switch(parameter) {
+                case "download":
                     fs.readFile(realFilePath, function (err, contents) {
                         if (err === null) {
                             res.send(contents);
                         } else next();
-
                     });
-                }
-            } else {
-                if (stats.isDirectory()) {
-                    fs.readdir(realFilePath, function(err, files) {
-                        if (err === null) {
-                            accountManager.getInformation("username", "id", authorization.getLoginTokenAudience(req), function (username) {
-                                readify(realFilePath, {sort: 'type'}).then(function(files) {
-                                    res.render('directory', {
-                                        username: username,
-                                        hostname: os.hostname(),
-                                        directory: {path: filePath, files: JSON.stringify(files.files)}
-                                    });
-                                });
-                            });
-                        } else next();
+                    break;
+                case "sharing":
+                    let filePathSplit = filePath.split("/");
+                    let fileName = filePathSplit.pop();
+                    let parent = filePathSplit.join("/");
+                    let owner = authorization.getLoginTokenAudience(req);
+                    if (!parent.startsWith("/")) parent = "/" + parent;
 
+                    sharingManager.getLinkSummary(parent, fileName, owner, function(result) {
+                        res.json(result);
                     });
-                } else {
-                    if (sharing) {
-                        let filePathSplit = filePath.split("/");
-                        let fileName = filePathSplit.pop();
-                        let parent = filePathSplit.join("/");
-                        let owner = authorization.getLoginTokenAudience(req);
-                        if (!parent.startsWith("/")) parent = "/" + parent;
-
-                        sharingManager.getLinkSummary(parent, fileName, owner, function(result) {
-                            res.json(result);
-                        })
-                    } else {
-                        accountManager.getInformation("username", "id", authorization.getLoginTokenAudience(req), function (username) {
-                            fs.readFile(realFilePath, function (err, contents) {
-                                res.render('fileEditor', {
-                                    username: username,
-                                    hostname: os.hostname(),
-                                    file: {path: urlFilePath}
-                                });
+                    break;
+                default:
+                    accountManager.getInformation("username", "id", authorization.getLoginTokenAudience(req), function (username) {
+                        fs.readFile(realFilePath, function (err, contents) {
+                            res.render('fileViewer', {
+                                username: username,
+                                hostname: os.hostname(),
+                                file: {path: urlFilePath}
                             });
                         });
-                    }
-                }
-
+                    });
+                    break;
             }
-        } else {
-            if (filePath === "/") {
-                fs.mkdir(preferences.get()["files"], function() {
-                    fs.mkdir(path.join(preferences.get()["files"], authorization.getLoginTokenAudience(req).toString()), function() {
-                        fs.mkdir(path.join(preferences.get()["files"], authorization.getLoginTokenAudience(req).toString(), "files"), function() {
-                            fs.mkdir(path.join(preferences.get()["files"], authorization.getLoginTokenAudience(req).toString(), "photos"), function() {
-                                res.redirect('back');
-                            });
-                        });
-                    });
-                });
-            } else next();
         }
     });
 });
@@ -95,9 +89,9 @@ router.post("/*", function(req, res, next) {
     let parent = filePathSplit.join("/");
     let owner = authorization.getLoginTokenAudience(req);
 
-    const sharing = req.url.endsWith("?sharing") === true;
+    const parameter = Object.keys(req.query)[0];
 
-    if (sharing) {
+    if (parameter === "sharing") {
         let action = (req.body.action !== undefined) ? req.body.action : null;
         let expiration = (req.body.expiration !== undefined) ? req.body.expiration : null;
         let password = (req.body.password !== undefined) ? req.body.password : null;
@@ -105,32 +99,27 @@ router.post("/*", function(req, res, next) {
         let id = (req.body.id !== undefined) ? req.body.id : undefined;
         let username = (req.body.username !== undefined) ? req.body.username : undefined;
 
-        //let users = JSON.parse(req.body.users);
-
         if (action === "create") {
             sharingManager.createLink(parent, fileName, owner, {expiration: expiration, password: password}, function(link) {
-                sharingManager.getLinkKey(parent, fileName, owner, function(key) {
-                    sharingManager.addLinkAccess(parent, fileName, owner, -1, 0, null,function(result) {});
-                    if (link !== false) res.status(201).send(link);
-                    else res.sendStatus(409);
-                });
+                if (link !== false) res.status(201).send(link);
+                else res.sendStatus(409);
             });
         } else if (action === "delete") {
             sharingManager.deleteLink(parent, fileName, owner, function(result) {
                 res.sendStatus(200)
-            })
+            });
         } else if (action === "addAccess") {
             let addLinkAccess = function(id) {
                 sharingManager.addLinkAccess(parent, fileName, owner, id, access, expiration,function(result) {
                     if (result) res.status(200).send(id.toString());
                     else res.sendStatus(400);
-                })
+                });
             };
             if (id === undefined && username !== undefined) {
                 accountManager.getInformation("id", "username", username, function(id) {
                     if (id === undefined) res.sendStatus(404);
                     else addLinkAccess(id);
-                })
+                });
             } else {
                 addLinkAccess(id);
             }
@@ -138,24 +127,24 @@ router.post("/*", function(req, res, next) {
             sharingManager.updateLinkAccess(parent, fileName, owner, id, access, expiration, function(result) {
                 if (result) res.status(200).send(id.toString());
                 else res.sendStatus(400);
-            })
+            });
         } else if (action === "removeAccess")  {
             sharingManager.removeLinkAccess(parent, fileName, owner, id, function(result) {
                 if (result) res.sendStatus(200);
                 else res.sendStatus(400);
-            })
+            });
         } else if (action === "setPassword") {
             if (password !== null) {
                 sharingManager.updateLinkPassword(parent, fileName, owner, password, function(result) {
                     if (result) res.sendStatus(200);
                     else res.sendStatus(400);
-                })
+                });
             }
         } else if (action === "deletePassword") {
             sharingManager.deleteLinkPassword(parent, fileName, owner, function(result) {
                 if (result) res.sendStatus(200);
                 else res.sendStatus(400);
-            })
+            });
         } else {
             res.sendStatus(404);
         }
@@ -164,31 +153,9 @@ router.post("/*", function(req, res, next) {
 
 router.delete("/*", function(req, res, next) {
     let filePath = decodeURIComponent(url.parse(req.url).pathname).substring(1);
-    let realFilePath = [preferences.get()["files"], authorization.getLoginTokenAudience(req).toString(), "files", filePath].join("/");
-    let deleteFilePath = [preferences.get()["files"], authorization.getLoginTokenAudience(req).toString(), "files", ".recycle", filePath].join("/");
-    let deleteFilePathParent = deleteFilePath.split("/");
-    deleteFilePathParent.pop();
-    deleteFilePathParent = deleteFilePathParent.join("/");
-
-    if (fs.existsSync(realFilePath)) {
-        fs.mkdir(deleteFilePathParent, {recursive: true }, function(err) {
-            if (err) {
-                console.log(err);
-                res.sendStatus(404)
-            } else {
-                fs.rename(realFilePath, deleteFilePath, function (err) {
-                    if (err) {
-                        console.log(err);
-                        res.sendStatus(404)
-                    } else {
-                        res.sendStatus(200)
-                    }
-                });
-            }
-        });
-    } else {
-        res.sendStatus(404)
-    }
-
+    fileManager.deleteFile("files", filePath, authorization.getLoginTokenAudience(req), function(result) {
+        if (result) res.sendStatus(200);
+        else res.sendStatus(404);
+    });
 });
 module.exports = router;

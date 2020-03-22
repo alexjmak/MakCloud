@@ -1,0 +1,14 @@
+body {
+    background-color: #f0f0f0;
+}
+
+#content {
+    margin: 10px;
+}
+
+#content img {
+    height: 250px;
+    margin: 2px;
+}
+
+

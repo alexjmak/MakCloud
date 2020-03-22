@@ -32,7 +32,7 @@ router.get('/*', function(req, res, next) {
                                         });
                                     });
                                 } else {
-                                    res.render('fileEditor', {
+                                    res.render('fileViewer', {
                                         username: username,
                                         file: {path: fileName},
                                     });

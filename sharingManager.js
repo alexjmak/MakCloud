@@ -59,7 +59,6 @@ function createLink(parent, fileName, owner, options, next) {
 
         linkExists(parent, fileName, owner, function(exists) {
             if (!exists) {
-
                 if (options.password === undefined || options.password === null) {
                     options.hash = null;
                     options.salt = null;
@@ -71,6 +70,7 @@ function createLink(parent, fileName, owner, options, next) {
                 database.run("INSERT INTO links (parent, fileName, owner, key, hash, salt) VALUES (?, ?, ?, ?, ?, ?)", [parent, fileName, owner, key, options.hash, options.salt], function(result) {
                     if (next !== undefined) {
                         if (next !== false) {
+                            addLinkAccess(parent, fileName, owner, -1, 0, null);
                             let link = "/" + ["shared", key, fileName].join("/");
                             next(link);
                         } else {
