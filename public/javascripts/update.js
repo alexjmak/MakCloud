@@ -9,6 +9,8 @@ $(document).ready(function() {
             postRequest("/update", "server=" + server.val(), function(xmlHttpRequest) {
                 if (xmlHttpRequest.status === 200) {
                     showSnackbar(basicSnackbar, "Update complete")
+                } else {
+                    showSnackbar(basicSnackbar, "Update failed");
                 }
             })
         }

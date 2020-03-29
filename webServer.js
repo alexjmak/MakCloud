@@ -5,6 +5,7 @@ const fs = require("fs");
 const path = require("path");
 const strftime = require('strftime');
 const cookieParser = require('cookie-parser');
+const fileUpload = require("express-fileupload");
 
 const helmet = require("helmet");
 
@@ -29,9 +30,11 @@ log("Starting server...");
 
 app.use(helmet());
 app.use(cookieParser());
+app.use(fileUpload());
 app.use(express.urlencoded({
     extended: true
 }));
+
 
 
 app.use(function(req, res, next) {

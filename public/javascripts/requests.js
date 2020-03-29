@@ -1,4 +1,4 @@
-let request = function(method, url, data, callback, authorization) {
+let request = function(method, url, data, callback, authorization, contentType) {
     let xmlHttpRequest = new XMLHttpRequest();
     xmlHttpRequest.open(method, url);
 	xmlHttpRequest.timeout = 10000;
@@ -12,7 +12,8 @@ let request = function(method, url, data, callback, authorization) {
     if (data == null) {
         xmlHttpRequest.send();
     } else {
-        xmlHttpRequest.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
+        if (contentType === undefined) contentType = "application/x-www-form-urlencoded";
+        if (contentType !== null) xmlHttpRequest.setRequestHeader("Content-Type", contentType);
         xmlHttpRequest.send(data);
     }
 };

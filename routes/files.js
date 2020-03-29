@@ -83,7 +83,9 @@ router.get('/*', function(req, res, next) {
 });
 
 router.post("/*", function(req, res, next) {
-    let filePath = decodeURIComponent(url.parse(req.url).pathname);
+    let filePath = decodeURIComponent(url.parse(req.url).pathname).substring(1);
+    let realFilePath = path.join(preferences.get()["files"], authorization.getLoginTokenAudience(req).toString(), "files", filePath);
+    let urlFilePath = path.join(req.baseUrl, filePath);
     let filePathSplit = filePath.split("/");
     let fileName = filePathSplit.pop();
     let parent = filePathSplit.join("/");
@@ -91,64 +93,91 @@ router.post("/*", function(req, res, next) {
 
     const parameter = Object.keys(req.query)[0];
 
-    if (parameter === "sharing") {
-        let action = (req.body.action !== undefined) ? req.body.action : null;
-        let expiration = (req.body.expiration !== undefined) ? req.body.expiration : null;
-        let password = (req.body.password !== undefined) ? req.body.password : null;
-        let access = (req.body.access !== undefined) ? req.body.access : null;
-        let id = (req.body.id !== undefined) ? req.body.id : undefined;
-        let username = (req.body.username !== undefined) ? req.body.username : undefined;
+    fs.stat(realFilePath, function(err, stats) {
+        if (err !== null) return next();
 
-        if (action === "create") {
-            sharingManager.createLink(parent, fileName, owner, {expiration: expiration, password: password}, function(link) {
-                if (link !== false) res.status(201).send(link);
-                else res.sendStatus(409);
-            });
-        } else if (action === "delete") {
-            sharingManager.deleteLink(parent, fileName, owner, function(result) {
-                res.sendStatus(200)
-            });
-        } else if (action === "addAccess") {
-            let addLinkAccess = function(id) {
-                sharingManager.addLinkAccess(parent, fileName, owner, id, access, expiration,function(result) {
+        if (parameter === "upload") {
+            if (stats.isDirectory()) {
+                if (!req.files || Object.keys(req.files).length === 0) {
+                    res.status(400).send('No files were uploaded.');
+                    return;
+                }
+                for (let file in req.files) {
+                    if (!req.files.hasOwnProperty(file)) continue;
+                    file = req.files[file];
+                    let saveLocation = path.join(realFilePath, file.name);
+                    file.mv(saveLocation, function(err) {
+                        if (err) return res.status(500).send(err);
+                        res.send('File uploaded');
+                    });
+
+
+                }
+            }
+
+        }
+
+        if (parameter === "sharing") {
+            let action = (req.body.action !== undefined) ? req.body.action : null;
+            let expiration = (req.body.expiration !== undefined) ? req.body.expiration : null;
+            let password = (req.body.password !== undefined) ? req.body.password : null;
+            let access = (req.body.access !== undefined) ? req.body.access : null;
+            let id = (req.body.id !== undefined) ? req.body.id : undefined;
+            let username = (req.body.username !== undefined) ? req.body.username : undefined;
+
+            if (action === "create") {
+                sharingManager.createLink(parent, fileName, owner, {expiration: expiration, password: password}, function(link) {
+                    if (link !== false) res.status(201).send(link);
+                    else res.sendStatus(409);
+                });
+            } else if (action === "delete") {
+                sharingManager.deleteLink(parent, fileName, owner, function(result) {
+                    res.sendStatus(200)
+                });
+            } else if (action === "addAccess") {
+                let addLinkAccess = function(id) {
+                    sharingManager.addLinkAccess(parent, fileName, owner, id, access, expiration,function(result) {
+                        if (result) res.status(200).send(id.toString());
+                        else res.sendStatus(400);
+                    });
+                };
+                if (id === undefined && username !== undefined) {
+                    accountManager.getInformation("id", "username", username, function(id) {
+                        if (id === undefined) res.sendStatus(404);
+                        else addLinkAccess(id);
+                    });
+                } else {
+                    addLinkAccess(id);
+                }
+            } else if (action === "updateAccess") {
+                sharingManager.updateLinkAccess(parent, fileName, owner, id, access, expiration, function(result) {
                     if (result) res.status(200).send(id.toString());
                     else res.sendStatus(400);
                 });
-            };
-            if (id === undefined && username !== undefined) {
-                accountManager.getInformation("id", "username", username, function(id) {
-                    if (id === undefined) res.sendStatus(404);
-                    else addLinkAccess(id);
-                });
-            } else {
-                addLinkAccess(id);
-            }
-        } else if (action === "updateAccess") {
-            sharingManager.updateLinkAccess(parent, fileName, owner, id, access, expiration, function(result) {
-                if (result) res.status(200).send(id.toString());
-                else res.sendStatus(400);
-            });
-        } else if (action === "removeAccess")  {
-            sharingManager.removeLinkAccess(parent, fileName, owner, id, function(result) {
-                if (result) res.sendStatus(200);
-                else res.sendStatus(400);
-            });
-        } else if (action === "setPassword") {
-            if (password !== null) {
-                sharingManager.updateLinkPassword(parent, fileName, owner, password, function(result) {
+            } else if (action === "removeAccess")  {
+                sharingManager.removeLinkAccess(parent, fileName, owner, id, function(result) {
                     if (result) res.sendStatus(200);
                     else res.sendStatus(400);
                 });
+            } else if (action === "setPassword") {
+                if (password !== null) {
+                    sharingManager.updateLinkPassword(parent, fileName, owner, password, function(result) {
+                        if (result) res.sendStatus(200);
+                        else res.sendStatus(400);
+                    });
+                }
+            } else if (action === "deletePassword") {
+                sharingManager.deleteLinkPassword(parent, fileName, owner, function(result) {
+                    if (result) res.sendStatus(200);
+                    else res.sendStatus(400);
+                });
+            } else {
+                res.sendStatus(404);
             }
-        } else if (action === "deletePassword") {
-            sharingManager.deleteLinkPassword(parent, fileName, owner, function(result) {
-                if (result) res.sendStatus(200);
-                else res.sendStatus(400);
-            });
-        } else {
-            res.sendStatus(404);
         }
-    }
+    });
+
+
 });
 
 router.delete("/*", function(req, res, next) {

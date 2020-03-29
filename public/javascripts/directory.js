@@ -184,8 +184,42 @@ $(document).ready(function() {
     });
 
     $("#upload").click(function() {
+        $("#uploadButton").val("");
         $("#uploadButton").trigger("click");
     });
+
+    $("#uploadButton").change(function() {
+        let formData = new FormData();
+        let fileName = $(this)[0].files[0];
+        formData.append("file", fileName);
+        request("POST", location.pathname + "?upload", formData, function(xmlHttpRequest) {
+            showSnackbar(basicSnackbar, xmlHttpRequest.responseText);
+        }, undefined, null);
+
+    });
+
+    $("html").on("dragover", function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+    });
+
+    $("html").on("drop", function(e) { e.preventDefault(); e.stopPropagation(); });
+
+    // Drag enter
+    $("#files").on('dragenter', function (e) {
+        console.log("dragenter");
+    });
+
+    // Drag over
+    $("#files").on('dragover', function (e) {
+        console.log("dragover");
+    });
+
+    // Drop
+    $("#files").on('drop', function (e) {
+        console.log("drop");
+    });
+
 
     $("#back").click(function() {
         window.open(location.pathname + "/..", "_self");

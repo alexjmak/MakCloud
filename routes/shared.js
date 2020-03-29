@@ -45,30 +45,31 @@ router.get('/*', function(req, res, next) {
                                                 if (err === null) {
                                                     res.send(contents);
                                                 } else {
-                                                    showError(createError(500), req, res);
+                                                    next(createError(500));
                                                 }
                                             });
                                         } else {
                                             res.send(token);
                                         }
                                     } else {
-                                        showError(createError(403), req, res);
+                                        next(createError(403));
                                     }
                                 });
                             }
                         } else {
-                            showError(createError(404), req, res);
+                            next(createError(404));
                         }
                     });
                 });
             });
         } else {
             if (exists === false) res.redirect("/login?redirect=shared/" + key + "/" + fileName);
-            else showError(createError(exists), req, res);
+            else next(createError(exists));
         }
     });
 });
 
+/*
 function showError(err, req, res) {
     let text = req.originalUrl + " (" + (err.status || 500) + " " + err.message + ")";
     console.log("[Webserver] [" + strftime("%H:%M:%S") + "] [" + (req.ip) + "]: " + req.method + " " + text);
@@ -77,5 +78,6 @@ function showError(err, req, res) {
         res.render('error', {message: err.message, status: err.status, username: username});
     });
 }
+ */
 
 module.exports = router;
