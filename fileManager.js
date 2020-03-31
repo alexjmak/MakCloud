@@ -51,5 +51,20 @@ let createFolderArchive = function(directory, filePath, owner, next) {
     archive.finalize();
 };
 
+let uploadFiles = function(files, saveLocation, next) {
+    if (!files || Object.keys(files).length === 0) {
+        if (next !== undefined) return next(false);
+    }
+    for (let file in files) {
+        if (!files.hasOwnProperty(file)) continue;
+        file = files[file];
+        saveLocation = path.join(saveLocation, file.name);
+        file.mv(saveLocation, function(err) {
+            if (next !== undefined) return next(err);
+        });
+    }
+};
+
 module.exports = {deleteFile: deleteFile,
-                  createFolderArchive: createFolderArchive};
+                  createFolderArchive: createFolderArchive,
+                  uploadFiles: uploadFiles};

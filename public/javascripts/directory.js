@@ -1,6 +1,10 @@
 $(document).ready(function() {
     let files = $("#files");
 
+    folderContents = folderContents.filter(function(file) {
+        return !file.name.startsWith(".");
+    });
+
     let filesPath = location.pathname.substring(1);
     filesPath = filesPath.split("/");
 
@@ -59,15 +63,6 @@ $(document).ready(function() {
     let iconButtons = document.getElementsByClassName('mdc-icon-button');
     for (let i = 0; i < iconButtons.length; i++) {
         new mdc.ripple.MDCRipple(iconButtons[i]).unbounded = true;
-    }
-
-    for (let fileIndex in folderContents) {
-        if (folderContents.hasOwnProperty(fileIndex)) {
-            let file = folderContents[fileIndex];
-            if (file.name === ".recycle") {
-                folderContents.splice(fileIndex, 1);
-            }
-        }
     }
 
     for (let fileIndex in folderContents) {

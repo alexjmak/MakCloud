@@ -19,6 +19,7 @@
     "helmet": "^3.21.2",
     "http-errors": "latest",
     "jsonwebtoken": "^8.5.1",
+    "pbkdf2": "^3.0.17",
     "pidusage": "^2.0.17",
     "pug": "^2.0.4",
     "pug-cli": "^1.0.0-alpha6",

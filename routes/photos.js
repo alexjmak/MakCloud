@@ -10,7 +10,7 @@ const authorization = require('../authorization');
 const fileManager = require("../fileManager");
 const preferences = require('../preferences');
 
-router.get('/', function(req, res, next) {
+router.get("/", function(req, res, next) {
     let filePath = decodeURIComponent(url.parse(req.url).pathname).substring(1);
     let realFilePath = path.join(preferences.get()["files"], authorization.getLoginTokenAudience(req).toString(), "photos", filePath);
     fs.readdir(realFilePath, function(err, files) {
@@ -27,7 +27,7 @@ router.get('/', function(req, res, next) {
     });
 });
 
-router.get('/*', function(req, res, next) {
+router.get("/*", function(req, res, next) {
     let filePath = decodeURIComponent(url.parse(req.url).pathname).substring(1);
     let realFilePath = path.join(preferences.get()["files"], authorization.getLoginTokenAudience(req).toString(), "photos", filePath);
     let urlFilePath = path.join(req.baseUrl, filePath);
@@ -56,6 +56,28 @@ router.get('/*', function(req, res, next) {
             }
         }
     });
+});
+
+router.post("/", function (req, res, next) {
+    let filePath = decodeURIComponent(url.parse(req.url).pathname).substring(1);
+    let realFilePath = path.join(preferences.get()["files"], authorization.getLoginTokenAudience(req).toString(), "photos", filePath);
+
+    const parameter = Object.keys(req.query)[0];
+
+    fs.stat(realFilePath, function(err, stats) {
+        if (err !== null && next !== undefined) return next();
+        if (parameter === "upload") {
+            if (stats.isDirectory()) {
+                fileManager.uploadFiles(req.files, realFilePath, function (err) {
+                    if (err !== undefined) return res.status(500).send("Upload failed");
+                    if (Object.keys(req.files).length === 1) res.send("Uploaded photo");
+                    else res.send("Uploaded photos");
+                });
+            }
+        }
+    });
+
+
 });
 
 router.delete("/*", function(req, res, next) {

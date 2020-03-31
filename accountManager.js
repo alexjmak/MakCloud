@@ -1,18 +1,19 @@
 const fs = require("fs");
 const path = require("path");
-const rimraf = require("rimraf");
+const crypto = require("crypto");
+const pbkdf2 = require('pbkdf2');
 const strftime = require('strftime');
 const database = require("./databaseInit");
 const child_process = require('child_process');
 const preferences = require("./preferences");
 
-database.run("CREATE TABLE IF NOT EXISTS accounts (id INTEGER PRIMARY KEY, username TEXT NOT NULL UNIQUE, hash TEXT NOT NULL, salt TEXT NOT NULL, enabled INTEGER NOT NULL DEFAULT 1, privilege INTEGER NOT NULL DEFAULT 0);", [], function(result) {
-    newAccount("admin", "password", 100);
+database.run("CREATE TABLE IF NOT EXISTS accounts (id INTEGER PRIMARY KEY, username TEXT NOT NULL UNIQUE, hash TEXT NOT NULL, salt TEXT NOT NULL, privilege INTEGER NOT NULL DEFAULT 0, encryptKey TEXT, encryptIV TEXT, enabled INTEGER NOT NULL DEFAULT 1);", [], function(result) {
+    newAccount("admin", "password", 100, false);
     getInformation("id", "username", "admin", function(id) {
         updatePrivilege(id, 100);
     });
 });
-database.run("CREATE TABLE IF NOT EXISTS deleted_accounts (id INTEGER PRIMARY KEY, username TEXT NOT NULL, hash TEXT NOT NULL, salt TEXT NOT NULL, privilege INTEGER NOT NULL, dateDeleted INTEGER NOT NULL);");
+database.run("CREATE TABLE IF NOT EXISTS deleted_accounts (id INTEGER PRIMARY KEY, username TEXT NOT NULL, hash TEXT NOT NULL, salt TEXT NOT NULL, privilege INTEGER NOT NULL, dateDeleted INTEGER NOT NULL, encryptKey TEXT, encryptIV TEXT);");
 
 function accountExists(usernameOrID, enabledCheck, next) {
     let query;
@@ -40,7 +41,8 @@ function accountExists(usernameOrID, enabledCheck, next) {
 function getAccountsSummary(id, next) {
     getInformation("privilege", "id", id, function(privilege) {
         getInformation("username", "id", id, function(username) {
-            database.all("SELECT id, username, enabled, privilege FROM accounts WHERE ? OR id = ? OR privilege < ? ORDER BY username COLLATE NOCASE", [username === "admin", id, privilege], function (results) {
+            database.all("SELECT id, username, privilege, encryptKey NOT NULL AS encrypted, enabled FROM accounts WHERE ? OR id = ? OR privilege < ? ORDER BY username COLLATE NOCASE", [username === "admin", id, privilege], function (results) {
+
                 let resultsById = {};
                 for (let result in results) {
                     if (results.hasOwnProperty(result)) {
@@ -59,7 +61,7 @@ function getAccountsSummary(id, next) {
 function getDeletedAccountsSummary(id, next) {
     getInformation("privilege", "id", id, function(privilege) {
         getInformation("username", "id", id, function(username) {
-            database.all("SELECT id, username, privilege, dateDeleted FROM deleted_accounts WHERE ? OR id = ? OR privilege < ? ORDER BY username COLLATE NOCASE", [username === "admin", id, privilege], function (results) {
+            database.all("SELECT id, username, privilege, dateDeleted, encryptKey NOT NULL AS encrypted FROM deleted_accounts WHERE ? OR id = ? OR privilege < ? ORDER BY username COLLATE NOCASE", [username === "admin", id, privilege], function (results) {
                 let resultsById = {};
                 for (let result in results) {
                     if (results.hasOwnProperty(result)) {
@@ -107,7 +109,7 @@ function nextID(next) {
     });
 }
 
-function newAccount(username, password, privilege, next) {
+function newAccount(username, password, privilege, encrypted, next) {
     accountExists(username, false, function(result) {
         if (result) {
             if (next !== undefined) next(false);
@@ -139,10 +141,16 @@ function newAccount(username, password, privilege, next) {
                 }
             });
 
-            database.run("INSERT INTO accounts (id, username, hash, salt, privilege) VALUES (?, ?, ?, ?, ?)", [id, username, hash, salt, privilege], function(result) {
+            database.run("INSERT INTO accounts (id, username, hash, salt, privilege) VALUES (?, ?, ?, ?, ?, ?)", [id, username, hash, salt, privilege, encrypted], function(result) {
                 if (!result && username !== undefined && password !== undefined && privilege !== undefined) {
-                    newAccount(username, password, privilege, next);
-                } else if (next !== undefined) next(result);
+                    newAccount(username, password, privilege, encrypted, next);
+                } else {
+                    if (encrypted) {
+                        encryptAccount(id, password, function() {
+                            if (next !== undefined) next(result);
+                        })
+                    } else if (next !== undefined) next(result);
+                }
 
             });
         });
@@ -161,7 +169,7 @@ function deleteAccount(id, next) {
             let filePath = path.join(preferences.get()["files"], id.toString()).toString();
             let newFilePath = path.join(preferences.get()["files"], "deleted", id.toString() + "-" + (dateDeleted).toString()).toString();
             fs.rename(filePath, newFilePath, function() {
-                database.run("INSERT INTO deleted_accounts SELECT id, username, hash, salt, privilege, " + dateDeleted + " as dateDeleted FROM accounts WHERE id = ?;", id);
+                database.run("INSERT INTO deleted_accounts SELECT id, username, hash, salt, privilege, " + dateDeleted + " as dateDeleted, encrypted FROM accounts WHERE id = ?;", id);
 
                 if (preferences.get()["sambaIntegration"]) {
                     try {
@@ -178,6 +186,42 @@ function deleteAccount(id, next) {
                 });
             });
         })
+    });
+}
+
+function encryptAccount(id, password, next) {
+    accountExists(id, false, function(result) {
+        if (!result) {
+            if (next !== undefined) next(false);
+            return;
+        }
+
+        const authorization = require('./authorization');
+        authorization.generateEncryptionKey(id, password, function(key, iv) {
+            if (key === false) {
+                if (next !== undefined) next(false);
+            } else {
+                database.run("UPDATE accounts SET encryptKey = ?, encryptIV = ? WHERE id = ?", [key, iv, id], function(result) {
+                    if (next !== undefined) next(result);
+                });
+            }
+        })
+
+
+    });
+}
+
+function decryptAccount(id, next) {
+    accountExists(id, false, function(result) {
+        if (!result) {
+            if (next !== undefined) next(false);
+            return;
+        }
+
+        database.run("UPDATE accounts SET encryptKey = null WHERE id = ?", id, function(result) {
+            if (next !== undefined) next(result);
+        });
+
     });
 }
 
@@ -331,6 +375,8 @@ module.exports = {
     searchAccounts: searchAccounts,
     getInformation: getInformation,
     newAccount: newAccount,
+    encryptAccount: encryptAccount,
+    decryptAccount: decryptAccount,
     deleteAccount: deleteAccount,
     enableAccount: enableAccount,
     disableAccount: disableAccount,

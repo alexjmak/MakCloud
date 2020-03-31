@@ -9,19 +9,19 @@
 
     var inputStorage;
 
-    var showNewAccount = function(accountID, accountUsername, accountPrivilege, enabled) {
-        var checked;
-        if (enabled) {
-            checked = "checked";
-        } else {
-            checked = "";
-        }
+    var showNewAccount = function(accountID, accountUsername, accountPrivilege, encrypted, enabled) {
+        var encrypted_checked = "";
+        var enabled_checked = "";
+        if (encrypted) encrypted_checked = "checked";
+        if (enabled) enabled_checked = "checked";
+
 
         accounts_inputs.append("<tr>" +
             "<td><input class=\"account_usernames first-column\" type=\"text\" autocomplete='off' autocapitalize=\"none\" name=\"" + accountID + "\" value=\"" + accountUsername + "\" placeholder='New username'></td>" +
             "<td><input class=\"account_passwords\" type=\"password\" name=\"" + accountID + "\" placeholder='••••••••••••••••••••••••' onfocus=\"this.placeholder = ''\" onblur=\"this.placeholder = '••••••••••••••••••••••••'\"></td>" +
             "<td><input class=\"account_privileges\" type=\"text\" maxlength=\"5\" autocomplete='off' autocapitalize=\"none\" name=\"" + accountID + "\" value='" + accountPrivilege + "' placeholder='New privilege'></td>" +
-            "<td><div class=\"account_disable mdc-checkbox\" name=\"" + accountID + "\"> <input type=\"checkbox\" " + checked + " class=\"mdc-checkbox__native-control\"> <div class=\"mdc-checkbox__background\"> <svg class=\"mdc-checkbox__checkmark\" viewBox=\"0 0 24 24\"> <path class=\"mdc-checkbox__checkmark-path\" fill=\"none\" d=\"M1.73,12.91 8.1,19.28 22.79,4.59\"/> </svg> <div class=\"mdc-checkbox__mixedmark\"></div> </div> </div></td>" +
+            "<td><div class=\"account_encrypted mdc-checkbox\" name=\"" + accountID + "\"> <input type=\"checkbox\" " + encrypted_checked + " class=\"mdc-checkbox__native-control\"> <div class=\"mdc-checkbox__background\"> <svg class=\"mdc-checkbox__checkmark\" viewBox=\"0 0 24 24\"> <path class=\"mdc-checkbox__checkmark-path\" fill=\"none\" d=\"M1.73,12.91 8.1,19.28 22.79,4.59\"/> </svg> <div class=\"mdc-checkbox__mixedmark\"></div> </div> </div></td>" +
+            "<td><div class=\"account_enabled mdc-checkbox\" name=\"" + accountID + "\"> <input type=\"checkbox\" " + enabled_checked + " class=\"mdc-checkbox__native-control\"> <div class=\"mdc-checkbox__background\"> <svg class=\"mdc-checkbox__checkmark\" viewBox=\"0 0 24 24\"> <path class=\"mdc-checkbox__checkmark-path\" fill=\"none\" d=\"M1.73,12.91 8.1,19.28 22.79,4.59\"/> </svg> <div class=\"mdc-checkbox__mixedmark\"></div> </div> </div></td>" +
             "<td><button class=\"account_delete mdc-icon-button material-icons\" name=\"" + accountID + "\">delete</button> </td>" +
             "</tr>");
     };
@@ -30,7 +30,7 @@
         $("#accounts_inputs").remove();
         accounts.append("<tbody id=\"accounts_inputs\"></tbody>");
         accounts_inputs = $("#accounts_inputs");
-        accounts_inputs.append("<tr><td><h4 class='first-column'>Username</h4></td><td><h4>Password</h4></td><td><h4>Privilege Level</h4></td><td><h4>Enabled</h4></td><td></td></tr><hr>");
+        accounts_inputs.append("<tr><td><h4 class='first-column'>Username</h4></td><td><h4>Password</h4></td><td><h4>Privilege Level</h4></td><td><h4>Encrypted</h4></td><td><h4>Enabled</h4></td><td></td></tr><hr>");
 
         inputStorage = {};
         inputStorage["username"] = {};
@@ -45,30 +45,32 @@
                 var accountsList = JSON.parse(xmlHttpRequest.responseText.trim());
 
                 var currentAccount = accountsList.filter(account => account.id === currentID)[0];
-                currentPrivilege = currentAccount["privilege"];
                 var currentUsername = currentAccount["username"];
+                currentPrivilege = currentAccount["privilege"];
+                var currentEncrypted = currentAccount["encrypted"] === 1;
                 $("#currentUsername").text(currentUsername);
 
 
-                showNewAccount(currentID, currentUsername, currentPrivilege, true);
+                showNewAccount(currentID, currentUsername, currentPrivilege, currentEncrypted,true);
 
                 if (currentPrivilege === 100) {
                     $(".account_privileges[name=" + currentID + "]").val("ADMIN");
                 }
 
                 $(".account_privileges[name=" + currentID + "]").prop("disabled", true);
-                $(".account_disable[name=" + currentID + "]").addClass("mdc-checkbox--disabled");
-                $(".account_disable[name=" + currentID + "]").find('input').prop("disabled", true);
+                $(".account_enabled[name=" + currentID + "]").addClass("mdc-checkbox--disabled");
+                $(".account_enabled[name=" + currentID + "]").find('input').prop("disabled", true);
 
                 for (var account in accountsList) {
                     account = accountsList[account];
                     var accountID = account["id"];
                     var accountUsername = account["username"];
-                    var accountEnabled = account["enabled"] === 1;
                     var accountPrivilege = account["privilege"];
+                    var accountEncrypted = account["encrypted"] === 1;
+                    var accountEnabled = account["enabled"] === 1;
                     if (accountID !== currentID) {
                         if ((currentPrivilege > 0 && currentPrivilege > accountPrivilege  && accountUsername !== "admin") || currentUsername === "admin") {
-                            showNewAccount(accountID, accountUsername, accountPrivilege, accountEnabled);
+                            showNewAccount(accountID, accountUsername, accountPrivilege, accountEncrypted, accountEnabled);
                             if (accountPrivilege === 100) {
                                 $(".account_privileges[name=" + accountID + "]").val("ADMIN");
                             }
@@ -82,8 +84,8 @@
                     if (account["username"] === "admin") {
                         $(".account_usernames[name=" + accountID + "]").prop("disabled", true);
                         $(".account_privileges[name=" + accountID + "]").prop("disabled", true);
-                        $(".account_disable[name=" + accountID + "]").addClass("mdc-checkbox--disabled");
-                        $(".account_disable[name=" + accountID + "]").find('input').prop("disabled", true);
+                        $(".account_enabled[name=" + accountID + "]").addClass("mdc-checkbox--disabled");
+                        $(".account_enabled[name=" + accountID + "]").find('input').prop("disabled", true);
                         $(".account_delete[name=" + accountID + "]").prop("disabled", true);
                     }
 
@@ -97,6 +99,7 @@
                         "</tr><tr><td><input id=\"new_account_username\" class='first-column' type=\"text\" autocomplete='off' autocapitalize=\"none\" placeholder='New account username'></td>" +
                         "<td><input id=\"new_account_password\" type=\"password\" placeholder='New account password'></td>" +
                         "<td><input id=\"new_account_privilege\" type=\"text\" maxlength=\"5\" autocomplete='off' autocapitalize=\"none\" placeholder='New account privilege'></td>" +
+                        "<td><div id=\"new_account_encrypted\" class=\"mdc-checkbox\"> <input type=\"checkbox\" class=\"mdc-checkbox__native-control\"> <div class=\"mdc-checkbox__background\"> <svg class=\"mdc-checkbox__checkmark\" viewBox=\"0 0 24 24\"> <path class=\"mdc-checkbox__checkmark-path\" fill=\"none\" d=\"M1.73,12.91 8.1,19.28 22.79,4.59\"/> </svg> <div class=\"mdc-checkbox__mixedmark\"></div> </div> </div></td>" +
                         "<td><button class=\"mdc-icon-button material-icons\" id=\"new_account_submit\">add</button></td><td></td>" +
                         "</tr>");
                     if (currentUsername !== "admin" && currentPrivilege === 1) {
@@ -135,7 +138,9 @@
 
                 $('.account_privileges').blur(submitCheck);
 
-                $(".account_disable").click(disableAccount);
+                $(".account_encrypted").click(encryptAccount);
+
+                $(".account_enabled").click(disableAccount);
 
                 $(".account_delete").click(deleteAccount);
 
@@ -309,10 +314,12 @@
 			var usernameInput = $("#new_account_username");
 			var passwordInput = $("#new_account_password");
 			var privilegeInput = $("#new_account_privilege");
+            var encryptedInput = $("#new_account_encrypted").find("input");
 
 			var username = usernameInput.val();
 			var password = passwordInput.val();
             var privilege = privilegeInput.val();
+            var encrypted = encryptedInput.is(":checked");
 
             if (privilege.toUpperCase() !== "ADMIN" && (isNaN(privilege) || privilege < 0)) {
                 showSnackbar(basicSnackbar, "Privilege level must be a positive number");
@@ -326,14 +333,28 @@
             }
 
 			if (username.trim() !== "" && password.trim() !== "") {
-				var data = "username=" + encodeURIComponent(username.trim()) + "&password=" + encodeURIComponent(password);
+				var data = "";
+				data += "username=" + encodeURIComponent(username.trim());
+                data += "&password=" + encodeURIComponent(password);
 				if (privilege.trim() !== "") data += "&privilege=" + encodeURIComponent(privilege);
+				data += "&encrypted=" + encodeURIComponent(encrypted);
 				updateAccount(data, "new");
 				return true;
 			}
 		}
         return false;
     };
+
+     var encryptAccount = function() {
+         var id = $(this).attr("name");
+         var data = "id=" + encodeURIComponent(id);
+         if ($(this).find("input").is(":checked")) {
+             updateAccount(data, "encrypt");
+         } else {
+             updateAccount(data, "decrypt");
+
+         }
+     };
 
     var disableAccount = function() {
         var id = $(this).attr("name");

@@ -94,27 +94,15 @@ router.post("/*", function(req, res, next) {
     const parameter = Object.keys(req.query)[0];
 
     fs.stat(realFilePath, function(err, stats) {
-        if (err !== null) return next();
-
+        if (err !== null && next !== undefined) return next();
         if (parameter === "upload") {
             if (stats.isDirectory()) {
-                if (!req.files || Object.keys(req.files).length === 0) {
-                    res.status(400).send('No files were uploaded.');
-                    return;
-                }
-                for (let file in req.files) {
-                    if (!req.files.hasOwnProperty(file)) continue;
-                    file = req.files[file];
-                    let saveLocation = path.join(realFilePath, file.name);
-                    file.mv(saveLocation, function(err) {
-                        if (err) return res.status(500).send(err);
-                        res.send('File uploaded');
-                    });
-
-
-                }
+                fileManager.uploadFiles(req.files, realFilePath, function(err) {
+                    if (err !== undefined) return res.status(500).send("Upload failed");
+                    if (Object.keys(req.files).length === 1) res.send("Uploaded file");
+                    else res.send("Uploaded files");
+                });
             }
-
         }
 
         if (parameter === "sharing") {

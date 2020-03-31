@@ -52,6 +52,8 @@ router.post('/new', function(req, res) {
     let username = req.body.username;
     let password = req.body.password;
     let privilege = req.body.privilege;
+    let encrypted = req.body.encrypted;
+
     if (!checkRequiredFields(res, username, password)) return;
     if (username === "admin")  return res.status(401).send("Insufficient privilege level");
 
@@ -60,9 +62,10 @@ router.post('/new', function(req, res) {
 
         if (privilege === undefined) privilege = 0;
         else if (privilege > 100 || privilege.toUpperCase() === "ADMIN") privilege = 100;
+        if (encrypted === "true") encrypted = true;
         checkChangePrivilege(req, res, privilege, function(result) {
             if(!result) return;
-            accountManager.newAccount(username, password, privilege, function (result) {
+            accountManager.newAccount(username, password, privilege, encrypted, function (result) {
                 if (result) {
                     res.send("Created account: " + username);
                 } else {
@@ -93,6 +96,42 @@ router.post('/delete', function(req, res) {
 
 router.post('/recover', function(req, res) {
     //todo
+});
+
+router.post('/encrypt', function(req, res) {
+    let id = parseInt(req.body.id, 10);
+
+    if (!checkRequiredFields(res, id)) return;
+
+    checkPrivilege(req, res, id, function(result) {
+        if (!result) return;
+        accountManager.encryptAccount(id, password,function (result) {
+            if (result) {
+                res.send("Encrypted account");
+            } else {
+                res.status(404).send("Account not found");
+            }
+        });
+    });
+});
+
+router.post('/decrypt', function(req, res) {
+    let id = parseInt(req.body.id, 10);
+
+    if (!checkRequiredFields(res, id)) return;
+
+    checkPrivilege(req, res, id, function(result) {
+        if (!result) return;
+        accountManager.decryptAccount(id, function (result) {
+            if (result) {
+                res.send("Decrypted account");
+            } else {
+                res.status(404).send("Account not found");
+            }
+        });
+
+    });
+
 });
 
 router.post('/enable', function(req, res) {
