@@ -185,12 +185,14 @@ $(document).ready(function() {
 
     $("#uploadButton").change(function() {
         let formData = new FormData();
-        let fileName = $(this)[0].files[0];
-        formData.append("file", fileName);
+        let files = $(this)[0].files;
+        for (let i = 0; i < files.length; i++) {
+            formData.append("file" + i, files[i]);
+        }
+
         request("POST", location.pathname + "?upload", formData, function(xmlHttpRequest) {
             showSnackbar(basicSnackbar, xmlHttpRequest.responseText);
         }, undefined, null);
-
     });
 
     $("html").on("dragover", function(e) {

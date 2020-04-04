@@ -3,22 +3,29 @@ const createError = require('http-errors');
 const https = require("https");
 const fs = require("fs");
 const path = require("path");
-const strftime = require('strftime');
+
 const cookieParser = require('cookie-parser');
 const fileUpload = require("express-fileupload");
+const session = require("express-session");
 
 const helmet = require("helmet");
 
+const serverID = require("./serverID");
 const authorization = require('./authorization');
 const accountManager = require('./accountManager');
+const webdav = require('./webdav');
+const log = require("./log");
 
 const app = express();
+app.use(webdav.handler("/webdav"));
+
 
 const accountsRouter = require('./routes/accounts');
 const filesRouter = require('./routes/files');
 const photosRouter = require('./routes/photos');
 const sharedRouter = require('./routes/shared');
 const indexRouter = require('./routes/index');
+const logRouter = require('./routes/log');
 const loginRouter = require('./routes/login');
 const logoutRouter = require('./routes/logout');
 const updateRouter = require('./routes/update');
@@ -26,7 +33,8 @@ const errorRouter = require('./routes/error');
 
 let serverInstances = [];
 
-log("Starting server...");
+log.write("Starting server...");
+
 
 app.use(helmet());
 app.use(cookieParser());
@@ -35,6 +43,13 @@ app.use(express.urlencoded({
     extended: true
 }));
 
+app.use(session({
+    name: "encryptionSession",
+    secret: serverID,
+    resave: false,
+    saveUninitialized: false,
+    cookie: { secure: true, sameSite: true}
+}));
 
 
 app.use(function(req, res, next) {
@@ -49,16 +64,19 @@ app.use(express.static(path.join(__dirname, "public")));
 
 const noLog = ["/accounts/list/hash"];
 app.use(function(req, res, next) {
-    if (noLog.indexOf(req.path) === -1) log(req, req.url);
+    if (noLog.indexOf(req.path) === -1) log.writeServer(req, req.url);
     next();
 });
+
 
 app.use('/logout', logoutRouter);
 app.use('/login', loginRouter);
 app.use("/shared", sharedRouter);
 app.use("/update", updateRouter);
+
 app.use(authorization.doAuthorization);
 app.use('/', indexRouter);
+app.use("/log", logRouter);
 app.use("/files", filesRouter);
 app.use("/photos", photosRouter);
 app.use("/accounts", accountsRouter);
@@ -71,8 +89,9 @@ app.use(function(req, res, next) {
 });
 
 app.use(function(err, req, res, next) {
-    log(req, req.url + " (" + (err.status || 500) + " " + err.message + ")");
+    log.writeServer(req, req.url + " (" + (err.status || 500) + " " + err.message + ")");
     res.status(err.status || 500);
+    if (res.headersSent) return;
     accountManager.getInformation("username", "id", authorization.getLoginTokenAudience(req), function(username) {
         res.render('error', {message: err.message, status: err.status, username: username});
     });
@@ -103,7 +122,7 @@ function stop(next) {
             server.close();
         }
     }
-    log("Server stopped");
+    log.write("Server stopped");
     if (next !== undefined) next();
 }
 
@@ -120,15 +139,6 @@ function httpRedirectServer() {
     });
     httpServer = httpServer.listen(80);
     return httpServer;
-}
-
-function log(req, text) {
-    if (typeof req === "string") {
-        text = req;
-        console.log("[Webserver] [" + strftime("%H:%M:%S") + "]: " + text);
-    } else {
-        console.log("[Webserver] [" + strftime("%H:%M:%S") + "] [" + (req.ip) + "]: " + req.method + " " + text);
-    }
 }
 
 module.exports = {

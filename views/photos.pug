@@ -4,6 +4,7 @@ block header
     link(rel='stylesheet', type='text/css', href='/stylesheets/photos.css')
     script.
         let photos = "#{photos}".split(",");
+    script(type='text/javascript', src= "/javascripts/lazysizes.min.js")
     script(type='text/javascript', src= "/javascripts/photos.js")
 
 block drawer
@@ -21,7 +22,7 @@ block drawer
                 a.mdc-list-item#upload
                     i.material-icons.mdc-list-item__graphic(aria-hidden='true') cloud_upload
                     span.mdc-list-item__text Upload
-                input#uploadButton(hidden type="file")
+                input#uploadButton(hidden type="file" multiple)
                 a.mdc-list-item(href='/shared?me')
                     i.material-icons.mdc-list-item__graphic(aria-hidden='true') person
                     span.mdc-list-item__text Shared with me

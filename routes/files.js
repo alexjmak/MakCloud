@@ -5,7 +5,9 @@ const os = require('os');
 const path = require("path");
 const url = require('url');
 const readify = require('readify');
+const log = require('../log');
 const accountManager = require('../accountManager');
+const encryptionManager = require('../encryptionManager');
 const sharingManager = require('../sharingManager');
 const fileManager = require('../fileManager');
 const authorization = require('../authorization');
@@ -17,6 +19,9 @@ router.get('/*', function(req, res, next) {
     let urlFilePath = path.join(req.baseUrl, filePath);
 
     const parameter = Object.keys(req.query)[0];
+
+    const key = req.session.encryptionKey;
+    const iv = req.session.encryptionIV;
 
     fs.stat(realFilePath, function(err, stats) {
         if (err !== null) return next();
@@ -49,10 +54,9 @@ router.get('/*', function(req, res, next) {
         } else {
             switch(parameter) {
                 case "download":
-                    fs.readFile(realFilePath, function (err, contents) {
-                        if (err === null) {
-                            res.send(contents);
-                        } else next();
+                    fileManager.readFile(realFilePath, key, iv, function(contents) {
+                        if (err === null) res.send(contents);
+                        else next();
                     });
                     break;
                 case "sharing":
@@ -93,11 +97,14 @@ router.post("/*", function(req, res, next) {
 
     const parameter = Object.keys(req.query)[0];
 
+    const key = req.session.encryptionKey;
+    const iv = req.session.encryptionIV;
+
     fs.stat(realFilePath, function(err, stats) {
         if (err !== null && next !== undefined) return next();
         if (parameter === "upload") {
             if (stats.isDirectory()) {
-                fileManager.uploadFiles(req.files, realFilePath, function(err) {
+                fileManager.writeFiles(req.files, realFilePath, key, iv, function(err) {
                     if (err !== undefined) return res.status(500).send("Upload failed");
                     if (Object.keys(req.files).length === 1) res.send("Uploaded file");
                     else res.send("Uploaded files");

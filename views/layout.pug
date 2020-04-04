@@ -30,6 +30,7 @@ html
         header.mdc-top-app-bar.mdc-top-app-bar--fixed
             .mdc-top-app-bar__row.mdc-elevation--z1
                 section.mdc-top-app-bar__section.mdc-top-app-bar__section--align-start
+                    button.material-icons.mdc-top-app-bar__navigation-icon.mdc-ripple(style="display: none; color: white; background-color: transparent; border: none; outline: none") menu
                     button.material-icons(onclick="window.location.href='/'" style="margin-left: 5px; color: white; background-color: transparent; border: none; outline: none") cloud
                     h3(onclick="window.location.href='/'" style="cursor: pointer; font-size: 22px;")= "MakCloud"
                 section.mdc-top-app-bar__section.mdc-top-app-bar__section--align-end
@@ -37,6 +38,8 @@ html
                     button#accountButton.material-icons(type='submit' style="float: right; font-size: 36px; color: white; background-color: transparent; border: none; outline: none") perm_identity
 
         block drawer
+
+        .mdc-drawer-scrim
 
         .mdc-drawer-app-content.mdc-top-app-bar--fixed-adjust
             #accountCard.mdc-card.mdc-elevation--z10(style="display:none; z-index:1;position:absolute;width: 300px; float:right; right: 0px; margin-right: 10px;padding-bottom: 10px; padding-left: 16px; margin-top: 10px; padding-top: 15px")

@@ -5,7 +5,9 @@ const fs = require("fs");
 const os = require('os');
 const path = require('path');
 const url = require('url');
+const log = require("../log");
 const accountManager = require('../accountManager');
+const encryptionManager = require("../encryptionManager");
 const authorization = require('../authorization');
 const fileManager = require("../fileManager");
 const preferences = require('../preferences');
@@ -34,16 +36,18 @@ router.get("/*", function(req, res, next) {
 
     const parameter = Object.keys(req.query)[0];
 
+    const key = req.session.encryptionKey;
+    const iv = req.session.encryptionIV;
+
     fs.stat(realFilePath, function(err, stats) {
         if (err !== null) return next();
         if (stats.isDirectory()) {
             next(createError(404));
         } else {
             if (parameter === "download") {
-                fs.readFile(realFilePath, function (err, contents) {
-                    if (err === null) {
-                        res.send(contents);
-                    } else next();
+                fileManager.readFile(realFilePath, key, iv, function(contents) {
+                    if (err === null) res.send(contents);
+                    else next();
                 });
             } else {
                 accountManager.getInformation("username", "id", authorization.getLoginTokenAudience(req), function (username) {
@@ -64,11 +68,14 @@ router.post("/", function (req, res, next) {
 
     const parameter = Object.keys(req.query)[0];
 
+    const key = req.session.encryptionKey;
+    const iv = req.session.encryptionIV;
+
     fs.stat(realFilePath, function(err, stats) {
         if (err !== null && next !== undefined) return next();
         if (parameter === "upload") {
             if (stats.isDirectory()) {
-                fileManager.uploadFiles(req.files, realFilePath, function (err) {
+                fileManager.writeFiles(req.files, realFilePath, key, iv, function(err) {
                     if (err !== undefined) return res.status(500).send("Upload failed");
                     if (Object.keys(req.files).length === 1) res.send("Uploaded photo");
                     else res.send("Uploaded photos");

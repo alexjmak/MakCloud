@@ -1,4 +1,9 @@
+let isMobile;
+
 $(document).ready(function() {
+    checkMobileResize();
+    $(window).resize(checkMobileResize);
+
     if (window.location.pathname === "/login" || $.cookie("loginToken") === undefined) {
         $('#accountButton').click(function() {
             window.location.href = "/login";
@@ -8,9 +13,9 @@ $(document).ready(function() {
     const topAppBar = mdc.topAppBar.MDCTopAppBar.attachTo(document.querySelector('.mdc-top-app-bar'));
 
     try {
-        const drawer = mdc.list.MDCList.attachTo(document.querySelector('.mdc-list'));
+        const drawer = mdc.drawer.MDCDrawer.attachTo(document.querySelector('.mdc-drawer'));
         topAppBar.listen('MDCTopAppBar:nav', function () {
-            drawer.open = true;
+            drawer.open = !drawer.open;
         });
     } catch (e) {
 
@@ -81,3 +86,16 @@ $(document).ready(function() {
     });
 
 });
+
+function checkMobileResize() {
+    let width = $(window).width();
+    let height = $(window).height();
+    isMobile = height > width;
+    if (height > width && $(".mdc-drawer").length !== 0) {
+        $(".mdc-drawer").addClass("mdc-drawer--modal");
+        $(".mdc-top-app-bar__navigation-icon").show();
+    } else {
+        $(".mdc-drawer").removeClass("mdc-drawer--modal");
+        $(".mdc-top-app-bar__navigation-icon").hide();
+    }
+}

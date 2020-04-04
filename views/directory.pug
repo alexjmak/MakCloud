@@ -7,6 +7,7 @@ block header
         let directoryPath = "#{directory.path}";
     script(type='text/javascript', src= "/javascripts/directory.js")
 
+
 block drawer
     aside.mdc-drawer.mdc-top-app-bar--fixed-adjust
         .mdc-drawer__content
@@ -22,7 +23,7 @@ block drawer
                 a.mdc-list-item#upload
                     i.material-icons.mdc-list-item__graphic(aria-hidden='true') cloud_upload
                     span.mdc-list-item__text Upload
-                input#uploadButton(hidden type="file")
+                input#uploadButton(hidden type="file" multiple)
                 a.mdc-list-item(href='/shared?me')
                     i.material-icons.mdc-list-item__graphic(aria-hidden='true') person
                     span.mdc-list-item__text Shared with me

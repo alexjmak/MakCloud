@@ -1,18 +1,17 @@
 const sqlite3 = require("sqlite3");
-const strftime = require('strftime');
+const log = require("./log");
 
 class Database {
     constructor(path) {
         this.database = new sqlite3.Database(path);
     }
 
-
     run(query, args, next) {
         let database = this.database;
 
         var stmt = database.prepare(query, function (err) {
             if (err != null) {
-                log(err);
+                log.write(err);
                 if (next !== undefined) next(false);
             }
         });
@@ -21,7 +20,7 @@ class Database {
         stmt.run(args, function (err) {
             stmt.finalize();
             if (err != null) {
-                log(err);
+                log.write(err);
                 if (next !== undefined) next(false);
             } else {
                 if (next !== undefined) next(true);
@@ -34,7 +33,7 @@ class Database {
         let database = this.database;
         let stmt = database.prepare(query, function (err) {
             if (err != null) {
-                log(err);
+                log.write(err);
                 if (next !== undefined) next(false);
             }
         });
@@ -45,7 +44,7 @@ class Database {
             stmt.finalize();
 
             if (err != null) {
-                log(err);
+                log.write(err);
                 if (next !== undefined) next(false);
             } else if (results === undefined) {
                 if (next !== undefined) next(false);
@@ -59,7 +58,7 @@ class Database {
         let database = this.database;
         let stmt = database.prepare(query, function (err) {
             if (err != null) {
-                log(err);
+                log.write(err);
                 if (next !== undefined) next(false);
             }
         });
@@ -69,7 +68,7 @@ class Database {
             stmt.finalize();
 
             if (err != null) {
-                log(err);
+                log.write(err);
                 if (next !== undefined) next(false);
             } else if (result === undefined) {
                 if (next !== undefined) next(false);
@@ -80,10 +79,4 @@ class Database {
 
 }
 
-function log(text) {
-    console.log("[Database] [" + strftime("%H:%M:%S") + "]: " + text);
-}
-
-module.exports = {
-    Database: Database
-};
+module.exports = Database;

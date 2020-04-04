@@ -62,7 +62,7 @@ router.post('/new', function(req, res) {
 
         if (privilege === undefined) privilege = 0;
         else if (privilege > 100 || privilege.toUpperCase() === "ADMIN") privilege = 100;
-        if (encrypted === "true") encrypted = true;
+        encrypted = encrypted === "true" || encrypted === true;
         checkChangePrivilege(req, res, privilege, function(result) {
             if(!result) return;
             accountManager.newAccount(username, password, privilege, encrypted, function (result) {

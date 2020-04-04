@@ -1,6 +1,5 @@
 @import url("../Roboto/roboto.css");
 
-
 :root {
     --mdc-theme-primary: #15438c;
 }
@@ -11,6 +10,10 @@
 
 .mdc-drawer {
     height: auto;
+}
+
+.mdc-drawer {
+    height: 100%;
 }
 
 body {

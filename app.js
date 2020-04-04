@@ -1,18 +1,9 @@
-const webServer = require("./webServer");
+const webServer = require("./webserver");
+
 let webserverInstance;
 
 process.chdir(__dirname);
 
-let log = [];
-
-function getLog() {
-    return log;
-}
-
-console.log = function(text) {
-    process.stdout.write(text + "\n");
-    log.push(text);
-};
 
 require("./preferences");
 
@@ -29,7 +20,6 @@ function restart() {
 }
 
 module.exports = {
-    getLog: getLog,
     restart: restart,
     stop: stop
 };

@@ -2,18 +2,18 @@ const fs = require("fs");
 const path = require("path");
 const crypto = require("crypto");
 const pbkdf2 = require('pbkdf2');
-const strftime = require('strftime');
 const database = require("./databaseInit");
 const child_process = require('child_process');
 const preferences = require("./preferences");
+const log = require("./log");
 
-database.run("CREATE TABLE IF NOT EXISTS accounts (id INTEGER PRIMARY KEY, username TEXT NOT NULL UNIQUE, hash TEXT NOT NULL, salt TEXT NOT NULL, privilege INTEGER NOT NULL DEFAULT 0, encryptKey TEXT, encryptIV TEXT, enabled INTEGER NOT NULL DEFAULT 1);", [], function(result) {
+database.run("CREATE TABLE IF NOT EXISTS accounts (id INTEGER PRIMARY KEY, username TEXT NOT NULL UNIQUE, hash TEXT NOT NULL, salt TEXT NOT NULL, privilege INTEGER NOT NULL DEFAULT 0, encryptKey TEXT, encryptIV TEXT, derivedKeySalt TEXT, enabled INTEGER NOT NULL DEFAULT 1);", [], function(result) {
     newAccount("admin", "password", 100, false);
     getInformation("id", "username", "admin", function(id) {
         updatePrivilege(id, 100);
     });
 });
-database.run("CREATE TABLE IF NOT EXISTS deleted_accounts (id INTEGER PRIMARY KEY, username TEXT NOT NULL, hash TEXT NOT NULL, salt TEXT NOT NULL, privilege INTEGER NOT NULL, dateDeleted INTEGER NOT NULL, encryptKey TEXT, encryptIV TEXT);");
+database.run("CREATE TABLE IF NOT EXISTS deleted_accounts (id INTEGER, username TEXT NOT NULL, hash TEXT NOT NULL, salt TEXT NOT NULL, privilege INTEGER NOT NULL, dateDeleted INTEGER NOT NULL, encryptKey TEXT, encryptIV TEXT, derivedKeySalt TEXT);");
 
 function accountExists(usernameOrID, enabledCheck, next) {
     let query;
@@ -98,7 +98,6 @@ function getInformation(select, whereKey, whereValue, next) {
     });
 }
 
-
 function nextID(next) {
     database.get("SELECT max(id) as id FROM (SELECT id FROM accounts UNION SELECT id FROM deleted_accounts);", null, function(result) {
         if (result.id !== null) {
@@ -129,10 +128,10 @@ function newAccount(username, password, privilege, encrypted, next) {
                             try {
                                 fs.symlinkSync(path.join(__dirname, preferences.get()["files"], id.toString()), path.join(__dirname, preferences.get()["files"], "smb", username.toLowerCase()), "dir");
                             } catch (err) {
-                                log(err.toString());
+                                log.write(err.toString());
                             }
                             child_process.exec("sudo useradd -G makcloud --no-create-home --no-user-group --system " + username.toLowerCase() + "; (echo " + password + "; echo " + password + ") | sudo smbpasswd -a " + username.toLowerCase(), function (err, stdout, stderr) {
-                                    if (stderr !== "") log(stderr);
+                                    if (stderr !== "") log.write(stderr);
                             });
                         }
                         fs.mkdirSync(path.join(filePath, "files"));
@@ -141,7 +140,7 @@ function newAccount(username, password, privilege, encrypted, next) {
                 }
             });
 
-            database.run("INSERT INTO accounts (id, username, hash, salt, privilege) VALUES (?, ?, ?, ?, ?, ?)", [id, username, hash, salt, privilege, encrypted], function(result) {
+            database.run("INSERT INTO accounts (id, username, hash, salt, privilege) VALUES (?, ?, ?, ?, ?)", [id, username, hash, salt, privilege], function(result) {
                 if (!result && username !== undefined && password !== undefined && privilege !== undefined) {
                     newAccount(username, password, privilege, encrypted, next);
                 } else {
@@ -169,7 +168,7 @@ function deleteAccount(id, next) {
             let filePath = path.join(preferences.get()["files"], id.toString()).toString();
             let newFilePath = path.join(preferences.get()["files"], "deleted", id.toString() + "-" + (dateDeleted).toString()).toString();
             fs.rename(filePath, newFilePath, function() {
-                database.run("INSERT INTO deleted_accounts SELECT id, username, hash, salt, privilege, " + dateDeleted + " as dateDeleted, encrypted FROM accounts WHERE id = ?;", id);
+                database.run("INSERT INTO deleted_accounts SELECT id, username, hash, salt, privilege, " + dateDeleted + " as dateDeleted, encryptKey, encryptIV, derivedKeySalt FROM accounts WHERE id = ?;", id);
 
                 if (preferences.get()["sambaIntegration"]) {
                     try {
@@ -177,7 +176,7 @@ function deleteAccount(id, next) {
                     } catch (err) {
                     }
                     child_process.exec("sudo smbpasswd -x " + username.toLowerCase() + "; sudo userdel -r " + username.toLowerCase(), function (err, stdout, stderr) {
-                        if (stderr !== "") log(stderr);
+                        if (stderr !== "") log.write(stderr);
                     });
                 }
 
@@ -196,12 +195,12 @@ function encryptAccount(id, password, next) {
             return;
         }
 
-        const authorization = require('./authorization');
-        authorization.generateEncryptionKey(id, password, function(key, iv) {
+        const encryptionManager = require("./encryptionManager");
+        encryptionManager.generateEncryptionKey(id, password, function(key, iv, salt) {
             if (key === false) {
                 if (next !== undefined) next(false);
             } else {
-                database.run("UPDATE accounts SET encryptKey = ?, encryptIV = ? WHERE id = ?", [key, iv, id], function(result) {
+                database.run("UPDATE accounts SET encryptKey = ?, encryptIV = ?, derivedKeySalt = ? WHERE id = ?", [key, iv, salt, id], function(result) {
                     if (next !== undefined) next(result);
                 });
             }
@@ -218,7 +217,7 @@ function decryptAccount(id, next) {
             return;
         }
 
-        database.run("UPDATE accounts SET encryptKey = null WHERE id = ?", id, function(result) {
+        database.run("UPDATE accounts SET encryptKey = null, encryptIV = null, derivedKeySalt = null WHERE id = ?", id, function(result) {
             if (next !== undefined) next(result);
         });
 
@@ -237,11 +236,11 @@ function enableAccount(id, next) {
                 try {
                     fs.symlinkSync(path.join(__dirname, preferences.get()["files"], id.toString()), path.join(__dirname, preferences.get()["files"], "smb", username.toLowerCase()), "dir");
                 } catch (err) {
-                    log(err.toString());
+                    log.write(err.toString());
                 }
 
                 child_process.exec("sudo smbpasswd -e " + username.toLowerCase(), function (err, stdout, stderr) {
-                    if (stderr !== "") log(stderr);
+                    if (stderr !== "") log.write(stderr);
                 });
             });
         }
@@ -265,10 +264,10 @@ function disableAccount(id, next) {
                 try {
                     fs.unlinkSync(path.join(__dirname, preferences.get()["files"], "smb", username.toLowerCase()).toString());
                 } catch (err) {
-                    log(err.toString());
+                    log.write(err.toString());
                 }
                 child_process.exec("sudo smbpasswd -d " + username.toLowerCase(), function (err, stdout, stderr) {
-                    if (stderr !== "") log(stderr);
+                    if (stderr !== "") log.write(stderr);
                 });
             });
         }
@@ -297,10 +296,10 @@ function updateUsername(id, newUsername, next) {
                 try {
                     fs.renameSync(path.join(__dirname, preferences.get()["files"], "smb", username.toLowerCase()).toString(), path.join(__dirname, preferences.get()["files"], "smb", newUsername.toLowerCase()).toString());
                 } catch (err) {
-                    log(err.toString());
+                    log.write(err.toString());
                 }
                 child_process.exec("sudo smbpasswd -x " + username.toLowerCase() + "; sudo usermod -l " + newUsername.toLowerCase() + " " + username.toLowerCase(), function (err, stdout, stderr) {
-                    if (stderr !== "") log(stderr);
+                    if (stderr !== "") log.write(stderr);
                 });
             }
 
@@ -326,12 +325,12 @@ function updatePassword(id, newPassword, next) {
         if (preferences.get()["sambaIntegration"]) {
             getInformation("username", "id", id, function (username) {
                 child_process.exec("(echo " + newPassword + "; echo " + newPassword + ") | sudo smbpasswd -a " + username.toLowerCase(), function (err, stdout, stderr) {
-                    if (stderr !== "") log(stderr);
+                    if (stderr !== "") log.write(stderr);
                 });
                 getInformation("enabled", "id", id, function (enabled) {
                     if (!enabled) {
                         child_process.exec("sudo smbpasswd -d " + username.toLowerCase(), function (err, stdout, stderr) {
-                            if (stderr !== "") log(stderr);
+                            if (stderr !== "") log.write(stderr);
                         });
                     }
                 });
@@ -357,15 +356,6 @@ function updatePrivilege(id, newPrivilege, next) {
         });
 
     });
-}
-
-function log(req, text) {
-    if (typeof req === "string") {
-        text = req;
-        console.log("[Account Manager] [" + strftime("%H:%M:%S") + "]: " + text);
-    } else {
-        console.log("[Account Manager] [" + strftime("%H:%M:%S") + "] [" + (req.ip) + "]: " + req.method + " " + text);
-    }
 }
 
 module.exports = {

@@ -1,6 +1,6 @@
 const fs = require('fs');
 const path = require('path');
-const strftime = require('strftime');
+const log = require('./log');
 
 const configurationFile = path.join(__dirname, "preferences.conf");
 const defaultConfiguration = {files: "./files", sambaIntegration: false};
@@ -14,7 +14,7 @@ function reload() {
         }
         data = data.toString();
         configuration = JSON.parse(data);
-        log("Reading preferences: " + data);
+        log.write("Reading preferences: " + data);
     });
 }
 
@@ -23,9 +23,5 @@ function get() {
 }
 
 reload();
-
-function log(text) {
-    console.log("[Preferences] [" + strftime("%H:%M:%S") + "]: " + text);
-}
 
 module.exports = {get: get, reload: reload};

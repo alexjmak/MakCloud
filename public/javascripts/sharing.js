@@ -41,7 +41,6 @@ var share = function(event) {
 
             $(".sharing_delete[name='-1']").prop("disabled", true);
 
-
             $(".sharing-tr").last().append("<div class=\"mdc-card mdc-elevation--z10\" id=\"search\" style=\"overflow: scroll; z-index:20;position:absolute; left: 23px; margin-top: 58px; max-height: 200px; padding-bottom: 8px; padding-top: 2px\"><ul id='search-list' class='mdc-list'></ul></div>");
             let searchList = $("#search-list");
             newShare.keyup(function() {
