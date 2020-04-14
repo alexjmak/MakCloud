@@ -73,7 +73,7 @@ var deleteFile = function(event) {
     if (window.location.pathname.startsWith("/shared")) return;
     let fileName = event.data.filePath.split("/").pop();
     showDialog(yesNoDialog, "MakCloud", "Are you sure you want to delete " + fileName  + "?", {"yes": function() {
-            deleteRequest(event.data.filePath, function(xmlHttpRequest) {
+            deleteRequest(event.data.filePath, null, function(xmlHttpRequest) {
                 if (xmlHttpRequest.status === 200)  {
                     showSnackbar(basicSnackbar, "Deleted " + fileName);
                     window.location.href = '.';

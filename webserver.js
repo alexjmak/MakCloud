@@ -17,7 +17,7 @@ const webdav = require('./webdav');
 const log = require("./log");
 
 const app = express();
-app.use(webdav.handler("/webdav"));
+//app.use(webdav.handler("/webdav"));
 
 
 const accountsRouter = require('./routes/accounts');
@@ -39,9 +39,7 @@ log.write("Starting server...");
 app.use(helmet());
 app.use(cookieParser());
 app.use(fileUpload());
-app.use(express.urlencoded({
-    extended: true
-}));
+app.use(express.json());
 
 app.use(session({
     name: "encryptionSession",
@@ -62,7 +60,7 @@ app.use(function(req, res, next) {
 
 app.use(express.static(path.join(__dirname, "public")));
 
-const noLog = ["/accounts/list/hash"];
+const noLog = ["/accounts/list/hash", "/log/raw", "/log/size"];
 app.use(function(req, res, next) {
     if (noLog.indexOf(req.path) === -1) log.writeServer(req, req.url);
     next();

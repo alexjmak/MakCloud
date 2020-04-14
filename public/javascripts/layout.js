@@ -12,14 +12,13 @@ $(document).ready(function() {
 
     const topAppBar = mdc.topAppBar.MDCTopAppBar.attachTo(document.querySelector('.mdc-top-app-bar'));
 
-    try {
-        const drawer = mdc.drawer.MDCDrawer.attachTo(document.querySelector('.mdc-drawer'));
-        topAppBar.listen('MDCTopAppBar:nav', function () {
-            drawer.open = !drawer.open;
-        });
-    } catch (e) {
 
-    }
+    let drawer;
+    topAppBar.listen('MDCTopAppBar:nav', function () {
+        if (!drawer) drawer = mdc.drawer.MDCDrawer.attachTo(document.querySelector('.mdc-drawer'));
+        drawer.open = !drawer.open;
+    });
+
 
     let textFields = document.getElementsByClassName('mdc-text-field');
     for (let i = 0; i < textFields.length; i++) {
@@ -85,17 +84,48 @@ $(document).ready(function() {
         }
     });
 
+    $("#back").click(function() {
+        window.open(location.pathname + "/..", "_self");
+    });
+
+    $("#logout").click(function() {
+        $.removeCookie("fileToken", { path: location.pathname.split("/").slice(0, 4).join("/") });
+        window.location.href = "/logout";
+    });
+
+    $("#upload").click(function() {
+        $("#uploadButton").val("");
+        $("#uploadButton").trigger("click");
+    });
+
+    $("#uploadButton").change(function() {
+        let formData = new FormData();
+        let files = $(this)[0].files;
+        for (let i = 0; i < files.length; i++) {
+            formData.append("file" + i, files[i]);
+        }
+
+        request("POST", location.pathname + "?upload", formData, function(xmlHttpRequest) {
+            showSnackbar(basicSnackbar, xmlHttpRequest.responseText);
+        }, undefined, null);
+    });
+
 });
 
 function checkMobileResize() {
     let width = $(window).width();
     let height = $(window).height();
+    let drawer = $(".mdc-drawer");
+    let mobile = $(".mobile");
+    let smallWidth = (drawer.width() / width) > 0.25;
+
     isMobile = height > width;
-    if (height > width && $(".mdc-drawer").length !== 0) {
-        $(".mdc-drawer").addClass("mdc-drawer--modal");
-        $(".mdc-top-app-bar__navigation-icon").show();
+
+    if ((height > width && drawer.length !== 0) || smallWidth)  {
+        drawer.addClass("mdc-drawer--modal");
+        mobile.show();
     } else {
-        $(".mdc-drawer").removeClass("mdc-drawer--modal");
-        $(".mdc-top-app-bar__navigation-icon").hide();
+        drawer.removeClass("mdc-drawer--modal");
+        mobile.hide();
     }
 }

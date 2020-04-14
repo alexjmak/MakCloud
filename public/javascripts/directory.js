@@ -161,7 +161,7 @@ $(document).ready(function() {
         let fileName = $(selectedItem).attr("name");
         let fileId = $(selectedItem).attr("id");
         showDialog(yesNoDialog, "MakCloud", "Are you sure you want to delete " + fileName  + "?", {"yes": function() {
-            deleteRequest([location.pathname, fileName].join("/"), function(xmlHttpRequest) {
+            deleteRequest([location.pathname, fileName].join("/"), null, function(xmlHttpRequest) {
                     if (xmlHttpRequest.status === 200)  {
                         folderContents.splice(fileId, 1);
                         reload();
@@ -176,23 +176,6 @@ $(document).ready(function() {
 
     $("#share").click(function () {
         share({"data": {"filePath": [location.pathname, $(selectedItem).attr("name")].join("/")}});
-    });
-
-    $("#upload").click(function() {
-        $("#uploadButton").val("");
-        $("#uploadButton").trigger("click");
-    });
-
-    $("#uploadButton").change(function() {
-        let formData = new FormData();
-        let files = $(this)[0].files;
-        for (let i = 0; i < files.length; i++) {
-            formData.append("file" + i, files[i]);
-        }
-
-        request("POST", location.pathname + "?upload", formData, function(xmlHttpRequest) {
-            showSnackbar(basicSnackbar, xmlHttpRequest.responseText);
-        }, undefined, null);
     });
 
     $("html").on("dragover", function(e) {
@@ -215,16 +198,6 @@ $(document).ready(function() {
     // Drop
     $("#files").on('drop', function (e) {
         console.log("drop");
-    });
-
-
-    $("#back").click(function() {
-        window.open(location.pathname + "/..", "_self");
-    });
-
-    $("#logout").click(function() {
-        $.removeCookie("fileToken", { path: location.pathname.split("/").slice(0, 4).join("/") });
-        window.location.href = "/logout";
     });
 
     function fileClick(file) {

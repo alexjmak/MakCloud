@@ -1,15 +1,16 @@
-const express = require('express');
-const os = require("os");
-const child_process = require('child_process');
-const createError = require('http-errors');
-const request = require('request');
 const archiver = require('archiver');
+const child_process = require('child_process');
+const express = require('express');
 const fs = require('fs');
+const createError = require('http-errors');
+const os = require("os");
 const path = require('path');
+const request = require('request');
 const unzipper = require('unzipper');
-const strftime = require('strftime');
-const authorization = require("../authorization");
+
 const accountManager = require("../accountManager");
+const authorization = require("../authorization");
+const log = require('../log');
 
 const router = express.Router();
 
@@ -60,19 +61,19 @@ router.post('/', function(req, res) {
     let authorizationToken = authorization.createToken({sub: "updateToken"}, "10s");
     request(req.protocol + "://" + req.body.server + "/update/files", {encoding: "binary", headers: {authorization: authorizationToken}}, function(err, response, body) {
         if (response !== undefined && response.statusCode === 200) {
-            log(req, "Updating server...");
+            log.writeServer(req, "Updating server...");
             fs.writeFile("update.zip", body, "binary", function(err) {
                 let readSteam = fs.createReadStream('update.zip');
                 let pipeSteam = readSteam.pipe(unzipper.Extract({ path: path.join(__dirname, "..") }));
                 pipeSteam.on("finish", function() {
                     fs.unlink("update.zip", function() {
-                        log(req, "Update complete");
+                        log.writeServer(req, "Update complete");
                         if (!res.headersSent) res.sendStatus(200);
                         child_process.exec("sudo service MakCloud restart");
                     });
                 });
                 let error = function(e) {
-                    log(req, "Update failed. " + e);
+                    log.writeServer(req, "Update failed. " + e);
                     fs.unlink("update.zip", function() {
                         if (!res.headersSent) res.sendStatus(500);
                     });
@@ -81,15 +82,11 @@ router.post('/', function(req, res) {
                 pipeSteam.on("error", error);
             });
         } else {
-            if (response !== undefined) log(req, "Update failed. Update server responded with error " + response.statusCode);
-            else log(req, "Update failed. No response from server.");
+            if (response !== undefined) log.writeServer(req, "Update failed. Update server responded with error " + response.statusCode);
+            else log.writeServer(req, "Update failed. No response from server.");
             res.sendStatus(400);
         }
     });
 });
-
-function log(req, text) {
-    console.log("[Update] [" + strftime("%H:%M:%S") + "] [" + (req.ip) + "]: " + text);
-}
 
 module.exports = router;

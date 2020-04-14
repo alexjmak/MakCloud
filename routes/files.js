@@ -1,17 +1,17 @@
 const express = require('express');
-const router = express.Router();
 const fs = require("fs");
 const os = require('os');
 const path = require("path");
-const url = require('url');
 const readify = require('readify');
-const log = require('../log');
+const url = require('url');
+
 const accountManager = require('../accountManager');
-const encryptionManager = require('../encryptionManager');
-const sharingManager = require('../sharingManager');
-const fileManager = require('../fileManager');
 const authorization = require('../authorization');
+const fileManager = require('../fileManager');
 const preferences = require("../preferences");
+const sharingManager = require('../sharingManager');
+
+const router = express.Router();
 
 router.get('/*', function(req, res, next) {
     let filePath = decodeURIComponent(url.parse(req.url).pathname).substring(1);
@@ -120,59 +120,63 @@ router.post("/*", function(req, res, next) {
             let id = (req.body.id !== undefined) ? req.body.id : undefined;
             let username = (req.body.username !== undefined) ? req.body.username : undefined;
 
-            if (action === "create") {
-                sharingManager.createLink(parent, fileName, owner, {expiration: expiration, password: password}, function(link) {
-                    if (link !== false) res.status(201).send(link);
-                    else res.sendStatus(409);
-                });
-            } else if (action === "delete") {
-                sharingManager.deleteLink(parent, fileName, owner, function(result) {
-                    res.sendStatus(200)
-                });
-            } else if (action === "addAccess") {
-                let addLinkAccess = function(id) {
-                    sharingManager.addLinkAccess(parent, fileName, owner, id, access, expiration,function(result) {
+            switch (action) {
+                case "create":
+                    sharingManager.createLink(parent, fileName, owner, {expiration: expiration, password: password}, function(link) {
+                        if (link !== false) res.status(201).send(link);
+                        else res.sendStatus(409);
+                    });
+                    break;
+                case "delete":
+                    sharingManager.deleteLink(parent, fileName, owner, function(result) {
+                        res.sendStatus(200)
+                    });
+                    break;
+                case "addAccess":
+                    let addLinkAccess = function(id) {
+                        sharingManager.addLinkAccess(parent, fileName, owner, id, access, expiration,function(result) {
+                            if (result) res.status(200).send(id.toString());
+                            else res.sendStatus(400);
+                        });
+                    };
+                    if (id === undefined && username !== undefined) {
+                        accountManager.getInformation("id", "username", username, function(id) {
+                            if (id === undefined) res.sendStatus(404);
+                            else addLinkAccess(id);
+                        });
+                    } else addLinkAccess(id);
+                    break;
+                case "updateAccess":
+                    sharingManager.updateLinkAccess(parent, fileName, owner, id, access, expiration, function(result) {
                         if (result) res.status(200).send(id.toString());
                         else res.sendStatus(400);
                     });
-                };
-                if (id === undefined && username !== undefined) {
-                    accountManager.getInformation("id", "username", username, function(id) {
-                        if (id === undefined) res.sendStatus(404);
-                        else addLinkAccess(id);
+                    break;
+                case "removeAccess":
+                    sharingManager.removeLinkAccess(parent, fileName, owner, id, function(result) {
+                        if (result) res.sendStatus(200);
+                        else res.sendStatus(400);
                     });
-                } else {
-                    addLinkAccess(id);
-                }
-            } else if (action === "updateAccess") {
-                sharingManager.updateLinkAccess(parent, fileName, owner, id, access, expiration, function(result) {
-                    if (result) res.status(200).send(id.toString());
-                    else res.sendStatus(400);
-                });
-            } else if (action === "removeAccess")  {
-                sharingManager.removeLinkAccess(parent, fileName, owner, id, function(result) {
-                    if (result) res.sendStatus(200);
-                    else res.sendStatus(400);
-                });
-            } else if (action === "setPassword") {
-                if (password !== null) {
+                    break;
+                case "setPassword":
+                    if (!password) break;
                     sharingManager.updateLinkPassword(parent, fileName, owner, password, function(result) {
                         if (result) res.sendStatus(200);
                         else res.sendStatus(400);
                     });
-                }
-            } else if (action === "deletePassword") {
-                sharingManager.deleteLinkPassword(parent, fileName, owner, function(result) {
-                    if (result) res.sendStatus(200);
-                    else res.sendStatus(400);
-                });
-            } else {
-                res.sendStatus(404);
+                    break;
+                case "deletePassword":
+                    sharingManager.deleteLinkPassword(parent, fileName, owner, function(result) {
+                        if (result) res.sendStatus(200);
+                        else res.sendStatus(400);
+                    });
+                    break;
+                default:
+                    res.sendStatus(404);
+                    break;
             }
         }
     });
-
-
 });
 
 router.delete("/*", function(req, res, next) {
@@ -182,4 +186,5 @@ router.delete("/*", function(req, res, next) {
         else res.sendStatus(404);
     });
 });
+
 module.exports = router;

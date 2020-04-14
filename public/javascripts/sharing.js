@@ -134,7 +134,7 @@ var share = function(event) {
             $("#enable-sharing").click(function() {
                 if ($(this).first().html() === "Enable Sharing") {
                     $(this).prop("disabled", true);
-                    postRequest(event.data.filePath + "?sharing", "action=create", function(xmlHttpRequest) {
+                    postRequest(event.data.filePath + "?sharing", JSON.stringify({"action": "create"}), function(xmlHttpRequest) {
                         if (xmlHttpRequest.status === 201) {
                             $("#enable-sharing").removeAttr("disabled");
                             $("#enable-sharing").first().html("Disable Sharing");
@@ -157,7 +157,7 @@ var share = function(event) {
 
                 } else {
                     $(this).prop("disabled", true);
-                    postRequest(event.data.filePath + "?sharing", "action=delete", function(xmlHttpRequest) {
+                    postRequest(event.data.filePath + "?sharing", JSON.stringify({"action": "delete"}), function(xmlHttpRequest) {
                         if (xmlHttpRequest.status === 200) {
                             $("#enable-sharing").removeAttr("disabled");
                             $("#enable-sharing").first().html("Enable Sharing");
@@ -191,21 +191,13 @@ var share = function(event) {
 
         }
     });
-    /*
-postRequest(event.data.filePath + "?sharing", "link={\"action\": \"create\",  \"password\": \"password\"}", function(xmlHttpRequest) {
-    if (xmlHttpRequest.status === 201) {
-        showDialog(okDialog, "Share " + event.data.filePath, location.protocol + '//' + location.hostname + xmlHttpRequest.responseText);
-    } else {
-        showDialog(okDialog, "Share " + event.data.filePath, "Link already created");
-    }
-});
-*/
 };
 
 var updateAccess = function(event) {
     let accessIndex = event.detail.index;
     let id = (event.detail.id !== undefined) ? event.detail.id : -1;
-    postRequest(event.data.filePath + "?sharing", "action=updateAccess&access=" + accessIndex + "&id=" + id, function(xmlHttpRequest) {
+    let data = JSON.stringify({"action": "updateAccess", "access": accessIndex, "id": id});
+    postRequest(event.data.filePath + "?sharing", data, function(xmlHttpRequest) {
         if (xmlHttpRequest.status !== 200) {
             showSnackbar(basicSnackbar, "Couldn't change access");
         }
@@ -217,7 +209,8 @@ var addAccess = function(event) {
     let username = event.detail.username;
     let expiration = "None"; //event.detail.expiration; f
     if (username === undefined) return;
-    postRequest(event.data.filePath + "?sharing", "action=addAccess&access=" + accessIndex + "&username=" + username, function(xmlHttpRequest) {
+    let data = JSON.stringify({"action": "addAccess", "access": accessIndex, "username": username});
+    postRequest(event.data.filePath + "?sharing", data, function(xmlHttpRequest) {
         if (xmlHttpRequest.status !== 200) {
             showSnackbar(basicSnackbar, "Couldn't add account");
         } else {
@@ -238,7 +231,8 @@ var addAccess = function(event) {
 
 var removeAccess = function(event) {
     let id = (event.detail.id !== undefined) ? event.detail.id : -1;
-    postRequest(event.data.filePath + "?sharing", "action=removeAccess&id=" + id, function(xmlHttpRequest) {
+    let data = JSON.stringify({"action": "removeAccess", "id": id});
+    postRequest(event.data.filePath + "?sharing", data, function(xmlHttpRequest) {
         if (xmlHttpRequest.status !== 200) {
             showSnackbar(basicSnackbar, "Couldn't remove access");
         }
@@ -263,7 +257,8 @@ var showSetPassword = function(event) {
 
 var setPassword = function(event) {
     let password = event.detail.password;
-    postRequest(event.data.filePath + "?sharing", "action=setPassword&password=" + password, function(xmlHttpRequest) {
+    let data = JSON.stringify({"action": "setPassword", "password": password});
+    postRequest(event.data.filePath + "?sharing", data, function(xmlHttpRequest) {
         if (xmlHttpRequest.status !== 200) {
             showSnackbar(basicSnackbar, "Couldn't set password");
         }
@@ -271,7 +266,8 @@ var setPassword = function(event) {
 };
 
 var removePassword = function(event) {
-    postRequest(event.data.filePath + "?sharing", "action=deletePassword", function(xmlHttpRequest) {
+    let data = JSON.stringify({"action": "deletePassword"});
+    postRequest(event.data.filePath + "?sharing", data, function(xmlHttpRequest) {
         if (xmlHttpRequest.status === 200) {
             $("#password-button").first().html("Set Public Password");
         } else {

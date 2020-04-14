@@ -1,29 +1,45 @@
 const express = require('express');
-const router = express.Router();
-const url = require('url');
 const fs = require('fs');
-const readify = require('readify');
 const createError = require('http-errors');
-const authorization = require('../authorization');
+const readify = require('readify');
+const url = require('url');
+
 const accountManager = require('../accountManager');
+const authorization = require('../authorization');
 const sharingManager = require('../sharingManager');
-const strftime = require('strftime');
+
+const router = express.Router();
 
 router.get('/*', function(req, res, next) {
     let link = decodeURIComponent(url.parse(req.url).pathname).substring(1);
     let key = link.substring(0, link.indexOf("/"));
     let fileName = link.substring(link.indexOf("/") + 1, link.length);
 
-    const download = req.url.endsWith("?download") === true;
-    const authorize = req.url.endsWith("?authorize") === true;
+    const parameter = Object.keys(req.query)[0];
 
     sharingManager.linkCheck(key, fileName, authorization.getLoginTokenAudience(req),function(exists) {
         if (exists === true) {
-            sharingManager.getRealFilePathLink(key, fileName,  function(realFilePath) {
+            sharingManager.getRealFilePathLink(key, fileName, function (realFilePath) {
                 accountManager.getInformation("username", "id", authorization.getLoginTokenAudience(req), function (username) {
                     fs.stat(realFilePath, function (err, stats) {
-                        if (err === null) {
-                            if (!download && !authorize) {
+                        if (err) next(createError(404));
+                        switch (parameter) {
+                            case "authorize":
+                                sharingManager.doAuthorization(key, fileName, req, res, function (token) {
+                                    if (!token) return next(createError(403));
+                                    res.send(token);
+                                });
+                                break;
+                            case "download":
+                                sharingManager.doAuthorization(key, fileName, req, res, function (token) {
+                                    if (!token) return next(createError(403));
+                                    fs.readFile(realFilePath, function (err, contents) {
+                                        if (err) return next(createError(500));
+                                        res.send(contents);
+                                    });
+                                });
+                                break;
+                            default:
                                 if (stats.isDirectory()) {
                                     readify(realFilePath, {sort: 'type'}).then(function (files) {
                                         res.render('directory', {
@@ -32,32 +48,9 @@ router.get('/*', function(req, res, next) {
                                         });
                                     });
                                 } else {
-                                    res.render('fileViewer', {
-                                        username: username,
-                                        file: {path: fileName},
-                                    });
+                                    res.render('fileViewer', {username: username, file: {path: fileName}});
                                 }
-                            } else {
-                                sharingManager.doAuthorization(key, fileName, req, res,function(token) {
-                                    if (token !== false) {
-                                        if (download) {
-                                            fs.readFile(realFilePath, function (err, contents) {
-                                                if (err === null) {
-                                                    res.send(contents);
-                                                } else {
-                                                    next(createError(500));
-                                                }
-                                            });
-                                        } else {
-                                            res.send(token);
-                                        }
-                                    } else {
-                                        next(createError(403));
-                                    }
-                                });
-                            }
-                        } else {
-                            next(createError(404));
+                                break;
                         }
                     });
                 });
@@ -68,16 +61,5 @@ router.get('/*', function(req, res, next) {
         }
     });
 });
-
-/*
-function showError(err, req, res) {
-    let text = req.originalUrl + " (" + (err.status || 500) + " " + err.message + ")";
-    console.log("[Webserver] [" + strftime("%H:%M:%S") + "] [" + (req.ip) + "]: " + req.method + " " + text);
-    res.status(err.status || 500);
-    accountManager.getInformation("username", "id", authorization.getLoginTokenAudience(req), function(username) {
-        res.render('error', {message: err.message, status: err.status, username: username});
-    });
-}
- */
 
 module.exports = router;

@@ -11,8 +11,9 @@ let request = function(method, url, data, callback, authorization, contentType) 
     if (data == null) {
         xmlHttpRequest.send();
     } else {
-        if (contentType === undefined) contentType = "application/x-www-form-urlencoded";
+        if (contentType === undefined) contentType = "application/json";
         if (contentType !== null) xmlHttpRequest.setRequestHeader("Content-Type", contentType);
+
         xmlHttpRequest.send(data);
     }
 };
@@ -25,12 +26,16 @@ let postRequest = function(url, data, callback, authorization) {
     request("POST", url, data, callback, authorization);
 };
 
+let putRequest = function(url, data, callback, authorization) {
+    request("PUT", url, data, callback, authorization);
+};
+
 let patchRequest = function(url, data, callback, authorization) {
     request("PATCH", url, data, callback, authorization);
 };
 
-let deleteRequest = function(url, callback, authorization) {
-    request("DELETE", url, null, callback, authorization);
+let deleteRequest = function(url, data, callback, authorization) {
+    request("DELETE", url, data, callback, authorization);
 };
 
 function getQueryVariable(variable) {

@@ -42,17 +42,16 @@ function getAccountsSummary(id, next) {
     getInformation("privilege", "id", id, function(privilege) {
         getInformation("username", "id", id, function(username) {
             database.all("SELECT id, username, privilege, encryptKey NOT NULL AS encrypted, enabled FROM accounts WHERE ? OR id = ? OR privilege < ? ORDER BY username COLLATE NOCASE", [username === "admin", id, privilege], function (results) {
-
                 let resultsById = {};
                 for (let result in results) {
                     if (results.hasOwnProperty(result)) {
                         result = results[result];
-                        let id = result.id;
-                        delete result[id];
-                        resultsById[id] = result;
+                        let accountID = result.id;
+                        delete result[accountID];
+                        resultsById[accountID] = result;
                     }
                 }
-                if (next !== undefined) next(results);
+                if (next !== undefined) next(resultsById);
             });
         });
     });

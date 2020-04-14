@@ -1,387 +1,233 @@
- $(document).ready(function() {
-    var main = $("#main_accounts");
-    var accounts = $("#accounts");
-    var currentID = parseJwt($.cookie("loginToken")).aud;
-    var currentPrivilege;
-    var initialMD5 = null;
-    var scrollHeight = null;
-    var accounts_inputs;
-
-    var inputStorage;
-
-    var showNewAccount = function(accountID, accountUsername, accountPrivilege, encrypted, enabled) {
-        var encrypted_checked = "";
-        var enabled_checked = "";
-        if (encrypted) encrypted_checked = "checked";
-        if (enabled) enabled_checked = "checked";
-
-
-        accounts_inputs.append("<tr>" +
-            "<td><input class=\"account_usernames first-column\" type=\"text\" autocomplete='off' autocapitalize=\"none\" name=\"" + accountID + "\" value=\"" + accountUsername + "\" placeholder='New username'></td>" +
-            "<td><input class=\"account_passwords\" type=\"password\" name=\"" + accountID + "\" placeholder='••••••••••••••••••••••••' onfocus=\"this.placeholder = ''\" onblur=\"this.placeholder = '••••••••••••••••••••••••'\"></td>" +
-            "<td><input class=\"account_privileges\" type=\"text\" maxlength=\"5\" autocomplete='off' autocapitalize=\"none\" name=\"" + accountID + "\" value='" + accountPrivilege + "' placeholder='New privilege'></td>" +
-            "<td><div class=\"account_encrypted mdc-checkbox\" name=\"" + accountID + "\"> <input type=\"checkbox\" " + encrypted_checked + " class=\"mdc-checkbox__native-control\"> <div class=\"mdc-checkbox__background\"> <svg class=\"mdc-checkbox__checkmark\" viewBox=\"0 0 24 24\"> <path class=\"mdc-checkbox__checkmark-path\" fill=\"none\" d=\"M1.73,12.91 8.1,19.28 22.79,4.59\"/> </svg> <div class=\"mdc-checkbox__mixedmark\"></div> </div> </div></td>" +
-            "<td><div class=\"account_enabled mdc-checkbox\" name=\"" + accountID + "\"> <input type=\"checkbox\" " + enabled_checked + " class=\"mdc-checkbox__native-control\"> <div class=\"mdc-checkbox__background\"> <svg class=\"mdc-checkbox__checkmark\" viewBox=\"0 0 24 24\"> <path class=\"mdc-checkbox__checkmark-path\" fill=\"none\" d=\"M1.73,12.91 8.1,19.28 22.79,4.59\"/> </svg> <div class=\"mdc-checkbox__mixedmark\"></div> </div> </div></td>" +
-            "<td><button class=\"account_delete mdc-icon-button material-icons\" name=\"" + accountID + "\">delete</button> </td>" +
-            "</tr>");
-    };
-
-    var getAccounts = function() {
-        $("#accounts_inputs").remove();
-        accounts.append("<tbody id=\"accounts_inputs\"></tbody>");
-        accounts_inputs = $("#accounts_inputs");
-        accounts_inputs.append("<tr><td><h4 class='first-column'>Username</h4></td><td><h4>Password</h4></td><td><h4>Privilege Level</h4></td><td><h4>Encrypted</h4></td><td><h4>Enabled</h4></td><td></td></tr><hr>");
-
-        inputStorage = {};
-        inputStorage["username"] = {};
-        inputStorage["privilege"] = {};
-
-        getRequest("/accounts/list", function(xmlHttpRequest) {
-            if (xmlHttpRequest.status === 200) {
-                if (xmlHttpRequest.responseURL.search("login") !== -1) {
-                    window.location = "/logout";
-                }
-
-                var accountsList = JSON.parse(xmlHttpRequest.responseText.trim());
-
-                var currentAccount = accountsList.filter(account => account.id === currentID)[0];
-                var currentUsername = currentAccount["username"];
-                currentPrivilege = currentAccount["privilege"];
-                var currentEncrypted = currentAccount["encrypted"] === 1;
-                $("#currentUsername").text(currentUsername);
-
-
-                showNewAccount(currentID, currentUsername, currentPrivilege, currentEncrypted,true);
-
-                if (currentPrivilege === 100) {
-                    $(".account_privileges[name=" + currentID + "]").val("ADMIN");
-                }
-
-                $(".account_privileges[name=" + currentID + "]").prop("disabled", true);
-                $(".account_enabled[name=" + currentID + "]").addClass("mdc-checkbox--disabled");
-                $(".account_enabled[name=" + currentID + "]").find('input').prop("disabled", true);
-
-                for (var account in accountsList) {
-                    account = accountsList[account];
-                    var accountID = account["id"];
-                    var accountUsername = account["username"];
-                    var accountPrivilege = account["privilege"];
-                    var accountEncrypted = account["encrypted"] === 1;
-                    var accountEnabled = account["enabled"] === 1;
-                    if (accountID !== currentID) {
-                        if ((currentPrivilege > 0 && currentPrivilege > accountPrivilege  && accountUsername !== "admin") || currentUsername === "admin") {
-                            showNewAccount(accountID, accountUsername, accountPrivilege, accountEncrypted, accountEnabled);
-                            if (accountPrivilege === 100) {
-                                $(".account_privileges[name=" + accountID + "]").val("ADMIN");
-                            }
-                            if (currentUsername !== "admin" && currentPrivilege === 1) {
-                                $(".account_privileges[name=" + accountID + "]").prop("disabled", true);
-                            }
-
-                        }
-                    }
-
-                    if (account["username"] === "admin") {
-                        $(".account_usernames[name=" + accountID + "]").prop("disabled", true);
-                        $(".account_privileges[name=" + accountID + "]").prop("disabled", true);
-                        $(".account_enabled[name=" + accountID + "]").addClass("mdc-checkbox--disabled");
-                        $(".account_enabled[name=" + accountID + "]").find('input').prop("disabled", true);
-                        $(".account_delete[name=" + accountID + "]").prop("disabled", true);
-                    }
-
-                    inputStorage["username"][accountID] = accountUsername;
-                    inputStorage["privilege"][accountID] = accountPrivilege;
-                }
-
-
-                if (currentPrivilege > 0 || currentUsername === "admin") {
-                    accounts_inputs.append(//"<tr><td>New account username</td><td>New account password</td><td></td><td></td></tr>" +
-                        "</tr><tr><td><input id=\"new_account_username\" class='first-column' type=\"text\" autocomplete='off' autocapitalize=\"none\" placeholder='New account username'></td>" +
-                        "<td><input id=\"new_account_password\" type=\"password\" placeholder='New account password'></td>" +
-                        "<td><input id=\"new_account_privilege\" type=\"text\" maxlength=\"5\" autocomplete='off' autocapitalize=\"none\" placeholder='New account privilege'></td>" +
-                        "<td><div id=\"new_account_encrypted\" class=\"mdc-checkbox\"> <input type=\"checkbox\" class=\"mdc-checkbox__native-control\"> <div class=\"mdc-checkbox__background\"> <svg class=\"mdc-checkbox__checkmark\" viewBox=\"0 0 24 24\"> <path class=\"mdc-checkbox__checkmark-path\" fill=\"none\" d=\"M1.73,12.91 8.1,19.28 22.79,4.59\"/> </svg> <div class=\"mdc-checkbox__mixedmark\"></div> </div> </div></td>" +
-                        "<td><button class=\"mdc-icon-button material-icons\" id=\"new_account_submit\">add</button></td><td></td>" +
-                        "</tr>");
-                    if (currentUsername !== "admin" && currentPrivilege === 1) {
-                        $("#new_account_privilege").val("0");
-                        $("#new_account_privilege").prop("disabled", true);
-                    }
-                }
-
-                let iconButtons = document.getElementsByClassName('mdc-icon-button');
-                for (let i = 0; i < iconButtons.length; i++) {
-                    new mdc.ripple.MDCRipple(iconButtons[i]).unbounded = true;
-                }
-
-                let checkBoxes = $('.mdc-checkbox');
-                for (let i = 0; i < checkBoxes.length; i++) {
-                    new mdc.checkbox.MDCCheckbox(checkBoxes[i]);
-
-                }
-
-                $("#new_account_submit").click(function() {
-                    if (!newAccount()) {
-                        showSnackbar(basicSnackbar, "New account username and password cannot be empty");
-                    }
-                });
-
-                $("#new_account_submit").keypress(function(e) {
-                    var key = e.which;
-                    if (key === 13) {
-                        e.preventDefault();
-                    }
-                });
-
-                $('.account_usernames').blur(submitCheck);
-
-                $('.account_passwords').blur(submitCheck);
-
-                $('.account_privileges').blur(submitCheck);
-
-                $(".account_encrypted").click(encryptAccount);
-
-                $(".account_enabled").click(disableAccount);
-
-                $(".account_delete").click(deleteAccount);
-
-                $("#new_account_username").focus();
-
-                if (scrollHeight != null) accounts.scrollTop(accounts[0].scrollHeight - scrollHeight);
-            }
-        });
-
-    };
-
-    var updateAccount = function(data, url) {
-        postRequest("/accounts/" + url, data, function(xmlHttpRequest) {
-            getInitialHash();
-            if (xmlHttpRequest.status === 200) {
-                $("#currentUsername").text(currentUsername);
-                $("#accountCard").first().find("h2").text(currentUsername);
-            }
-
-            if (xmlHttpRequest.status !== 200) showSnackbar(basicSnackbar, xmlHttpRequest.responseText);
-            if (xmlHttpRequest.status !== 200 || (xmlHttpRequest.status === 200 && (url === "delete" || url === "new"))) {
-                scrollHeight = accounts[0].scrollHeight - accounts.scrollTop();
-                getAccounts();
-            }
-        });
-    };
-
-    var getInitialHash = function() {
-        getRequest("/accounts/list/hash", function(xmlHttpRequest) {
-            if (xmlHttpRequest.status === 200) {
-                initialMD5 = xmlHttpRequest.responseText;
-            }
-        });
-    };
-
-    getAccounts();
-    getInitialHash();
-
-    var submit = function() {
-        var postDictionary = {};
-
-        var privilegeInputs = $(".account_privileges");
-        privilegeInputs.each(function(index) {
-            var id = $(this)[0].name;
-            var newPrivilege = $(this).val().trim();
-
-            postDictionary[id] = {};
-
-            if (newPrivilege.toUpperCase() === "ADMIN") newPrivilege = 100;
-            if (newPrivilege >= 100) {
-                newPrivilege = 100;
-                if (currentUsername !== "admin" && inputStorage["privilege"][id] !== 100) newPrivilege -= 1;
-
-            }
-
-            if (inputStorage["privilege"][id] !== Number(newPrivilege) && newPrivilege !== "") {
-                if (newPrivilege !== 100 && (isNaN(newPrivilege) || newPrivilege < 0)) {
-                    showSnackbar(basicSnackbar, "Privilege level must be a positive number");
-                    return true;
-                }
-                inputStorage["privilege"][id] = Number(newPrivilege);
-                if (id === currentID) {
-                    currentPrivilege = newPrivilege;
-                }
-                if (newPrivilege === 100) newPrivilege = "ADMIN";
-                postDictionary[id]["new_privilege"] = newPrivilege;
-            }
-            if (newPrivilege === "") {
-                var oldPrivilege = inputStorage["privilege"][id];
-                if (oldPrivilege === 100) oldPrivilege = "ADMIN";
-                $(this).val(oldPrivilege);
-            } else {
-                if (newPrivilege === 100) newPrivilege = "ADMIN";
-                $(this).val(newPrivilege);
-            }
-        });
-
-        var passwordInputs = $(".account_passwords");
-        passwordInputs.each(function(index) {
-            var id = $(this)[0].name;
-            var newPassword = $(this).val();
-
-            if (newPassword.trim() !== "") {
-                postDictionary[id]["new_password"] = newPassword;
-            }
-            $(this).val("");
-        });
-
-        var usernameInputs = $(".account_usernames");
-        usernameInputs.each(function(index) {
-            var id = $(this)[0].name;
-            var newUsername = $(this).val().trim();
-
-            if (inputStorage["username"][id] !== newUsername && newUsername !== "") {
-                inputStorage["username"][id] = newUsername;
-                if (id === currentID) {
-                    currentUsername = newUsername;
-                }
-                postDictionary[id]["new_username"] = newUsername;
-			}
-			if (newUsername === "") {
-				$(this).val(inputStorage["username"][id]);
-			} else {
-				$(this).val(newUsername);
-			}
-        });
-
-        var noChange = true;
-        for (var id in postDictionary) {
-            if (postDictionary.hasOwnProperty(id)) {
-                var data = postDictionary[id];
-                if (Object.keys(data).length === 0) {
-                    continue;
-                }
-                noChange = false;
-                var postBody = "id=" + encodeURIComponent(id) + "&";
-                if (data.hasOwnProperty("new_username")) {
-                    var newUsername = data["new_username"];
-                    postBody += "new_username=" + encodeURIComponent(newUsername);
-                    updateAccount(postBody, "update/username");
-                }
-                postBody = "id=" + encodeURIComponent(id) + "&";
-                if (data.hasOwnProperty("new_password")) {
-                    var newPassword = data["new_password"];
-                    postBody += "new_password=" + encodeURIComponent(newPassword);
-                    updateAccount(postBody, "update/password");
-                }
-                postBody = "id=" + encodeURIComponent(id) + "&";
-                if (data.hasOwnProperty("new_privilege")) {
-                    var newPrivilege = data["new_privilege"];
-                    postBody += "new_privilege=" + encodeURIComponent(newPrivilege);
-                    updateAccount(postBody, "update/privilege");
-                }
-            }
-        }
-
-        if (newAccount()) noChange = false;
-
-        if (noChange) {
-            //showSnackbar(basicSnackbar, "No changes were made");
-        }
-    };
-
-    var submitCheck = function() {
-        getRequest("/accounts/list/hash", function (xmlHttpRequest) {
-            if (xmlHttpRequest.status === 200) {
-                if (xmlHttpRequest.responseURL.search("login") !== -1) {
-                    window.location = "/logout";
-                }
-                var md5 = xmlHttpRequest.responseText;
-                if (initialMD5 === md5) {
-                    submit();
-                } else {
-                    showDialog(yesNoDialog, "MakCloud", "Changes have been made since you entered this site.\nDo you want to override those changes?", {"yes": function() {submit();}});
-                }
-            }
-        });
-    };
-
-    $(document).keypress(function(e) {
-        var key = e.which;
-        if (key === 13) {
-            document.activeElement.blur();
-            submitCheck();
-        }
-    });
-
-    var newAccount = function() {
-		if (currentPrivilege > 0 || currentUsername === "admin") {
-
-			var usernameInput = $("#new_account_username");
-			var passwordInput = $("#new_account_password");
-			var privilegeInput = $("#new_account_privilege");
-            var encryptedInput = $("#new_account_encrypted").find("input");
-
-			var username = usernameInput.val();
-			var password = passwordInput.val();
-            var privilege = privilegeInput.val();
-            var encrypted = encryptedInput.is(":checked");
-
-            if (privilege.toUpperCase() !== "ADMIN" && (isNaN(privilege) || privilege < 0)) {
-                showSnackbar(basicSnackbar, "Privilege level must be a positive number");
-                return false;
-            }
-
-            if (!isNaN(privilege) && privilege > 100) {
-                privilege = 100;
-                if (currentUsername !== "admin") privilege -= 1;
-                privilege = privilege.toString();
-            }
-
-			if (username.trim() !== "" && password.trim() !== "") {
-				var data = "";
-				data += "username=" + encodeURIComponent(username.trim());
-                data += "&password=" + encodeURIComponent(password);
-				if (privilege.trim() !== "") data += "&privilege=" + encodeURIComponent(privilege);
-				data += "&encrypted=" + encodeURIComponent(encrypted);
-				updateAccount(data, "new");
-				return true;
-			}
-		}
-        return false;
-    };
-
-     var encryptAccount = function() {
-         var id = $(this).attr("name");
-         var data = "id=" + encodeURIComponent(id);
-         if ($(this).find("input").is(":checked")) {
-             updateAccount(data, "encrypt");
-         } else {
-             updateAccount(data, "decrypt");
-
-         }
-     };
-
-    var disableAccount = function() {
-        var id = $(this).attr("name");
-        var data = "id=" + encodeURIComponent(id);
-        if ($(this).find("input").is(":checked")) {
-            updateAccount(data, "enable");
-        } else {
-            updateAccount(data, "disable");
-
-        }
-    };
-
-    var deleteAccount = function() {
-        var id = $(this)[0].name;
-        var data = "id=" + encodeURIComponent(id);
-
-        var prompt = "Are you sure you want to delete " + inputStorage["username"][id] + "?";
-        if (currentID === id) {
-            prompt = "Are you sure you want to delete your account?";
-        }
-
-        showDialog(yesNoDialog, "MakCloud", prompt, {"yes": function() {
-            updateAccount(data, "delete");
-            if (currentID === id) {
-                window.location = "/logout";
-            }
-        }});
-    };
+const currentID = parseJwt($.cookie("loginToken")).aud;
+let accountFieldValues;
+let passwordDialog;
+
+$(document).ready(function() {
+    getAccountInfo(displayAccountInfo);
 
 });
+
+$(document).keypress(function(e) {
+    let key = e.which;
+    if (key === 13) {
+        $(document.activeElement).blur();
+        $(".new-account.add").trigger("click");
+    }
+});
+
+function getAccountInfo(next) {
+    getRequest("/accounts/list", function(xmlHttpRequest) {
+        if (xmlHttpRequest.status === 200) {
+            let accountInfo = JSON.parse(xmlHttpRequest.responseText);
+            if (next) next(accountInfo);
+        } else {
+            if (next) next();
+        }
+    })
+}
+
+function displayAccountInfo(accountInfo) {
+    if (!accountInfo) return showSnackbar(basicSnackbar, "Could not retrieve accounts");
+    let table = $("#accounts").find("tbody");
+    let tableRows = $("#accounts").find("tr:not(.first-row)");
+    tableRows.remove();
+    let currentInfo = accountInfo[currentID];
+    table.append(getAccountRowHTML(currentInfo.id, currentInfo.username, currentInfo.privilege, currentInfo.encrypted, currentInfo.enabled));
+    let adminID;
+    for (let id in accountInfo) {
+        if (!accountInfo.hasOwnProperty(id)) continue;
+        id = parseInt(id);
+        let info = accountInfo[id];
+        if (info.username === "admin") adminID = id;
+        if (id === currentInfo.id) continue;
+        table.append(getAccountRowHTML(info.id, info.username, info.privilege, info.encrypted, info.enabled));
+    }
+    $(`.account.username[name=${adminID}]`).prop("disabled", true);
+    $(`.account.encryption[name=${adminID}]`).prop("disabled", true);
+    $(`.account.enabled[name=${adminID}]`).prop("disabled", true);
+    $(`.account.delete[name=${adminID}]`).prop("disabled", true);
+    $(`.account.privilege[name=${currentID}]`).prop("disabled", true);
+    $(`.account.enabled[name=${currentID}]`).prop("disabled", true);
+    table.append(getNewAccountRowHTML());
+    accountFieldValues = accountInfo;
+    $(".account.username, .account.privilege").blur(updateField);
+    $(".account.password").blur(function(event) {
+        let field = $(event.target);
+        let id = field.attr("name");
+        let encrypted = accountInfo[id].encrypted;
+        if (encrypted === 1) showPromptPassword(event);
+        else updateField(event);
+    })
+    $(".account.encrypted").click(showPromptPassword);
+    $(".account.enabled").click(updateCheckbox);
+    $(".account.delete, .new-account.add").click(updateButton);
+}
+
+function getAccountRowHTML(id, username, privilege, encrypted, enabled) {
+    if (privilege === 100) privilege = "ADMIN";
+    encrypted = (encrypted === 1) ? "checked" : "";
+    enabled = (enabled === 1) ? "checked" : "";
+    return `<tr name=${id}>` +
+           `<td><input class='username account first-column' name=${id} type='text' autocomplete='off' autocapitalize='none' value='${username}' placeholder='New username'></td>` +
+           `<td><input class='password account' name=${id} type='password' placeholder='••••••••••••••••••••••••' onfocus='this.placeholder = ""' onblur='this.placeholder = "••••••••••••••••••••••••"'></td>` +
+           `<td><input class='privilege account' name=${id} type='text' maxlength='5' autocomplete='off' autocapitalize='none' value='${privilege}' placeholder='New privilege'></td>` +
+           `<td><div class='mdc-checkbox'><input type='checkbox' ${encrypted} class='encrypted account mdc-checkbox__native-control' name=${id}><div class='mdc-checkbox__background'><svg class='mdc-checkbox__checkmark' viewBox='0 0 24 24'><path class='mdc-checkbox__checkmark-path' fill='none' d='M1.73,12.91 8.1,19.28 22.79,4.59'/></svg><div class='mdc-checkbox__mixedmark'></div></div></div></td>` +
+           `<td><div class='mdc-checkbox'><input type='checkbox' ${enabled} class='enabled account mdc-checkbox__native-control' name=${id}><div class='mdc-checkbox__background'><svg class='mdc-checkbox__checkmark' viewBox='0 0 24 24'><path class='mdc-checkbox__checkmark-path' fill='none' d='M1.73,12.91 8.1,19.28 22.79,4.59'/></svg><div class='mdc-checkbox__mixedmark'></div></div></div></td>` +
+           `<td><button class='delete account mdc-icon-button material-icons' name=${id}>delete</button></td>` +
+           `</tr>`;
+}
+
+function getNewAccountRowHTML() {
+    return `<tr name=-1>` +
+           `<td><input class='username new-account first-column' name=-1 type='text' autocomplete='off' autocapitalize='none' placeholder='New account username'></td>` +
+           `<td><input class='password new-account' name=-1 type='password' placeholder='New account username'></td>` +
+           `<td><input class='privilege new-account' name=-1 type='text' maxlength='5' autocomplete='off' autocapitalize='none' placeholder='New account privilege'></td>` +
+           `<td><div class='mdc-checkbox'><input type='checkbox' class='encrypted new-account mdc-checkbox__native-control' name=-1><div class='mdc-checkbox__background'><svg class='mdc-checkbox__checkmark' viewBox='0 0 24 24'><path class='mdc-checkbox__checkmark-path' fill='none' d='M1.73,12.91 8.1,19.28 22.79,4.59'/></svg><div class='mdc-checkbox__mixedmark'></div></div></div></td>` +
+           `<td><button class='add new-account mdc-icon-button material-icons' name=-1>add</button></td>` +
+           `<td></td>` +
+           `</tr>`;
+}
+
+function updateCallback(xmlHttpRequest) {
+    if (xmlHttpRequest.status !== 200) {
+        showSnackbar(basicSnackbar, xmlHttpRequest.responseText);
+        getAccountInfo(displayAccountInfo);
+    }
+}
+
+function updateValidation(id, field, fieldName, newValue) {
+    switch (fieldName) {
+        case "username":
+            newValue = newValue.trim();
+            break;
+        case "password":
+            if (newValue.trim() === "") return false;
+            field.val("");
+            break;
+        case "privilege":
+            newValue = newValue.trim();
+            if (newValue >= 100 || newValue.toUpperCase() === "ADMIN") newValue = 100;
+            newValue = parseInt(newValue);
+            if (isNaN(newValue) || newValue < 0) {
+                showSnackbar(basicSnackbar, "Privilege must be a whole number from 0 to 100");
+                return false;
+            }
+            if (newValue >= 100) field.val("ADMIN");
+            else field.val(newValue);
+            break;
+    }
+    let oldValue = accountFieldValues[id][fieldName];
+    if (oldValue !== newValue) {
+        accountFieldValues[id][fieldName] = newValue;
+        return newValue;
+    } else return false;
+}
+
+function updateField(event, data) {
+    let field = $(event.target);
+    let value = field.val();
+    let id = parseInt(field.attr("name"));
+    if (!data) data = {};
+    data["id"] = id;
+    let url = location.pathname + "/";
+    let fieldName;
+    if (field.hasClass("username")) fieldName = "username";
+    if (field.hasClass("password")) fieldName = "password";
+    if (field.hasClass("privilege")) fieldName = "privilege";
+    value = updateValidation(id, field, fieldName, value);
+    if (value) {
+        data[fieldName] = value;
+        patchRequest(url + fieldName, JSON.stringify(data), updateCallback)
+    } else {
+        let oldValue = accountFieldValues[id][fieldName];
+        if (fieldName === "privilege" && oldValue === 100) oldValue = "ADMIN";
+        field.val(oldValue);
+    }
+}
+
+function showPromptPassword(event) {
+    let field = $(event.target);
+    if (field.val().trim() === "") return;
+    let id = parseInt(field.attr("name"));
+    let username = accountFieldValues[id].username;
+    let dialogBody = `<div class='mdc-text-field'><input class='mdc-text-field__input' id='current-password' type='password' tabindex='1'><div class='mdc-line-ripple'></div><label class='mdc-floating-label'>Password</label></div>`;
+    passwordDialog = showDialog(okDialog, "Confirm current password for " + username, dialogBody);
+    let textFields = document.getElementsByClassName('mdc-text-field');
+    for (let i = 0; i < textFields.length; i++) {
+        new mdc.textField.MDCTextField(textFields[i]);
+    }
+    let doneButton = $(".mdc-dialog__actions").find("button");
+    doneButton.find("span").text("DONE");
+
+    passwordDialog.listen("MDCDialog:closing", function() {
+        let currentPassword = $("#current-password");
+        let password = currentPassword.val();
+        if (field.hasClass("password")) updateField(event, {"password": password});
+        if (field.hasClass("encrypted")) updateCheckbox(event, {"password": password});
+    })
+}
+
+function updateCheckbox(event, data) {
+    let checkbox = $(event.target);
+    let checked = checkbox.prop("checked");
+    let id = parseInt(checkbox.attr("name"));
+    if (!data) data = {};
+    data["id"] = id;
+    let url = location.pathname + "/";
+    let checkboxName;
+    if (checkbox.hasClass("encrypted")) checkboxName = "encrypted";
+    if (checkbox.hasClass("enabled")) checkboxName = "enabled";
+    data[checkboxName] = checked;
+    accountFieldValues[id][checkboxName] = checked ? 1 : 0;
+    patchRequest(url + checkboxName, JSON.stringify(data), updateCallback)
+}
+
+function updateButton(event) {
+    let button = $(event.target);
+    let id = parseInt(button.attr("name"));
+    let data = {"id": id};
+    let url = location.pathname + "/";
+
+    if (button.hasClass("delete")) {
+        let prompt = "Are you sure you want to delete " + accountFieldValues[id].username + "?";
+        if (id === currentID) prompt = "Are you sure you want to delete your account?";
+        showDialog(yesNoDialog, "MakCloud", prompt, {"yes": function() {
+                deleteRequest(url + "delete", JSON.stringify(data), updateCallback);
+                if (id === currentID) {
+                    window.location = "/logout";
+                } else {
+                    delete accountFieldValues[id];
+                    $("#accounts").find(`tr[name=${id}]`).remove();
+                }
+            }});
+    }
+    if (button.hasClass("add")) {
+        let username = $(".new-account.username").val().trim();
+        let password = $(".new-account.password").val();
+        let privilege = $(".new-account.privilege").val().trim();
+        let encrypted = $(".new-account.encrypted").prop("checked");
+        if (username === "" || password.trim() === "") return;
+        if (privilege === "") privilege = undefined;
+        if (privilege && privilege.toUpperCase() !== "ADMIN") {
+            privilege = parseInt(privilege);
+            if (isNaN(privilege) || privilege < 0) {
+                showSnackbar(basicSnackbar, "Privilege must be a whole number from 0 to 100");
+                return;
+            }
+        }
+        data["username"] = username;
+        data["password"] = password;
+        if (privilege) data["privilege"] = privilege;
+        data["encrypted"] = encrypted;
+        putRequest(url + "new", JSON.stringify(data), function(xmlHttpRequest) {
+            if (xmlHttpRequest.status === 0) {
+                showSnackbar(basicSnackbar, "No connection");
+            } else {
+                if (xmlHttpRequest.status !== 200) {
+                    showSnackbar(basicSnackbar, xmlHttpRequest.responseText);
+                }
+                getAccountInfo(displayAccountInfo);
+            }
+        });
+    }
+}

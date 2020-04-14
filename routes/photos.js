@@ -1,16 +1,16 @@
 const express = require('express');
-const router = express.Router();
-const createError = require('http-errors');
 const fs = require("fs");
+const createError = require('http-errors');
 const os = require('os');
 const path = require('path');
 const url = require('url');
-const log = require("../log");
+
 const accountManager = require('../accountManager');
-const encryptionManager = require("../encryptionManager");
 const authorization = require('../authorization');
 const fileManager = require("../fileManager");
 const preferences = require('../preferences');
+
+const router = express.Router();
 
 router.get("/", function(req, res, next) {
     let filePath = decodeURIComponent(url.parse(req.url).pathname).substring(1);

@@ -1,0 +1,51 @@
+
+
+/*
+.box {
+    border-radius: 5px;
+    width: 80%;
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 3%;
+    top: 10%;
+    margin: auto;
+    padding: 20px 20px 35px 20px;
+}
+*/
+
+.box {
+    width: 80%;
+    height: 80%;
+    position: center;
+    margin-left: auto;
+    margin-right: auto;
+    transform: translateY(7%);
+    padding: 20px;
+
+}
+
+
+#title {
+    display: inline-block; margin-top: 0; margin-bottom: 0;
+}
+
+#hostname {
+    margin-top: 0; display: inline-block;
+}
+
+#console {
+    height: 85%;
+    border-radius: 5px;
+    overflow: scroll;
+    padding: 5px;
+    background-color: #151515;
+}
+
+
+#console_text {
+    color: white;
+    font-family: monospace;
+    font-size: 15px;
+    margin-top: 0;
+}
