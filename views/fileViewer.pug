@@ -15,6 +15,9 @@ block drawer
                 a.mdc-list-item.mdc-list-item--activated(href='/files')
                     i.material-icons.mdc-list-item__graphic(aria-hidden='true') folder
                     span.mdc-list-item__text File Manager
+                a.mdc-list-item#edit(style="display:none")
+                    i.material-icons.mdc-list-item__graphic(aria-hidden='true') edit
+                    span.mdc-list-item__text Edit
                 a.mdc-list-item#download
                     i.material-icons.mdc-list-item__graphic(aria-hidden='true') cloud_download
                     span.mdc-list-item__text Download
@@ -34,8 +37,6 @@ block drawer
 
 block content
     div#content(hidden)
-
-
     #authorization.box.mdc-card.mdc-elevation--z8(style="display: none")
         #title.demo-card__title.mdc-typography.mdc-typography--headline4 Password Required
         br

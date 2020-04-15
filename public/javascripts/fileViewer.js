@@ -1,6 +1,10 @@
 let usedPasswordMemory;
 let authorized = false;
 
+const supportedTypes = ["txt", "json", "conf", "log", "properties", "yml", "pdf", "apng", "bmp", "gif", "ico", "cur", "jpg", "jpeg", "pjpeg", "pjp", "png", "svg", "webp", "mp3", "m4a"];
+const plainText = ["txt", "json", "conf", "log", "properties", "yml"];
+let oldFileContents;
+
 let getFile = function(filePath, mode, authorization) {
     getRequest(filePath + "?" + mode, function(xmlHttpRequest) {
         if (xmlHttpRequest.status === 200) {
@@ -8,7 +12,6 @@ let getFile = function(filePath, mode, authorization) {
             content.show();
             if (mode === "authorize") {
                 authorized = true;
-                let supportedTypes = ["txt", "json", "log", "properties", "yml", "pdf", "apng", "bmp", "gif", "ico", "cur", "jpg", "jpeg", "pjpeg", "pjp", "png", "svg", "webp", "mp3", "m4a"];
                 let extension = filePath.split(".").pop().toLowerCase();
                 if (supportedTypes.includes(extension)) {
                     switch (extension) {
@@ -38,6 +41,7 @@ let getFile = function(filePath, mode, authorization) {
             if (mode === "download") {
                 content.append("<pre id='fileContents' class='selectable mdc-elevation--z10'></pre>");
                 $("#fileContents").text(xmlHttpRequest.responseText);
+                $("#edit").show();
                 hideAuthorization();
             }
 
@@ -54,15 +58,18 @@ let getFile = function(filePath, mode, authorization) {
 };
 
 var save = function(event) {
-    var filePath = event.data.filePath;
-    var newFileContents = $("#fileContents").text();
-    var data = "newFileContents=" + encodeURIComponent(newFileContents);
+    const filePath = event.data.filePath;
+    const newFileContents = $("#fileContents").text();
+    let blob = new Blob([newFileContents]);
+    let formData = new FormData();
+    formData.append('fileContents', filePath);
+    formData.append('data', blob);
 
-    postRequest(filePath, data, function(xmlHttpRequest) {
+    request("PUT", filePath, formData, function(xmlHttpRequest) {
         if (xmlHttpRequest.status === 200) {
             showSnackbar(basicSnackbar, xmlHttpRequest.responseText);
         }
-    });
+    }, undefined, null);
 };
 
 var revert = function(event) {
@@ -82,6 +89,28 @@ var deleteFile = function(event) {
                 }
             });
         }});
+};
+
+var edit = function(event) {
+    const filePath = event.data.filePath;
+    const extension = filePath.split(".").pop().toLowerCase();
+    if (!authorized || !plainText.includes(extension)) return;
+    let fileContents = $("#fileContents").text();
+
+    let mode = $("#edit").find("span").text();
+    if (mode === "Save") {
+        if (fileContents !== oldFileContents) save(event);
+        $("#fileContents").prop("contenteditable", false);
+        $("#edit").find("i").text("edit");
+        $("#edit").find("span").text("Edit");
+    } else {
+        oldFileContents = fileContents;
+        $("#fileContents").prop("contenteditable", true);
+        $("#edit").find("i").text("save");
+        $("#edit").find("span").text("Save");
+
+    }
+
 };
 
 var download = function(event) {
@@ -134,19 +163,14 @@ $(document).ready(function() {
     $("#back").click(function() {
         window.open(location.pathname + "/..", "_self");
     });
-    
+
+    $("#edit").click({filePath: filePath}, edit);
+
     $("#download").click({filePath: filePath}, download);
 
     $("#share").click({filePath: filePath}, share);
 
     $("#delete").click({filePath: filePath}, deleteFile);
-
-    $(document).keypress(function(e) {
-        var key = e.which;
-        if (key === 13) {
-            authorize({data: {filePath: filePath}})
-        }
-    });
 
     $("#submit").click({filePath: filePath}, authorize);
 
@@ -155,3 +179,22 @@ $(document).ready(function() {
         window.location.href = "/logout";
     });
 });
+
+$(document).keydown(function(event) {
+    var key = event.which;
+    if (key === 13) {
+        authorize({data: {filePath: filePath}})
+    }
+
+    if ((event.ctrlKey || event.metaKey) && key === 83) {
+        event.preventDefault();
+        let mode = $("#edit").find("span").text();
+        if (mode === "Save") $("#edit").trigger("click");
+    }
+});
+
+$(window).on("beforeunload", function() {
+    let mode = $("#edit").find("span").text();
+    if (mode === "Save") return "Changes you made may not be saved.";
+});
+

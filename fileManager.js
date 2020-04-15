@@ -75,14 +75,33 @@ let readFile = function(filePath, key, iv, next) {
                 if (next !== undefined) next(buffer);
             });
         });
-
-
     } else {
         fs.readFile(filePath, function (err, contents) {
             if (next !== undefined) next(contents);
         });
     }
+};
 
+let writeFile = function(filePath, data, key, iv, next) {
+    if (key && iv) {
+        encryptionManager.encryptBuffer(data, key, iv, function(encryptedStream) {
+            encryptedStream = encryptedStream.pipe(fs.createWriteStream(filePath));
+            encryptedStream.on("error", function(err) {
+                if (err && next) next(err);
+            });
+            encryptedStream.on("finish", function () {
+                if (next) next();
+            })
+        });
+    } else {
+        fs.writeFile(filePath, data, function(err) {
+            if (err) {
+                if (next) next(err);
+            } else {
+                if (next) next();
+            }
+        });
+    }
 };
 
 let writeFiles = function(files, saveDirectory, key, iv, next) {
@@ -97,18 +116,9 @@ let writeFiles = function(files, saveDirectory, key, iv, next) {
         file = files[file];
         let saveLocation = path.join(saveDirectory, file.name);
 
-        if (key && iv) {
-            encryptionManager.encryptBuffer(file.data, key, iv, function(encryptedStream) {
-                encryptedStream = encryptedStream.pipe(fs.createWriteStream(saveLocation));
-                encryptedStream.on("error", function(err) {
-                    if (err && returnErr === undefined) returnErr = err;
-                });
-            });
-        } else {
-            fs.writeFile(saveLocation, file.data, function(err) {
-                if (err && returnErr === undefined) returnErr = err;
-            });
-        }
+        writeFile(saveLocation, file.data, key, iv, function(err) {
+            if (err && returnErr === undefined) returnErr = err;
+        })
     }
     if (next !== undefined) return next(returnErr);
 };
@@ -117,4 +127,5 @@ let writeFiles = function(files, saveDirectory, key, iv, next) {
 module.exports = {deleteFile: deleteFile,
                   createFolderArchive: createFolderArchive,
                   readFile: readFile,
+                  writeFile: writeFile,
                   writeFiles: writeFiles};

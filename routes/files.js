@@ -179,6 +179,24 @@ router.post("/*", function(req, res, next) {
     });
 });
 
+router.put("/*", function(req, res, next) {
+    let filePath = decodeURIComponent(url.parse(req.url).pathname).substring(1);
+    let realFilePath = path.join(preferences.get()["files"], authorization.getLoginTokenAudience(req).toString(), "files", filePath);
+    let fileContents = req.files.data.data;
+    const key = req.session.encryptionKey;
+    const iv = req.session.encryptionIV;
+
+    if (fileContents) {
+        fileManager.writeFile(realFilePath, fileContents, key, iv, function(err) {
+            if (err) res.status(500).send("Save failed");
+            else res.send("Saved file");
+        })
+    } else {
+        res.status(400).send("No contents");
+    }
+});
+
+
 router.delete("/*", function(req, res, next) {
     let filePath = decodeURIComponent(url.parse(req.url).pathname).substring(1);
     fileManager.deleteFile("files", filePath, authorization.getLoginTokenAudience(req), function(result) {

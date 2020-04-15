@@ -19,6 +19,7 @@ $(document).ready(function() {
             usedCredentialsMemory = "";
         } else {
             if (xmlHttpRequest.status === 403) usedCredentialsMemory = "";
+            $("#password").val("");
             $("#message").text(xmlHttpRequest.responseText);
         }
 
