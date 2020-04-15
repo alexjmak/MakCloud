@@ -4,20 +4,22 @@ block header
     link(rel='stylesheet', type='text/css', href='/stylesheets/log.css')
     script(type= "text/javascript", src= "/javascripts/log.js")
 
-block drawer
-    aside.mdc-drawer.mdc-top-app-bar--fixed-adjust
-        .mdc-drawer__content
-            nav.mdc-list
-                a.mdc-list-item.mdc-list-item--activated(href='/log')
-                    i.material-icons.mdc-list-item__graphic(aria-hidden='true') code
-                    span.mdc-list-item__text Log
-                a.mdc-list-item(href='/update')
-                    i.material-icons.mdc-list-item__graphic(aria-hidden='true') cloud_upload
-                    span.mdc-list-item__text Update
-                .mdc-list-divider
-                a.mdc-list-item#logout
-                    i.material-icons.mdc-list-item__graphic(aria-hidden='true') launch
-                    span.mdc-list-item__text Logout
+//-
+    block drawer
+        aside.mdc-drawer.mdc-top-app-bar--fixed-adjust
+            .mdc-drawer__content
+                nav.mdc-list
+                    a.mdc-list-item.mdc-list-item--activated(href='/log')
+                        i.material-icons.mdc-list-item__graphic(aria-hidden='true') code
+                        span.mdc-list-item__text Log
+                    a.mdc-list-item(href='/update')
+                        i.material-icons.mdc-list-item__graphic(aria-hidden='true') cloud_upload
+                        span.mdc-list-item__text Update
+                    .mdc-list-divider
+                    a.mdc-list-item#logout
+                        i.material-icons.mdc-list-item__graphic(aria-hidden='true') launch
+                        span.mdc-list-item__text Logout
+
 
 block content
     .box.mdc-elevation--z8

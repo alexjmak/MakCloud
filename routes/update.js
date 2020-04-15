@@ -1,5 +1,6 @@
 const archiver = require('archiver');
 const child_process = require('child_process');
+const crypto = require('crypto');
 const express = require('express');
 const fs = require('fs');
 const createError = require('http-errors');
@@ -19,10 +20,14 @@ router.get('/files', function(req, res, next) {
     let isValidToken = authorization.verifyToken(token).sub === "updateToken";
     if (!isValidToken) return next(createError(403));
 
-    let fileOutput = fs.createWriteStream("tmp.zip");
+    let updateArchiveName = "tmp-" + crypto.randomBytes(4).toString("hex") + ".zip";
+    let fileOutput = fs.createWriteStream(updateArchiveName);
     fileOutput.on('close', function () {
-        res.sendFile(path.join(__dirname, "..", "tmp.zip"), function() {
-            fs.unlinkSync(path.join(__dirname, "..", "tmp.zip"));
+        res.sendFile(path.join(__dirname, "..", updateArchiveName), function() {
+            try {
+                fs.unlinkSync(path.join(__dirname, "..", updateArchiveName));
+            }
+            catch {}
         });
     });
 
@@ -44,16 +49,17 @@ router.get('/files', function(req, res, next) {
 
 router.use(authorization.doAuthorization);
 
-router.get('/', function(req, res, next) {
+router.use(function(req, res, next) {
     let id = authorization.getLoginTokenAudience(req);
     accountManager.getInformation("privilege", "id", id, function(privilege) {
-        if (privilege === 100) {
-            accountManager.getInformation("username", "id", authorization.getLoginTokenAudience(req), function (username) {
-                res.render('update', {hostname: os.hostname(), username: username});
-            });
-        } else {
-            next(createError(403));
-        }
+        if (privilege === 100) next();
+        else next(createError(403));
+    });
+});
+
+router.get('/', function(req, res, next) {
+    accountManager.getInformation("username", "id", authorization.getLoginTokenAudience(req), function (username) {
+        res.render('update', {hostname: os.hostname(), username: username});
     });
 });
 
