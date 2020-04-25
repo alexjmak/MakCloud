@@ -155,7 +155,13 @@ $(document).ready(function() {
     }
 
     filePath = pathSplit[pathSplit.length - 1];
+
     $(".mdc-drawer__title").text(filePath);
+
+    if (window.location.pathname.startsWith("/shared")) {
+        $("#share").hide();
+        $("#delete").hide();
+    }
 
     getFile(filePath, "authorize");
 

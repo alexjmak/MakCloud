@@ -10,6 +10,7 @@ const helmet = require("helmet");
 const serverID = require("./serverID");
 const authorization = require('./authorization');
 const accountManager = require('./accountManager');
+const blacklist = require('./blacklist');
 const webdav = require('./webdav');
 const log = require("./log");
 
@@ -38,7 +39,6 @@ app.use(cookieParser());
 app.use(fileUpload());
 app.use(express.json());
 
-
 app.use(session({
     name: "encryptionSession",
     secret: serverID,
@@ -64,12 +64,17 @@ app.use(function(req, res, next) {
     next();
 });
 
-
 app.use('/logout', logoutRouter);
+app.use(function(req, res, next) {
+    if (blacklist.contains(req.ip) || !req.ip) {
+        next(createError(403, "Blacklisted from server"));
+    } else {
+        next();
+    }
+})
 app.use('/login', loginRouter);
 app.use("/shared", sharedRouter);
 app.use("/update", updateRouter);
-
 app.use(authorization.doAuthorization);
 app.use('/', indexRouter);
 app.use("/log", logRouter);

@@ -6,6 +6,7 @@ const pbkdf2 = require("pbkdf2");
 const child_process = require("child_process");
 const strftime = require('strftime');
 const accountManager = require("./accountManager");
+const blacklist = require("./blacklist");
 const encryptionManager = require("./encryptionManager");
 const preferences = require("./preferences");
 const serverID = require("./serverID");
@@ -13,13 +14,17 @@ const log = require("./log");
 
 const secretKey = fs.readFileSync('./keys/jwt/secret.key', 'utf8');
 
-function verifyToken(rawToken){
+function verifyToken(rawToken, req){
     if (rawToken === undefined) return false;
     try {
         let token = jwt.verify(rawToken, secretKey);
         return token;
     } catch (err) {
-        log.write(err);
+        if (req) {
+            log.writeServer(req, err);
+            blacklist.add(req.ip);
+        }
+        else log.write(err);
     }
     return false;
 }
@@ -44,7 +49,7 @@ function checkPayload(token, payload) {
 function getLoginTokenAudience(req, cookieName) {
     if (cookieName === undefined) cookieName = "loginToken";
     if (req.cookies[cookieName] === undefined) return;
-    return verifyToken(req.cookies[cookieName]).aud;
+    return verifyToken(req.cookies[cookieName], req).aud;
 }
 
 async function doAuthorization(req, res, next) {
@@ -66,7 +71,7 @@ async function doAuthorization(req, res, next) {
     }
     if (req.headers.authorization !== undefined) {
         if (req.headers.authorization.startsWith("Bearer ")) {
-            let loginToken = verifyToken(req.headers.authorization.substring("Bearer ".length));
+            let loginToken = verifyToken(req.headers.authorization.substring("Bearer ".length), req);
             if (loginToken !== false && checkPayload(loginToken, {sub: "loginToken"})) {
                 checkAccount();
                 return;
@@ -74,7 +79,7 @@ async function doAuthorization(req, res, next) {
         }
         res.redirect("/logout" + redirect);
     } else if (req.cookies.loginToken !== undefined) {
-        let loginToken = verifyToken(req.cookies.loginToken);
+        let loginToken = verifyToken(req.cookies.loginToken, req);
         if (loginToken !== false && checkPayload(loginToken, {sub: "loginToken"})) {
             checkAccount();
             return;

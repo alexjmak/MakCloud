@@ -13,8 +13,12 @@ function reload() {
             return reload();
         }
         data = data.toString();
-        configuration = JSON.parse(data);
         log.write("Reading preferences: " + data);
+        try {
+            configuration = JSON.parse(data);
+        } catch(err) {
+            log.write("Read error: " + err);
+        }
     });
 }
 
