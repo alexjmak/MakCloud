@@ -40,12 +40,13 @@ body {
 }
 
 #computername {
-    z-index: 1;
     text-align: center;
+    z-index: 1;
     margin-top: 7px;
 }
 
 #message {
+    text-align: center;
     color: red;
     margin-top: 5px;
     margin-bottom: 0;
@@ -54,17 +55,26 @@ body {
 
 @media (max-width: 650px) {
     .box {
-        width: 92.5%;
+        width: 90%;
         top: 25%;
     }
     #login {
         display: none;
     }
     #mobile-background {
+        width: 92.5%;
         display: inline;
     }
     #title {
-        font-size: 2.5rem;
+        font-size: 2.125rem;
+        margin-bottom: 0;
+        text-align: left;
+    }
+    #computername {
+        text-align: left;
+    }
+    #message {
+        text-align: left;
     }
 
 }
