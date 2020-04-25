@@ -7,11 +7,9 @@ const encryptionManager = require("./encryptionManager");
 const log = require("./log");
 
 let deleteFile = function(directory, filePath, owner, next) {
-    let realFilePath = path.join(preferences.get()["files"], owner.toString(), directory, filePath);
-    let deleteFilePath = path.join(preferences.get()["files"], owner.toString(), directory, ".recycle", filePath);
-    let deleteFilePathParent = deleteFilePath.split("/");
-    deleteFilePathParent.pop();
-    deleteFilePathParent = deleteFilePathParent.join("/");
+    let realFilePath = path.join(preferences.get("files"), owner.toString(), directory, filePath);
+    let deleteFilePath = path.join(preferences.get("files"), owner.toString(), directory, ".recycle", filePath);
+    let deleteFilePathParent = path.parse(deleteFilePath).dir;
 
     if (fs.existsSync(realFilePath)) {
         fs.mkdir(deleteFilePathParent, {recursive: true }, function(err) {
@@ -35,9 +33,9 @@ let deleteFile = function(directory, filePath, owner, next) {
 };
 
 let createFolderArchive = function(directory, filePath, owner, next) {
-    let folderPath = path.join(preferences.get()["files"], owner.toString(), directory, filePath);
+    let folderPath = path.join(preferences.get("files"), owner.toString(), directory, filePath);
     let outputArchiveName = "download-" + crypto.randomBytes(4).toString("hex") + ".zip";
-    let outputPath = path.join(preferences.get()["files"], owner.toString(), outputArchiveName);
+    let outputPath = path.join(preferences.get("files"), owner.toString(), outputArchiveName);
 
     let fileOutput = fs.createWriteStream(outputPath);
     fileOutput.on('error', function(err) {

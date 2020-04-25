@@ -213,7 +213,7 @@ function getSharingInformation(select, whereKey, whereValue, next) {
 
 function getRealFilePath(parent, fileName, owner) {
     if (parent === "") parent = "/";
-    return path.join(preferences.get()["files"], owner.toString(), "files", parent, fileName);
+    return path.join(preferences.get("files"), owner.toString(), "files", parent, fileName);
 }
 
 function getRealFilePathLink(key, fileName, next) {

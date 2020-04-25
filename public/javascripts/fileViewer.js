@@ -49,6 +49,7 @@ let getFile = function(filePath, mode, authorization) {
             showAuthorization();
             if (authorization !== undefined) {
                 $("#message").text(xmlHttpRequest.responseText);
+                $("#password").val("");
             }
         } else if (xmlHttpRequest.status === 0) {
             $("#message").text("No connection");
@@ -123,8 +124,7 @@ window.crypto.getRandomValues(randomNumberArray);
 
 var authorize = function(event) {
     let password = $("#password").val();
-
-    if (password.trim() === "") {
+    if (password === "") {
         $("#password").focus()
     } else {
         if ($.md5(password, randomNumberArray[0]) === usedPasswordMemory) return;
@@ -157,12 +157,7 @@ $(document).ready(function() {
     filePath = pathSplit[pathSplit.length - 1];
     $(".mdc-drawer__title").text(filePath);
 
-
     getFile(filePath, "authorize");
-
-    $("#back").click(function() {
-        window.open(location.pathname + "/..", "_self");
-    });
 
     $("#edit").click({filePath: filePath}, edit);
 
@@ -173,11 +168,6 @@ $(document).ready(function() {
     $("#delete").click({filePath: filePath}, deleteFile);
 
     $("#submit").click({filePath: filePath}, authorize);
-
-    $("#logout").click(function() {
-        $.removeCookie("fileToken", { path: location.pathname.split("/").slice(0, 4).join("/") });
-        window.location.href = "/logout";
-    });
 });
 
 $(document).keydown(function(event) {

@@ -3,13 +3,10 @@ const createError = require('http-errors');
 const https = require("https");
 const fs = require("fs");
 const path = require("path");
-
 const cookieParser = require('cookie-parser');
 const fileUpload = require("express-fileupload");
 const session = require("express-session");
-
 const helmet = require("helmet");
-
 const serverID = require("./serverID");
 const authorization = require('./authorization');
 const accountManager = require('./accountManager');
@@ -63,7 +60,7 @@ app.use(express.static(path.join(__dirname, "public")));
 
 const noLog = ["/accounts/list/hash", "/log/raw", "/log/size"];
 app.use(function(req, res, next) {
-    if (noLog.indexOf(req.path) === -1) log.writeServer(req, req.url);
+    if (noLog.indexOf(req.path) === -1) log.writeServer(req, req.method, req.url);
     next();
 });
 
@@ -88,7 +85,7 @@ app.use(function(req, res, next) {
 });
 
 app.use(function(err, req, res, next) {
-    log.writeServer(req, req.url + " (" + (err.status || 500) + " " + err.message + ")");
+    log.writeServer(req, req.method, req.url + " (" + (err.status || 500) + " " + err.message + ")");
     res.status(err.status || 500);
     if (res.headersSent) return;
     accountManager.getInformation("username", "id", authorization.getLoginTokenAudience(req), function(username) {

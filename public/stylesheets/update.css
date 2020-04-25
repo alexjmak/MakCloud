@@ -8,9 +8,22 @@ body {
     left: 0;
     right: 0;
     top: 25%;
-
     margin: auto;
     padding: 20px;
+    border-radius: 10px;
+}
+
+@media (max-width: 537.5px) {
+    .box {
+        width: 92.5%;
+    }
+}
+
+@media (max-height: 423.15px) {
+    .box {
+        margin-top: 2%;
+        margin-bottom: 2%;
+    }
 }
 
 #title {
@@ -25,4 +38,5 @@ body {
 #message {
     color: red;
     margin-top: 5px;
+    margin-bottom: 0;
 }

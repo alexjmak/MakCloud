@@ -48,7 +48,9 @@ function displayAccountInfo(accountInfo) {
     $(`.account.delete[name=${adminID}]`).prop("disabled", true);
     $(`.account.privilege[name=${currentID}]`).prop("disabled", true);
     $(`.account.enabled[name=${currentID}]`).prop("disabled", true);
-    table.append(getNewAccountRowHTML());
+    if (currentInfo.privilege > 0 || currentInfo.username.toLowerCase() === "admin") {
+        table.append(getNewAccountRowHTML());
+    }
     accountFieldValues = accountInfo;
     $(".account.username, .account.privilege").blur(updateField);
     $(".account.password").blur(function(event) {
@@ -80,7 +82,7 @@ function getAccountRowHTML(id, username, privilege, encrypted, enabled) {
 function getNewAccountRowHTML() {
     return `<tr name=-1>` +
            `<td><input class='username new-account first-column' name=-1 type='text' autocomplete='off' autocapitalize='none' placeholder='New account username'></td>` +
-           `<td><input class='password new-account' name=-1 type='password' placeholder='New account username'></td>` +
+           `<td><input class='password new-account' name=-1 type='password' placeholder='New account password'></td>` +
            `<td><input class='privilege new-account' name=-1 type='text' maxlength='5' autocomplete='off' autocapitalize='none' placeholder='New account privilege'></td>` +
            `<td><div class='mdc-checkbox'><input type='checkbox' class='encrypted new-account mdc-checkbox__native-control' name=-1><div class='mdc-checkbox__background'><svg class='mdc-checkbox__checkmark' viewBox='0 0 24 24'><path class='mdc-checkbox__checkmark-path' fill='none' d='M1.73,12.91 8.1,19.28 22.79,4.59'/></svg><div class='mdc-checkbox__mixedmark'></div></div></div></td>` +
            `<td><button class='add new-account mdc-icon-button material-icons' name=-1>add</button></td>` +
@@ -135,7 +137,7 @@ function updateField(event, data) {
     if (field.hasClass("password")) fieldName = "password";
     if (field.hasClass("privilege")) fieldName = "privilege";
     value = updateValidation(id, field, fieldName, value);
-    if (value) {
+    if (value !== false) {
         data[fieldName] = value;
         patchRequest(url + fieldName, JSON.stringify(data), updateCallback)
     } else {

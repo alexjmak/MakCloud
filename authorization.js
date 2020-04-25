@@ -133,7 +133,7 @@ async function login(req, res) {
                         }
                         res.status(200).send();
                     });
-                    if (preferences.get()["sambaIntegration"]) {
+                    if (preferences.get("sambaIntegration")) {
                         child_process.exec("(echo " + password + "; echo " + password + ") | sudo smbpasswd -a " + username.toLowerCase(), function (err, stdout, stderr) {});
                     }
                     break;

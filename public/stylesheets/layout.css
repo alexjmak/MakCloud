@@ -17,7 +17,6 @@
 }
 
 body {
-
     margin: 0;
     -webkit-touch-callout: none;
     -webkit-user-select: none;
@@ -162,3 +161,4 @@ button.material-icons {
 @media(min-width: 592px) {
     .mdc-dialog .mdc-dialog__surface{max-width:100%}
 }
+

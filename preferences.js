@@ -18,8 +18,10 @@ function reload() {
     });
 }
 
-function get() {
-    return configuration;
+function get(property) {
+    if (configuration && configuration.hasOwnProperty(property)) {
+        return configuration[property];
+    }
 }
 
 reload();

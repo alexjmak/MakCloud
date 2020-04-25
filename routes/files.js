@@ -15,7 +15,7 @@ const router = express.Router();
 
 router.get('/*', function(req, res, next) {
     let filePath = decodeURIComponent(url.parse(req.url).pathname).substring(1);
-    let realFilePath = path.join(preferences.get()["files"], authorization.getLoginTokenAudience(req).toString(), "files", filePath);
+    let realFilePath = path.join(preferences.get("files"), authorization.getLoginTokenAudience(req).toString(), "files", filePath);
     let urlFilePath = path.join(req.baseUrl, filePath);
 
     const parameter = Object.keys(req.query)[0];
@@ -29,7 +29,7 @@ router.get('/*', function(req, res, next) {
             switch(parameter) {
                 case "download":
                     fileManager.createFolderArchive("files", filePath, authorization.getLoginTokenAudience(req), function(archivePath) {
-                        res.download(archivePath, path.basename(filePath, "zip"), function() {
+                        res.download(archivePath, path.basename(filePath + ".zip"), function() {
                             fs.unlinkSync(archivePath);
                         });
                     });
@@ -88,7 +88,7 @@ router.get('/*', function(req, res, next) {
 
 router.post("/*", function(req, res, next) {
     let filePath = decodeURIComponent(url.parse(req.url).pathname).substring(1);
-    let realFilePath = path.join(preferences.get()["files"], authorization.getLoginTokenAudience(req).toString(), "files", filePath);
+    let realFilePath = path.join(preferences.get("files"), authorization.getLoginTokenAudience(req).toString(), "files", filePath);
     let urlFilePath = path.join(req.baseUrl, filePath);
     let filePathSplit = filePath.split("/");
     let fileName = filePathSplit.pop();
@@ -181,7 +181,7 @@ router.post("/*", function(req, res, next) {
 
 router.put("/*", function(req, res, next) {
     let filePath = decodeURIComponent(url.parse(req.url).pathname).substring(1);
-    let realFilePath = path.join(preferences.get()["files"], authorization.getLoginTokenAudience(req).toString(), "files", filePath);
+    let realFilePath = path.join(preferences.get("files"), authorization.getLoginTokenAudience(req).toString(), "files", filePath);
     let fileContents = req.files.data.data;
     const key = req.session.encryptionKey;
     const iv = req.session.encryptionIV;

@@ -34,7 +34,7 @@ $(document).ready(function() {
         if (usernameValue.trim() === "") {
             $("#message").text("Enter your username");
             return;
-        } else if (passwordValue.trim() === "") {
+        } else if (passwordValue === "") {
             $("#message").text("Enter your password");
             return;
         }

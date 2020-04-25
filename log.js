@@ -43,7 +43,7 @@ function write(...text) {
 function writeServer(req, ...text) {
     let name = formatFilename(getCaller());
     text = text.join(" ");
-    let logString = "[" + name + "] [" + strftime("%H:%M:%S") + "] [" + (req.ip) + "]: " + req.method + " " + text;
+    let logString = "[" + name + "] [" + strftime("%H:%M:%S") + "] [" + (req.ip) + "]: " + text;
     console.log(logString);
     log.push(logString);
 }

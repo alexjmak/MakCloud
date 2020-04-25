@@ -14,7 +14,7 @@ const router = express.Router();
 
 router.get("/", function(req, res, next) {
     let filePath = decodeURIComponent(url.parse(req.url).pathname).substring(1);
-    let realFilePath = path.join(preferences.get()["files"], authorization.getLoginTokenAudience(req).toString(), "photos", filePath);
+    let realFilePath = path.join(preferences.get("files"), authorization.getLoginTokenAudience(req).toString(), "photos", filePath);
     fs.readdir(realFilePath, function(err, files) {
         if (err === null) {
             let supportedTypes = ["apng", "bmp", "gif", "ico", "cur", "jpg", "jpeg", "pjpeg", "pjp", "png", "svg", "webp"];
@@ -31,7 +31,7 @@ router.get("/", function(req, res, next) {
 
 router.get("/*", function(req, res, next) {
     let filePath = decodeURIComponent(url.parse(req.url).pathname).substring(1);
-    let realFilePath = path.join(preferences.get()["files"], authorization.getLoginTokenAudience(req).toString(), "photos", filePath);
+    let realFilePath = path.join(preferences.get("files"), authorization.getLoginTokenAudience(req).toString(), "photos", filePath);
     let urlFilePath = path.join(req.baseUrl, filePath);
 
     const parameter = Object.keys(req.query)[0];
@@ -64,7 +64,7 @@ router.get("/*", function(req, res, next) {
 
 router.post("/", function (req, res, next) {
     let filePath = decodeURIComponent(url.parse(req.url).pathname).substring(1);
-    let realFilePath = path.join(preferences.get()["files"], authorization.getLoginTokenAudience(req).toString(), "photos", filePath);
+    let realFilePath = path.join(preferences.get("files"), authorization.getLoginTokenAudience(req).toString(), "photos", filePath);
 
     const parameter = Object.keys(req.query)[0];
 

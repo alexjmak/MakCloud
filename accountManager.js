@@ -119,13 +119,13 @@ function newAccount(username, password, privilege, encrypted, next) {
         let hash = authorization.getHash(password, salt);
 
         nextID(function(id) {
-            let filePath = path.join(preferences.get()["files"], id.toString()).toString();
+            let filePath = path.join(preferences.get("files"), id.toString()).toString();
             fs.stat(filePath, function(err) {
                 if (err != null) {
                     fs.mkdir(filePath, function() {
-                        if (preferences.get()["sambaIntegration"]) {
+                        if (preferences.get("sambaIntegration")) {
                             try {
-                                fs.symlinkSync(path.join(__dirname, preferences.get()["files"], id.toString()), path.join(__dirname, preferences.get()["files"], "smb", username.toLowerCase()), "dir");
+                                fs.symlinkSync(path.join(__dirname, preferences.get("files"), id.toString()), path.join(__dirname, preferences.get("files"), "smb", username.toLowerCase()), "dir");
                             } catch (err) {
                                 log.write(err.toString());
                             }
@@ -164,14 +164,14 @@ function deleteAccount(id, next) {
                 return
             }
             let dateDeleted = Math.floor(Date.now()/1000);
-            let filePath = path.join(preferences.get()["files"], id.toString()).toString();
-            let newFilePath = path.join(preferences.get()["files"], "deleted", id.toString() + "-" + (dateDeleted).toString()).toString();
+            let filePath = path.join(preferences.get("files"), id.toString()).toString();
+            let newFilePath = path.join(preferences.get("files"), "deleted", id.toString() + "-" + (dateDeleted).toString()).toString();
             fs.rename(filePath, newFilePath, function() {
                 database.run("INSERT INTO deleted_accounts SELECT id, username, hash, salt, privilege, " + dateDeleted + " as dateDeleted, encryptKey, encryptIV, derivedKeySalt FROM accounts WHERE id = ?;", id);
 
-                if (preferences.get()["sambaIntegration"]) {
+                if (preferences.get("sambaIntegration")) {
                     try {
-                        fs.unlinkSync(path.join(__dirname, preferences.get()["files"], "smb", username.toLowerCase()).toString());
+                        fs.unlinkSync(path.join(__dirname, preferences.get("files"), "smb", username.toLowerCase()).toString());
                     } catch (err) {
                     }
                     child_process.exec("sudo smbpasswd -x " + username.toLowerCase() + "; sudo userdel -r " + username.toLowerCase(), function (err, stdout, stderr) {
@@ -230,10 +230,10 @@ function enableAccount(id, next) {
             return;
         }
 
-        if (preferences.get()["sambaIntegration"]) {
+        if (preferences.get("sambaIntegration")) {
             getInformation("username", "id", id, function (username) {
                 try {
-                    fs.symlinkSync(path.join(__dirname, preferences.get()["files"], id.toString()), path.join(__dirname, preferences.get()["files"], "smb", username.toLowerCase()), "dir");
+                    fs.symlinkSync(path.join(__dirname, preferences.get("files"), id.toString()), path.join(__dirname, preferences.get("files"), "smb", username.toLowerCase()), "dir");
                 } catch (err) {
                     log.write(err.toString());
                 }
@@ -258,10 +258,10 @@ function disableAccount(id, next) {
             return;
         }
 
-        if (preferences.get()["sambaIntegration"]) {
+        if (preferences.get("sambaIntegration")) {
             getInformation("username", "id", id, function (username) {
                 try {
-                    fs.unlinkSync(path.join(__dirname, preferences.get()["files"], "smb", username.toLowerCase()).toString());
+                    fs.unlinkSync(path.join(__dirname, preferences.get("files"), "smb", username.toLowerCase()).toString());
                 } catch (err) {
                     log.write(err.toString());
                 }
@@ -291,9 +291,9 @@ function updateUsername(id, newUsername, next) {
                 return;
             }
 
-            if (preferences.get()["sambaIntegration"]) {
+            if (preferences.get("sambaIntegration")) {
                 try {
-                    fs.renameSync(path.join(__dirname, preferences.get()["files"], "smb", username.toLowerCase()).toString(), path.join(__dirname, preferences.get()["files"], "smb", newUsername.toLowerCase()).toString());
+                    fs.renameSync(path.join(__dirname, preferences.get("files"), "smb", username.toLowerCase()).toString(), path.join(__dirname, preferences.get("files"), "smb", newUsername.toLowerCase()).toString());
                 } catch (err) {
                     log.write(err.toString());
                 }
@@ -321,7 +321,7 @@ function updatePassword(id, newPassword, next) {
         let newSalt = authorization.generateSalt();
         let newHash = authorization.getHash(newPassword, newSalt);
 
-        if (preferences.get()["sambaIntegration"]) {
+        if (preferences.get("sambaIntegration")) {
             getInformation("username", "id", id, function (username) {
                 child_process.exec("(echo " + newPassword + "; echo " + newPassword + ") | sudo smbpasswd -a " + username.toLowerCase(), function (err, stdout, stderr) {
                     if (stderr !== "") log.write(stderr);
