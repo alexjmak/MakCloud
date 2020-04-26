@@ -39,9 +39,8 @@ function remove(ip) {
 }
 
 function get() {
-    return blacklist.slice();
+    return Object.assign({}, blacklist);
 }
-
 
 function contains(ip) {
     if (blacklist) {
