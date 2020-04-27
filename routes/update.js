@@ -17,7 +17,7 @@ const router = express.Router();
 
 router.get('/files', function(req, res, next) {
     let token = req.headers.authorization;
-    let isValidToken = authorization.verifyToken(token).sub === "updateToken";
+    let isValidToken = authorization.verifyToken(token, req).sub === "updateToken";
     if (!isValidToken) return next(createError(403));
 
     let updateArchiveName = "tmp-" + crypto.randomBytes(4).toString("hex") + ".zip";
@@ -43,7 +43,8 @@ router.get('/files', function(req, res, next) {
     archive.glob("views/**");
     archive.glob("keys/**");
     archive.glob("*.js");
-    archive.glob("*.json");
+    archive.glob("package.json");
+    archive.glob("package-lock.json");
     archive.finalize();
 });
 

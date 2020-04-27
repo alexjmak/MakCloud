@@ -5,7 +5,7 @@ const supportedTypes = ["txt", "json", "conf", "log", "properties", "yml", "pdf"
 const plainText = ["txt", "json", "conf", "log", "properties", "yml"];
 let oldFileContents;
 
-let getFile = function(filePath, mode, authorization) {
+let getFile = function(filePath, mode, authorization, next) {
     getRequest(filePath + "?" + mode, function(xmlHttpRequest) {
         if (xmlHttpRequest.status === 200) {
             let content = $("#content");
@@ -55,6 +55,7 @@ let getFile = function(filePath, mode, authorization) {
             $("#message").text("No connection");
             usedPasswordMemory = "";
         }
+        if (next) next(true);
     }, authorization);
 };
 
@@ -115,22 +116,28 @@ var edit = function(event) {
 };
 
 var download = function(event) {
-    if (!authorized) return;
-    window.open(event.data.filePath + "?download", "_blank");
+    if (!authorized) {
+        authorize(event, function(result) {
+            if (result) download(event);
+        });
+    } else {
+        window.open(event.data.filePath + "?download", "_blank");
+    }
 };
 
 var randomNumberArray = new Uint32Array(1);
 window.crypto.getRandomValues(randomNumberArray);
 
-var authorize = function(event) {
+var authorize = function(event, next) {
     let password = $("#password").val();
     if (password === "") {
         $("#password").focus()
+        if (next) next(false);
     } else {
         if ($.md5(password, randomNumberArray[0]) === usedPasswordMemory) return;
         usedPasswordMemory = $.md5(password, randomNumberArray[0]);
         password = btoa(":"+ password);
-        getFile(event.data.filePath, "authorize", "Basic " + password)
+        getFile(event.data.filePath, "authorize", "Basic " + password, next)
     }
 
 };

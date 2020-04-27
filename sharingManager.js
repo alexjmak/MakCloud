@@ -244,7 +244,7 @@ function doAuthorization(key, fileName, req, res, next) {
                     }
 
                     if (req.cookies.fileToken !== undefined) {
-                        let fileToken = authorization.verifyToken(req.cookies.fileToken);
+                        let fileToken = authorization.verifyToken(req.cookies.fileToken, req);
                         if (authorization.checkPayload(fileToken, {sub: "fileToken", path: [key, fileName].join("/")})) {
                             if (next !== undefined) next(true);
                         } else {
@@ -254,7 +254,7 @@ function doAuthorization(key, fileName, req, res, next) {
                         return;
                     } else if (req.headers.authorization !== undefined) {
                         if (req.headers.authorization.startsWith("Bearer ")) {
-                            let fileToken = authorization.verifyToken(req.headers.authorization.substring(7));
+                            let fileToken = authorization.verifyToken(req.headers.authorization.substring(7), req);
                             if (authorization.checkPayload(fileToken, {sub: "fileToken", path: [key, fileName].join("/")})) {
                                 if (next !== undefined) next(true);
                                 return;
@@ -287,8 +287,9 @@ function checkPassword(req, res, key, fileName, hash, salt, next) {
 
     if ((hash === null && salt === null) || hash === authorization.getHash(password, salt)) {
         let fileToken = authorization.createToken({sub: "fileToken", path: [key, fileName].join("/")});
+        fileName = encodeURIComponent(fileName);
         res.cookie("fileToken", fileToken, {
-            path: "/" + ["shared", key, fileName].join("/"),
+            path: path.join("/", "shared", key, fileName),
             secure: true,
             sameSite: "strict"
         });

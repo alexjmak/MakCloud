@@ -29,6 +29,7 @@ router.get('/*', function(req, res, next) {
             switch(parameter) {
                 case "download":
                     fileManager.createFolderArchive("files", filePath, authorization.getLoginTokenAudience(req), function(archivePath) {
+                        if (filePath === "") filePath = path.basename(preferences.get("files"));
                         res.download(archivePath, path.basename(filePath + ".zip"), function() {
                             fs.unlinkSync(archivePath);
                         });

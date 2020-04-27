@@ -7,7 +7,7 @@ const accountManager = require('../accountManager');
 const router = express.Router();
 
 router.get('/', function(req, res) {
-    if (authorization.verifyToken(req.cookies.loginToken)) {
+    if (authorization.verifyToken(req.cookies.loginToken, req)) {
         accountManager.accountExists(authorization.getLoginTokenAudience(req), true, function(exists) {
             if (exists) {
                 let redirect = req.query.redirect;

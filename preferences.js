@@ -2,7 +2,7 @@ const fs = require('fs');
 const path = require('path');
 const log = require('./log');
 
-const configurationFile = path.join(__dirname, "preferences.conf");
+const configurationFile = path.join(__dirname, "preferences.json");
 const defaultConfiguration = {files: "./files", sambaIntegration: false};
 let configuration;
 

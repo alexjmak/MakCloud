@@ -156,6 +156,10 @@ $(document).ready(function() {
         window.open([location.pathname, fileName].join("/") + "?download", "_blank");
     });
 
+    $("#download-current-dir").click(function () {
+        window.open(location.pathname + "?download", "_blank");
+    });
+
     $("#delete").click(function () {
 
         let fileName = $(selectedItem).attr("name");

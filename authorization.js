@@ -20,10 +20,7 @@ function verifyToken(rawToken, req){
         let token = jwt.verify(rawToken, secretKey);
         return token;
     } catch (err) {
-        if (req) {
-            log.writeServer(req, err);
-            blacklist.add(req.ip);
-        }
+        if (req) log.writeServer(req, err);
         else log.write(err);
     }
     return false;
