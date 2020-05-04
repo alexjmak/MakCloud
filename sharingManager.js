@@ -12,6 +12,7 @@ database.run("CREATE TABLE IF NOT EXISTS sharing (key TEXT NOT NULL, id INTEGER 
 
 function linkCheck(key, filePath, currentID, next) {
     if (currentID === undefined) currentID = -1;
+    filePath = decodeURIComponent(filePath);
     if (filePath.indexOf("/") !== -1) filePath = filePath.substring(0, filePath.indexOf("/"));
 
     database.get("SELECT * FROM links WHERE key = ? AND fileName = ?", [key, filePath], function(result) {
@@ -36,6 +37,8 @@ function linkCheck(key, filePath, currentID, next) {
 }
 
 function linkExists(parent, fileName, owner, next) {
+    parent = decodeURIComponent(parent);
+    fileName = decodeURIComponent(fileName);
     if (owner === "public") owner = -2;
     database.get("SELECT * FROM links WHERE parent = ? AND fileName = ? AND owner = ?", [parent, fileName, owner], function(result) {
         if (result !== false) {
@@ -47,6 +50,8 @@ function linkExists(parent, fileName, owner, next) {
 }
 
 function deleteLink(parent, fileName, owner, next) {
+    parent = decodeURIComponent(parent);
+    fileName = decodeURIComponent(fileName);
     if (parent === "") parent = "/";
     if (owner === "public") owner = -2;
     database.run("DELETE FROM links WHERE parent = ? AND fileName = ? AND owner = ?", [parent, fileName, owner], function (result) {
@@ -56,6 +61,8 @@ function deleteLink(parent, fileName, owner, next) {
 }
 
 function createLink(parent, fileName, owner, options, next) {
+    parent = decodeURIComponent(parent);
+    fileName = decodeURIComponent(fileName);
     if (parent === "") parent = "/";
     if (owner === "public") owner = -2;
     generateKey(function(key) {
@@ -88,6 +95,8 @@ function createLink(parent, fileName, owner, options, next) {
 }
 
 function getLinkKey(parent, fileName, owner, next) {
+    parent = decodeURIComponent(parent);
+    fileName = decodeURIComponent(fileName);
     if (parent === "") parent = "/";
     if (owner === "public") owner = -2;
     database.get("SELECT key FROM links WHERE parent = ? AND fileName = ? AND owner = ?;", [parent, fileName, owner], function(result) {
@@ -113,6 +122,8 @@ function linkAccessExists(key, id, next) {
 }
 
 function addLinkAccess(parent, fileName, owner, id, access, expiration, next) {
+    parent = decodeURIComponent(parent);
+    fileName = decodeURIComponent(fileName);
     if (parent === "") parent = "/";
     if (owner === "public") owner = -2;
     getLinkKey(parent, fileName, owner, function(key) {
@@ -132,6 +143,8 @@ function addLinkAccess(parent, fileName, owner, id, access, expiration, next) {
 }
 
 function updateLinkAccess(parent, fileName, owner, id, newAccess, newExpiration, next) {
+    parent = decodeURIComponent(parent);
+    fileName = decodeURIComponent(fileName);
     if (parent === "") parent = "/";
     if (owner === "public") owner = -2;
     getLinkKey(parent, fileName, owner, function(key) {
@@ -154,6 +167,8 @@ function updateLinkAccess(parent, fileName, owner, id, newAccess, newExpiration,
 }
 
 function removeLinkAccess(parent, fileName, owner, id, next) {
+    parent = decodeURIComponent(parent);
+    fileName = decodeURIComponent(fileName);
     if (parent === "") parent = "/";
     if (owner === "public") owner = -2;
     getLinkKey(parent, fileName, owner, function(key) {
@@ -164,6 +179,8 @@ function removeLinkAccess(parent, fileName, owner, id, next) {
 }
 
 function updateLinkPassword(parent, fileName, owner, newPassword, next) {
+    parent = decodeURIComponent(parent);
+    fileName = decodeURIComponent(fileName);
     if (parent === "") parent = "/";
     if (owner === "public") owner = -2;
     let salt = authorization.generateSalt();
@@ -175,6 +192,8 @@ function updateLinkPassword(parent, fileName, owner, newPassword, next) {
 }
 
 function deleteLinkPassword(parent, fileName, owner, next) {
+    parent = decodeURIComponent(parent);
+    fileName = decodeURIComponent(fileName);
     if (parent === "") parent = "/";
     if (owner === "public") owner = -2;
     database.run("UPDATE links SET hash = ?, salt = ? WHERE parent = ? AND fileName = ? AND owner = ?", [null, null, parent, fileName, owner], function (result) {
@@ -183,6 +202,8 @@ function deleteLinkPassword(parent, fileName, owner, next) {
 }
 
 function getLinkSummary(parent, fileName, owner, next) {
+    parent = decodeURIComponent(parent);
+    fileName = decodeURIComponent(fileName);
     if (parent === "") parent = "/";
     if (owner === "public") owner = -2;
     let linkSummary = {};
@@ -223,12 +244,15 @@ function getSharingInformation(select, whereKey, whereValue, next) {
 }
 
 function getRealFilePath(parent, fileName, owner) {
+    parent = decodeURIComponent(parent);
+    fileName = decodeURIComponent(fileName);
     if (parent === "") parent = "/";
     if (owner === -2) owner = "public";
     return path.join(preferences.get("files"), owner.toString(), "files", parent, fileName);
 }
 
 function getRealFilePathLink(key, fileName, next) {
+    fileName = decodeURIComponent(fileName);
     let searchFileName = (fileName.indexOf("/") === -1) ? fileName : fileName.substring(0, fileName.indexOf("/"));
     database.get("SELECT parent, owner FROM links WHERE key = ? AND fileName = ?", [key, searchFileName], function(result) {
         if (next !== undefined) {
@@ -238,6 +262,7 @@ function getRealFilePathLink(key, fileName, next) {
 }
 
 function doAuthorization(key, fileName, req, res, next) {
+    fileName = decodeURIComponent(fileName);
     if (fileName.indexOf("/") !== -1) fileName = fileName.substring(0, fileName.indexOf("/"));
 
     let currentID = authorization.getLoginTokenAudience(req);
@@ -291,6 +316,7 @@ function doAuthorization(key, fileName, req, res, next) {
 }
 
 function checkPassword(req, res, key, fileName, hash, salt, next) {
+    fileName = decodeURIComponent(fileName);
     const b64auth = (req.headers.authorization || '').split(' ')[1] || '';
     const strauth = new Buffer.from(b64auth, 'base64').toString();
     const splitIndex = strauth.indexOf(':');

@@ -41,8 +41,9 @@ $(document).ready(function() {
             window.location.href = currentPathCopy;
         });
 
-        $("#path-overflow-button").click(function() {
-            pathOverflowMenu.open = true;
+        $("#path-overflow-button").click(function(event) {
+            if (!$(event.target).is("button") && !$(event.target).is("h4") ) return;
+            pathOverflowMenu.open = !pathOverflowMenu.open;
         });
     }
 

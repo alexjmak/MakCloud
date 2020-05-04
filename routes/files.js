@@ -95,7 +95,7 @@ router.post("/*", function(req, res, next) {
     let filePathSplit = filePath.split("/");
     let fileName = filePathSplit.pop();
     let parent = filePathSplit.join("/");
-
+    if (!parent.startsWith("/")) parent = "/" + parent;
 
     const parameter = Object.keys(req.query)[0];
 
