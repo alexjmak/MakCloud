@@ -14,19 +14,20 @@ let getFile = function(filePath, mode, authorization, next) {
                 authorized = true;
                 let extension = filePath.split(".").pop().toLowerCase();
                 if (supportedTypes.includes(extension)) {
+                    let encodedPathname = window.location.pathname.replace("'", "%27");
                     switch (extension) {
                         default:
                             getFile(filePath, "download");
                             break;
                         case "pdf":
-                            content.append("<object data='/pdfjs/web/viewer.html?file=" + window.location.pathname + "?download'></object>")
+                            content.append("<object data='/pdfjs/web/viewer.html?file=" + encodedPathname + "?download'></object>")
                             break;
                         case "apng": case "bmp": case "gif": case "ico": case "cur": case "jpg":
                         case "jpeg": case "pjpeg": case "pjp": case "png": case ".svg": case "webp":
-                            content.append("<img class='mdc-elevation--z10' src='" + window.location.pathname + "?download'>");
+                            content.append("<img class='mdc-elevation--z10' src='" + encodedPathname + "?download'>");
                             break;
                         case "mp3": case "m4a":
-                            let audio = new Audio(window.location.pathname + "?download");
+                            let audio = new Audio(encodedPathname + "?download");
                             audio.play();
                             break;
                     }
@@ -156,18 +157,19 @@ var hideAuthorization = function()  {
 };
 
 $(document).ready(function() {
-    let pathSplit = filePath.split("/");
-    if (pathSplit.length <= 1) {
-        $("#back").hide();
-    }
+    let pathSplit = location.pathname.split("/");
 
-    filePath = pathSplit[pathSplit.length - 1];
+    let filePath = pathSplit[pathSplit.length - 1];
+    filePath = decodeURIComponent(filePath);
 
     $(".mdc-drawer__title").text(filePath);
 
     if (window.location.pathname.startsWith("/shared")) {
+        $("#file-manager").hide();
         $("#share").hide();
         $("#delete").hide();
+        $("#back").hide();
+        $("#save").show();
     }
 
     getFile(filePath, "authorize");
@@ -186,7 +188,7 @@ $(document).ready(function() {
 $(document).keydown(function(event) {
     var key = event.which;
     if (key === 13) {
-        authorize({data: {filePath: filePath}})
+        authorize({data: {filePath: location.pathname}})
     }
 
     if ((event.ctrlKey || event.metaKey) && key === 83) {

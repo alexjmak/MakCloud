@@ -15,7 +15,9 @@ const router = express.Router();
 
 router.get('/*', function(req, res, next) {
     let filePath = decodeURIComponent(url.parse(req.url).pathname).substring(1);
-    let realFilePath = path.join(preferences.get("files"), authorization.getLoginTokenAudience(req).toString(), "files", filePath);
+    let owner = authorization.getLoginTokenAudience(req).toString();
+    if (req.baseUrl === "/public") owner = "public";
+    let realFilePath = path.join(preferences.get("files"), owner, "files", filePath);
     let urlFilePath = path.join(req.baseUrl, filePath);
 
     const parameter = Object.keys(req.query)[0];
@@ -28,7 +30,7 @@ router.get('/*', function(req, res, next) {
         if (stats.isDirectory()) {
             switch(parameter) {
                 case "download":
-                    fileManager.createFolderArchive("files", filePath, authorization.getLoginTokenAudience(req), function(archivePath) {
+                    fileManager.createFolderArchive("files", filePath, owner, function(archivePath) {
                         if (filePath === "") filePath = path.basename(preferences.get("files"));
                         res.download(archivePath, path.basename(filePath + ".zip"), function() {
                             fs.unlinkSync(archivePath);
@@ -45,7 +47,7 @@ router.get('/*', function(req, res, next) {
                                 res.render('directory', {
                                     username: username,
                                     hostname: os.hostname(),
-                                    directory: {path: filePath, files: JSON.stringify(files.files)}
+                                    directory: {files: Buffer.from(JSON.stringify(files.files)).toString("base64")}
                                 });
                             });
                         });
@@ -64,7 +66,6 @@ router.get('/*', function(req, res, next) {
                     let filePathSplit = filePath.split("/");
                     let fileName = filePathSplit.pop();
                     let parent = filePathSplit.join("/");
-                    let owner = authorization.getLoginTokenAudience(req);
                     if (!parent.startsWith("/")) parent = "/" + parent;
 
                     sharingManager.getLinkSummary(parent, fileName, owner, function(result) {
@@ -76,8 +77,7 @@ router.get('/*', function(req, res, next) {
                         fs.readFile(realFilePath, function (err, contents) {
                             res.render('fileViewer', {
                                 username: username,
-                                hostname: os.hostname(),
-                                file: {path: urlFilePath}
+                                hostname: os.hostname()
                             });
                         });
                     });
@@ -89,12 +89,13 @@ router.get('/*', function(req, res, next) {
 
 router.post("/*", function(req, res, next) {
     let filePath = decodeURIComponent(url.parse(req.url).pathname).substring(1);
-    let realFilePath = path.join(preferences.get("files"), authorization.getLoginTokenAudience(req).toString(), "files", filePath);
-    let urlFilePath = path.join(req.baseUrl, filePath);
+    let owner = authorization.getLoginTokenAudience(req).toString();
+    if (req.baseUrl === "/public") owner = "public";
+    let realFilePath = path.join(preferences.get("files"), owner, "files", filePath);
     let filePathSplit = filePath.split("/");
     let fileName = filePathSplit.pop();
     let parent = filePathSplit.join("/");
-    let owner = authorization.getLoginTokenAudience(req);
+
 
     const parameter = Object.keys(req.query)[0];
 
@@ -182,7 +183,9 @@ router.post("/*", function(req, res, next) {
 
 router.put("/*", function(req, res, next) {
     let filePath = decodeURIComponent(url.parse(req.url).pathname).substring(1);
-    let realFilePath = path.join(preferences.get("files"), authorization.getLoginTokenAudience(req).toString(), "files", filePath);
+    let owner = authorization.getLoginTokenAudience(req).toString();
+    if (req.baseUrl === "/public") owner = "public";
+    let realFilePath = path.join(preferences.get("files"), owner, "files", filePath);
     let fileContents = req.files.data.data;
     const key = req.session.encryptionKey;
     const iv = req.session.encryptionIV;
@@ -200,7 +203,9 @@ router.put("/*", function(req, res, next) {
 
 router.delete("/*", function(req, res, next) {
     let filePath = decodeURIComponent(url.parse(req.url).pathname).substring(1);
-    fileManager.deleteFile("files", filePath, authorization.getLoginTokenAudience(req), function(result) {
+    let owner = authorization.getLoginTokenAudience(req).toString();
+    if (req.baseUrl === "/public") owner = "public";
+    fileManager.deleteFile("files", filePath, owner, function(result) {
         if (result) res.sendStatus(200);
         else res.sendStatus(404);
     });

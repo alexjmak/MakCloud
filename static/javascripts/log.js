@@ -4,8 +4,8 @@ $(document).ready(function() {
     let oldLogText = true;
     let oldSize = 0;
     let scrollDifference = console[0].scrollHeight - console.scrollTop();
-    let noConnDialog;
 
+    let noConnDialog;
 
     let getLogHash = function(automatic) {
 

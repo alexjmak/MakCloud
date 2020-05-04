@@ -35,13 +35,11 @@
 }
 
 #console {
-    height: 85%;
-    border-radius: 5px;
+    height: 100%;
     overflow: scroll;
     padding: 5px;
     background-color: #151515;
 }
-
 
 #console_text {
     color: white;

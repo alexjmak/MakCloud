@@ -4,15 +4,18 @@ const strftime = require('strftime');
 let log = [];
 
 function getCaller() {
-        let err = new Error();
-        Error.prepareStackTrace = function (err, stack) { return stack; };
-        for (let i = 0; i < err.stack.length; i++) {
-            let fileName = err.stack[i].getFileName();
-            if (fileName !== __filename) {
-                return fileName;
-            }
+    let origPrepareStackTrace = Error.prepareStackTrace
+    let err = new Error();
+    Error.prepareStackTrace = function (err, stack) { return stack; };
+    let stack = err.stack;
+    Error.prepareStackTrace = origPrepareStackTrace;
+    for (let i = 0; i < err.stack.length; i++) {
+        let fileName = err.stack[i].getFileName();
+        if (fileName !== __filename) {
+            return fileName;
         }
-        return __filename;
+    }
+    return __filename;
 }
 
 function formatFilename(fileName) {

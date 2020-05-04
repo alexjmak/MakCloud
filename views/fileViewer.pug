@@ -2,8 +2,6 @@ extends layout
 
 block header
     link(rel='stylesheet', type='text/css', href='/stylesheets/fileViewer.css')
-    script.
-        let filePath = "#{file.path}";
     script(type='text/javascript', src= "/javascripts/fileViewer.js")
 
 block drawer
@@ -12,7 +10,7 @@ block drawer
             h3.mdc-drawer__title
         .mdc-drawer__content
             nav.mdc-list
-                a.mdc-list-item.mdc-list-item--activated(href='/files')
+                a.mdc-list-item.mdc-list-item--activated#file-manager(href='/files')
                     i.material-icons.mdc-list-item__graphic(aria-hidden='true') folder
                     span.mdc-list-item__text File Manager
                 a.mdc-list-item#edit(style="display:none")
@@ -27,6 +25,9 @@ block drawer
                 a.mdc-list-item#delete
                     i.material-icons.mdc-list-item__graphic(aria-hidden='true') delete
                     span.mdc-list-item__text Delete
+                a.mdc-list-item#save(style="display:none")
+                    i.material-icons.mdc-list-item__graphic(aria-hidden='true') save
+                    span.mdc-list-item__text Save to my MakCloud
                 .mdc-list-divider
                 a.mdc-list-item(href='.')#back
                     i.material-icons.mdc-list-item__graphic(aria-hidden='true') arrow_back

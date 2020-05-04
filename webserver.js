@@ -56,7 +56,7 @@ app.use(function(req, res, next) {
     }
 });
 
-app.use(express.static(path.join(__dirname, "public")));
+app.use(express.static(path.join(__dirname, "static")));
 
 const noLog = ["/accounts/list/hash", "/log/raw", "/log/size"];
 app.use(function(req, res, next) {
@@ -79,6 +79,7 @@ app.use(authorization.doAuthorization);
 app.use('/', indexRouter);
 app.use("/log", logRouter);
 app.use("/files", filesRouter);
+app.use("/public", filesRouter);
 app.use("/photos", photosRouter);
 app.use("/accounts", accountsRouter);
 app.use("/error", errorRouter);

@@ -22,7 +22,7 @@ router.get('/*', function(req, res, next) {
             sharingManager.getRealFilePathLink(key, fileName, function (realFilePath) {
                 accountManager.getInformation("username", "id", authorization.getLoginTokenAudience(req), function (username) {
                     fs.stat(realFilePath, function (err, stats) {
-                        if (err) next(createError(404));
+                        if (err || !stats) return next(createError(404));
                         switch (parameter) {
                             case "authorize":
                                 sharingManager.doAuthorization(key, fileName, req, res, function (token) {

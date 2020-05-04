@@ -16,10 +16,11 @@ function linkCheck(key, filePath, currentID, next) {
 
     database.get("SELECT * FROM links WHERE key = ? AND fileName = ?", [key, filePath], function(result) {
         if (result !== false) {
-            if (result.owner === currentID) {
+            if (currentID >= 0 && (result.owner === currentID || result.owner === -2)) {
                 if (next !== undefined) next(true);
             } else {
-                database.get("SELECT * FROM sharing WHERE key = ? AND (id = ? OR id = -1) AND access > 0 AND (expiration > ? OR expiration IS NULL)", [key, currentID, Date.now()/1000], function(result) {
+
+                database.get("SELECT * FROM sharing WHERE key = ? AND (id = ?) AND access > 0 AND (expiration > ? OR expiration IS NULL)", [key, currentID, Date.now()/1000], function(result) {
                     if (result !== false) {
                         if (next !== undefined) next(true);
                     } else {
@@ -35,6 +36,7 @@ function linkCheck(key, filePath, currentID, next) {
 }
 
 function linkExists(parent, fileName, owner, next) {
+    if (owner === "public") owner = -2;
     database.get("SELECT * FROM links WHERE parent = ? AND fileName = ? AND owner = ?", [parent, fileName, owner], function(result) {
         if (result !== false) {
             if (next !== undefined) next(true);
@@ -46,6 +48,7 @@ function linkExists(parent, fileName, owner, next) {
 
 function deleteLink(parent, fileName, owner, next) {
     if (parent === "") parent = "/";
+    if (owner === "public") owner = -2;
     database.run("DELETE FROM links WHERE parent = ? AND fileName = ? AND owner = ?", [parent, fileName, owner], function (result) {
         database.run("DELETE FROM sharing WHERE key NOT IN (SELECT key FROM links);");
         if (next !== undefined) next(result);
@@ -54,6 +57,7 @@ function deleteLink(parent, fileName, owner, next) {
 
 function createLink(parent, fileName, owner, options, next) {
     if (parent === "") parent = "/";
+    if (owner === "public") owner = -2;
     generateKey(function(key) {
         owner = Number(owner);
 
@@ -85,6 +89,7 @@ function createLink(parent, fileName, owner, options, next) {
 
 function getLinkKey(parent, fileName, owner, next) {
     if (parent === "") parent = "/";
+    if (owner === "public") owner = -2;
     database.get("SELECT key FROM links WHERE parent = ? AND fileName = ? AND owner = ?;", [parent, fileName, owner], function(result) {
         if (result !== false) {
             if (next !== undefined) next(result.key);
@@ -109,6 +114,7 @@ function linkAccessExists(key, id, next) {
 
 function addLinkAccess(parent, fileName, owner, id, access, expiration, next) {
     if (parent === "") parent = "/";
+    if (owner === "public") owner = -2;
     getLinkKey(parent, fileName, owner, function(key) {
         linkAccessExists(key, id, function (exists) {
             if (!exists) {
@@ -127,6 +133,7 @@ function addLinkAccess(parent, fileName, owner, id, access, expiration, next) {
 
 function updateLinkAccess(parent, fileName, owner, id, newAccess, newExpiration, next) {
     if (parent === "") parent = "/";
+    if (owner === "public") owner = -2;
     getLinkKey(parent, fileName, owner, function(key) {
         if (newAccess !== null) {
             database.run("UPDATE sharing SET access = ? WHERE key = ? AND id = ?", [newAccess, key, id], function (accessResult) {
@@ -148,6 +155,7 @@ function updateLinkAccess(parent, fileName, owner, id, newAccess, newExpiration,
 
 function removeLinkAccess(parent, fileName, owner, id, next) {
     if (parent === "") parent = "/";
+    if (owner === "public") owner = -2;
     getLinkKey(parent, fileName, owner, function(key) {
         database.run("DELETE FROM sharing WHERE key = ? AND id = ?", [key, id], function (accessResult) {
             if (next !== undefined) next(accessResult);
@@ -157,6 +165,7 @@ function removeLinkAccess(parent, fileName, owner, id, next) {
 
 function updateLinkPassword(parent, fileName, owner, newPassword, next) {
     if (parent === "") parent = "/";
+    if (owner === "public") owner = -2;
     let salt = authorization.generateSalt();
     let hash = authorization.getHash(newPassword, salt);
 
@@ -167,6 +176,7 @@ function updateLinkPassword(parent, fileName, owner, newPassword, next) {
 
 function deleteLinkPassword(parent, fileName, owner, next) {
     if (parent === "") parent = "/";
+    if (owner === "public") owner = -2;
     database.run("UPDATE links SET hash = ?, salt = ? WHERE parent = ? AND fileName = ? AND owner = ?", [null, null, parent, fileName, owner], function (result) {
         if (next !== undefined) next(result);
     });
@@ -174,6 +184,7 @@ function deleteLinkPassword(parent, fileName, owner, next) {
 
 function getLinkSummary(parent, fileName, owner, next) {
     if (parent === "") parent = "/";
+    if (owner === "public") owner = -2;
     let linkSummary = {};
     getLinkKey(parent, fileName, owner, function(key)  {
         if (key !== false){
@@ -213,6 +224,7 @@ function getSharingInformation(select, whereKey, whereValue, next) {
 
 function getRealFilePath(parent, fileName, owner) {
     if (parent === "") parent = "/";
+    if (owner === -2) owner = "public";
     return path.join(preferences.get("files"), owner.toString(), "files", parent, fileName);
 }
 
@@ -232,12 +244,16 @@ function doAuthorization(key, fileName, req, res, next) {
     if (currentID === undefined) currentID = -1;
 
     database.get("SELECT sharing.key, id, owner FROM sharing JOIN links ON sharing.key = links.key WHERE sharing.key = ? AND ((id >= 0 AND id = ?) OR (owner = ?)) AND access > 0 AND (expiration > ? OR expiration IS NULL)", [key, currentID, currentID, Date.now()/1000], function(result) {
+
         if (result !== false) next(true);
         else {
-            database.get("SELECT hash, salt FROM links WHERE key = ? AND fileName = ?", [key, fileName], function(result) {
+            database.get("SELECT owner, hash, salt FROM links WHERE key = ? AND fileName = ?", [key, fileName], function(result) {
                 if (result !== false) {
-                    let hash = result["hash"];
-                    let salt = result["salt"];
+                    if (currentID >= 0 && (result.owner === currentID || result.owner === -2)) {
+                        if (next) return next(true);
+                    }
+                    let hash = result.hash;
+                    let salt = result.salt;
                     if (hash === null && salt === null) {
                         if (next !== undefined) next(true);
                         return;

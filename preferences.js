@@ -12,7 +12,7 @@ function reload() {
             fs.writeFileSync(configurationFile, JSON.stringify(defaultConfiguration));
             return reload();
         }
-        data = data.toString();
+        data = data.toString().trim();
         log.write("Reading preferences: " + data);
         try {
             configuration = JSON.parse(data);
