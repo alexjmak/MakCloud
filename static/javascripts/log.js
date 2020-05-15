@@ -24,7 +24,7 @@ $(document).ready(function() {
             }
             if (xmlHttpRequest.status === 0 && (noConnDialog === undefined || !noConnDialog.isOpen)) {
                 try {
-                    noConnDialog = showDialog(okDialog, "MakCloud", "No connection", {
+                    noConnDialog = showDialog(okDialog, "MakCloud", "Connection lost", {
                         "close": function() {
                             getLogHash(false);
                         }

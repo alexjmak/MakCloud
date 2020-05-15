@@ -53,7 +53,7 @@ let getFile = function(filePath, mode, authorization, next) {
                 $("#password").val("");
             }
         } else if (xmlHttpRequest.status === 0) {
-            $("#message").text("No connection");
+            $("#message").text("Connection lost");
             usedPasswordMemory = "";
         }
         if (next) next(true);

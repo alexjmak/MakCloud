@@ -200,7 +200,11 @@ function encryptAccount(id, password, next) {
                 if (next !== undefined) next(false);
             } else {
                 database.run("UPDATE accounts SET encryptKey = ?, encryptIV = ?, derivedKeySalt = ? WHERE id = ?", [key, iv, salt, id], function(result) {
-                    if (next !== undefined) next(result);
+                    encryptionManager.decryptEncryptionKey(id, password, function(decryptedKey) {
+                        encryptionManager.encryptAccount(id, decryptedKey, iv,function() {
+                            if (next !== undefined) next(result, decryptedKey, iv);
+                        })
+                    });
                 });
             }
         })
@@ -209,16 +213,38 @@ function encryptAccount(id, password, next) {
     });
 }
 
-function decryptAccount(id, next) {
+function decryptAccount(id, password, next) {
     accountExists(id, false, function(result) {
         if (!result) {
             if (next !== undefined) next(false);
             return;
         }
 
-        database.run("UPDATE accounts SET encryptKey = null, encryptIV = null, derivedKeySalt = null WHERE id = ?", id, function(result) {
-            if (next !== undefined) next(result);
-        });
+
+        let deleteEncryptionInfo = function(next) {
+            database.run("UPDATE accounts SET encryptKey = null, encryptIV = null, derivedKeySalt = null WHERE id = ?", id, function(result) {
+                if (next !== undefined) next(result);
+            });
+        }
+
+        database.get("SELECT encryptIV FROM accounts WHERE id = ?", id, function(result) {
+            if (result) {
+                let iv = result["encryptIV"];
+                const encryptionManager = require("./encryptionManager");
+                encryptionManager.decryptEncryptionKey(id, password, function(decryptedKey) {
+                    encryptionManager.decryptAccount(id, decryptedKey, iv, function() {
+                        deleteEncryptionInfo(function(result) {
+                            if (next !== undefined) next(result);
+                        });
+                    });
+                });
+            } else {
+                deleteEncryptionInfo(function(result) {
+                    if (next !== undefined) next(result);
+                })
+            }
+
+        })
 
     });
 }
@@ -310,7 +336,7 @@ function updateUsername(id, newUsername, next) {
 
 }
 
-function updatePassword(id, newPassword, next) {
+function updatePassword(id, newPassword, oldPassword, next) {
     accountExists(id, false, function(result) {
         if (!result) {
             if (next !== undefined) next(false);
@@ -318,27 +344,58 @@ function updatePassword(id, newPassword, next) {
         }
 
         const authorization = require("./authorization");
+
         let newSalt = authorization.generateSalt();
         let newHash = authorization.getHash(newPassword, newSalt);
 
-        if (preferences.get("sambaIntegration")) {
-            getInformation("username", "id", id, function (username) {
-                child_process.exec("(echo " + newPassword + "; echo " + newPassword + ") | sudo smbpasswd -a " + username.toLowerCase(), function (err, stdout, stderr) {
-                    if (stderr !== "") log.write(stderr);
+        let updateDatabase = function() {
+            if (preferences.get("sambaIntegration")) {
+                getInformation("username", "id", id, function (username) {
+                    child_process.exec("(echo " + newPassword + "; echo " + newPassword + ") | sudo smbpasswd -a " + username.toLowerCase(), function (err, stdout, stderr) {
+                        if (stderr !== "") log.write(stderr);
+                    });
+                    getInformation("enabled", "id", id, function (enabled) {
+                        if (!enabled) {
+                            child_process.exec("sudo smbpasswd -d " + username.toLowerCase(), function (err, stdout, stderr) {
+                                if (stderr !== "") log.write(stderr);
+                            });
+                        }
+                    });
                 });
-                getInformation("enabled", "id", id, function (enabled) {
-                    if (!enabled) {
-                        child_process.exec("sudo smbpasswd -d " + username.toLowerCase(), function (err, stdout, stderr) {
-                            if (stderr !== "") log.write(stderr);
-                        });
-                    }
-                });
+            }
+
+            database.run("UPDATE accounts SET hash = ?, salt = ? WHERE id = ?", [newHash, newSalt, id], function(result) {
+                if (next !== undefined) next(result);
             });
         }
 
-        database.run("UPDATE accounts SET hash = ?, salt = ? WHERE id = ?", [newHash, newSalt, id], function(result) {
-            if (next !== undefined) next(result);
-        });
+        getInformation("encryptIV", "id", id, function(iv) {
+            if (iv) {
+                if (oldPassword) {
+                    const encryptionManager = require("./encryptionManager");
+                    encryptionManager.decryptEncryptionKey(id, oldPassword, function(key) {
+                        key = Buffer.from(key, "hex");
+                        iv = Buffer.from(iv, "hex");
+                        let derivedKeySalt = authorization.generateSalt();
+                        encryptionManager.generatePbkdf2(newPassword, derivedKeySalt, function(pbkdf2) {
+                            encryptionManager.encryptEncryptionKey(key, iv, pbkdf2, function(encryptedKey) {
+                                iv = iv.toString("hex");
+                                database.run("UPDATE accounts SET encryptKey = ?,  encryptIV = ?, derivedKeySalt = ? WHERE ID = ?", [encryptedKey, iv, derivedKeySalt, id], function(result) {
+                                    updateDatabase();
+                                });
+
+                            })
+                        })
+
+                    })
+                } else {
+                    if (next) next(false);
+                }
+            } else {
+                updateDatabase();
+            }
+        })
+
     });
 }
 

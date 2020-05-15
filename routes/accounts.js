@@ -115,16 +115,24 @@ router.patch('/encrypted', function(req, res) {
         authorization.checkPassword(id, password, function(result) {
             if (result !== 1) {
                 if (encrypted) {
-                    accountManager.encryptAccount(id, password,function (result) {
+                    accountManager.encryptAccount(id, password,function (result, decryptedKey, iv) {
                         if (result) {
+                            if (id === authorization.getLoginTokenAudience(req)) {
+                                req.session.encryptionKey = decryptedKey;
+                                req.session.encryptionIV = iv;
+                            }
                             res.send("Encrypted account");
                         } else {
                             res.status(404).send("Account not found");
                         }
                     });
                 } else {
-                    accountManager.decryptAccount(id, function (result) {
+                    accountManager.decryptAccount(id, password, function (result) {
                         if (result) {
+                            if (id === authorization.getLoginTokenAudience(req)) {
+                                req.session.encryptionKey = undefined;
+                                req.session.encryptionIV = undefined;
+                            }
                             res.send("Decrypted account");
                         } else {
                             res.status(404).send("Account not found");
@@ -193,18 +201,40 @@ router.patch('/username', function(req, res) {
 router.patch('/password', function(req, res) {
     let id = parseInt(req.body.id);
     let new_password = req.body.password;
-    if (!checkRequiredFields(res, id, new_password)) return;
-    checkPrivilege(req, res, id, function(result) {
-        if (!result) return;
-        accountManager.updatePassword(id, new_password, function (result) {
-            if (result) {
-                res.send("Updated account information")
-            } else {
-                res.status(401).send("Failed to update password");
-            }
-        });
+    let old_password = req.body.old_password;
 
-    });
+    if (!checkRequiredFields(res, id, new_password)) return;
+
+    let changePassword = function() {
+        checkPrivilege(req, res, id, function(result) {
+            if (!result) return;
+            accountManager.updatePassword(id, new_password, old_password, function (result) {
+                if (result) {
+                    res.send("Updated account information")
+                } else {
+                    res.status(401).send("Failed to update password");
+                }
+            });
+        });
+    }
+
+    accountManager.getInformation("encryptKey", "id", id, function(encrypted) {
+        if (encrypted) {
+            if (!checkRequiredFields(res, old_password)) return;
+            authorization.checkPassword(id, old_password, function(result) {
+                if (result !== 1) {
+                    changePassword();
+                } else {
+                    res.status(403).send("Incorrect Password");
+                }
+
+            })
+        } else {
+            changePassword();
+        }
+
+    })
+
 });
 
 router.patch('/privilege', function(req, res) {

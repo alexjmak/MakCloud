@@ -15,7 +15,7 @@ $(document).ready(function() {
             }
 
         } else if (xmlHttpRequest.status === 0) {
-            $("#message").text("No connection");
+            $("#message").text("Connection lost");
             usedCredentialsMemory = "";
         } else {
             if (xmlHttpRequest.status === 403) usedCredentialsMemory = "";

@@ -22,8 +22,8 @@ router.get('/*', function(req, res, next) {
 
     const parameter = Object.keys(req.query)[0];
 
-    const key = req.session.encryptionKey;
-    const iv = req.session.encryptionIV;
+    const key = owner !== "public" ? req.session.encryptionKey : undefined;
+    const iv = owner !== "public" ? req.session.encryptionIV : undefined;
 
     fs.stat(realFilePath, function(err, stats) {
         if (err !== null) return next();
@@ -99,11 +99,11 @@ router.post("/*", function(req, res, next) {
 
     const parameter = Object.keys(req.query)[0];
 
-    const key = req.session.encryptionKey;
-    const iv = req.session.encryptionIV;
+    const key = owner !== "public" ? req.session.encryptionKey : undefined;
+    const iv = owner !== "public" ? req.session.encryptionIV : undefined;
 
     fs.stat(realFilePath, function(err, stats) {
-        if (err !== null && next !== undefined) return next();
+        if (err !== null && next !== undefined) return res.status(404);
         if (parameter === "upload") {
             if (stats.isDirectory()) {
                 fileManager.writeFiles(req.files, realFilePath, key, iv, function(err) {
@@ -187,8 +187,9 @@ router.put("/*", function(req, res, next) {
     if (req.baseUrl === "/public") owner = "public";
     let realFilePath = path.join(preferences.get("files"), owner, "files", filePath);
     let fileContents = req.files.data.data;
-    const key = req.session.encryptionKey;
-    const iv = req.session.encryptionIV;
+
+    const key = owner !== "public" ? req.session.encryptionKey : undefined;
+    const iv = owner !== "public" ? req.session.encryptionIV : undefined;
 
     if (fileContents) {
         fileManager.writeFile(realFilePath, fileContents, key, iv, function(err) {

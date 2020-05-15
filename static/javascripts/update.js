@@ -26,7 +26,7 @@ $(document).ready(function() {
                 if (xmlHttpRequest.status === 200) {
                     showSnackbar(basicSnackbar, "Update complete")
                 } else if (xmlHttpRequest.status === 0) {
-                    showSnackbar(basicSnackbar, "No connection. Server may be restarting.");
+                    showSnackbar(basicSnackbar, "Connection lost. Server may be restarting.");
                 } else {
                     showSnackbar(basicSnackbar, "Update failed");
                 }

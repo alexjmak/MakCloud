@@ -91,7 +91,9 @@ function getNewAccountRowHTML() {
 }
 
 function updateCallback(xmlHttpRequest) {
-    if (xmlHttpRequest.status !== 200) {
+    if (xmlHttpRequest.status === 0) {
+        showDialog(okDialog, "MakCloud", "Your session has expired", {"close": function() {location.reload()}});
+    } else if (xmlHttpRequest.status !== 200) {
         showSnackbar(basicSnackbar, xmlHttpRequest.responseText);
         getAccountInfo(displayAccountInfo);
     }
@@ -164,7 +166,7 @@ function showPromptPassword(event) {
     passwordDialog.listen("MDCDialog:closing", function() {
         let currentPassword = $("#current-password");
         let password = currentPassword.val();
-        if (field.hasClass("password")) updateField(event, {"password": password});
+        if (field.hasClass("password")) updateField(event, {"old_password": password});
         if (field.hasClass("encrypted")) updateCheckbox(event, {"password": password});
     })
 }
@@ -223,7 +225,7 @@ function updateButton(event) {
         data["encrypted"] = encrypted;
         putRequest(url + "new", JSON.stringify(data), function(xmlHttpRequest) {
             if (xmlHttpRequest.status === 0) {
-                showSnackbar(basicSnackbar, "No connection");
+                showSnackbar(basicSnackbar, "Connection lost");
             } else {
                 if (xmlHttpRequest.status !== 200) {
                     showSnackbar(basicSnackbar, xmlHttpRequest.responseText);

@@ -57,21 +57,15 @@ let createFolderArchive = function(directory, filePath, owner, next) {
 let readFile = function(filePath, key, iv, next) {
     if (key && iv) {
         let fileStream = fs.createReadStream(filePath);
-        encryptionManager.decryptStream(fileStream, key, iv, function(decryptedStream) {
-            let bufferArray = [];
-            decryptedStream.on('error', function(err) {
+        encryptionManager.decryptStream(fileStream, key, iv, function(err, buffer) {
+            if (err) {
                 log.write("Sending raw file...");
                 fs.readFile(filePath, function (err, contents) {
                     if (next !== undefined) next(contents);
                 });
-            });
-            decryptedStream.on('data', function(data) {
-                bufferArray.push(data);
-            });
-            decryptedStream.on('end', function() {
-                let buffer = Buffer.concat(bufferArray);
+            } else {
                 if (next !== undefined) next(buffer);
-            });
+            }
         });
     } else {
         fs.readFile(filePath, function (err, contents) {
@@ -121,9 +115,21 @@ let writeFiles = function(files, saveDirectory, key, iv, next) {
     if (next !== undefined) return next(returnErr);
 };
 
+let walkDirectory = function(dir, callback, next) {
+    let files = fs.readdirSync(dir);
+    for (let file in files) {
+        if (!files.hasOwnProperty(file)) continue;
+        file = files[file];
+        let dirPath = path.join(dir, file);
+        let isDirectory = fs.statSync(dirPath).isDirectory();
+        isDirectory ? walkDirectory(dirPath, callback, undefined) : callback(path.join(dir, file));
+    }
+    if (next) next();
+};
 
 module.exports = {deleteFile: deleteFile,
                   createFolderArchive: createFolderArchive,
                   readFile: readFile,
                   writeFile: writeFile,
-                  writeFiles: writeFiles};
+                  writeFiles: writeFiles,
+                  walkDirectory: walkDirectory};
