@@ -118,16 +118,10 @@ function decryptBuffer(buffer, key, iv, next) {
     contentStream.end(buffer);
     decryptStream(contentStream, key, iv, function(decryptedStream) {
         let bufferArray = [];
-        let error = false;
-        decryptedStream.on("error", function() {
-            error = true;
-            next(null);
-        })
         decryptedStream.on("data", function(data) {
             bufferArray.push(data);
         })
         decryptedStream.on("finish", function() {
-            if (error) return;
             let decryptedStream = Buffer.concat(bufferArray);
             next(decryptedStream);
         })
@@ -171,27 +165,16 @@ function encryptAccount(id, key, iv, next) {
     const fileManager = require("./fileManager");
     fileManager.walkDirectory(filesPath, function(filePath) {
         let readStream = fs.createReadStream(filePath);
-        let basename = Buffer.from(path.basename(filePath), "utf8");
-        encryptBuffer(basename, key, iv, function(encryptedBaseame) {
-            encryptedBaseame = encryptedBaseame.toString("hex");
-            let encryptedFilePath = path.join(path.dirname(filePath), encryptedBaseame);
-            encryptStream(readStream, key, iv, function(encryptedStream) {
-                let error = false;
-                encryptedStream.on("error", function() {
-                    error = true;
-                });
-                encryptedStream.on("finish", function() {
-                    if (!error) {
-                        encryptedStream.pipe(fs.createWriteStream(encryptedFilePath));
-                        try {
-                            fs.unlinkSync(filePath);
-                        } catch (err) {
-                            log.write(err);
-                        }
-                    }
-                });
+        encryptStream(readStream, key, iv, function(encryptedStream) {
+            let error = false;
+            encryptedStream.on("error", function() {
+                error = true;
             });
-        })
+            encryptedStream.on("finish", function() {
+                if (error) return;
+                encryptedStream.pipe(fs.createWriteStream(filePath));
+            });
+        });
 
     }, next)
 }
@@ -202,42 +185,16 @@ function decryptAccount(id, key, iv, next) {
     fileManager.walkDirectory(filesPath, function(filePath) {
         try {
             let readStream = fs.createReadStream(filePath);
-            let basename = path.basename(filePath);
-            let basenameBuffer;
-            try {
-                basenameBuffer = Buffer.from(basename, "hex");
-            } catch {
-                basenameBuffer = Buffer.from(basename, "utf8");
-            }
-            decryptBuffer(basenameBuffer, key, iv, function(decryptedBasename) {
-                if (decryptedBasename) decryptedBasename = decryptedBasename.toString("utf8");
-                else decryptedBasename = basename;
-
-                let decryptedFilePath = path.join(path.dirname(filePath), decryptedBasename);
-                decryptStream(readStream, key, iv, function(decryptedStream) {
-                    let error = false;
-                    decryptedStream.on("error", function() {
-                        error = true;
-                        console.log(decryptedBasename);
-                        if (decryptedBasename !== basename) {
-                            fs.rename(filePath, decryptedFilePath, function(err)  {
-                                if (err) log.write(err);
-                            })
-                        }
-                    })
-                    decryptedStream.on("finish", function() {
-                        if (!error) {
-                            decryptedStream.pipe(fs.createWriteStream(decryptedFilePath));
-                            if (decryptedBasename !== basename) {
-                                fs.unlink(filePath, function(err) {
-                                    if (err) log.write(err);
-                                });
-                            }
-                        }
-                    });
+            decryptStream(readStream, key, iv, function(decryptedStream) {
+                let error = false;
+                decryptedStream.on("error", function() {
+                    error = true;
+                })
+                decryptedStream.on("finish", function() {
+                    if (error) return;
+                    decryptedStream.pipe(fs.createWriteStream(filePath))
                 });
-
-            })
+            });
 
         } catch (err) {
             //todo backup key
@@ -253,8 +210,6 @@ module.exports = {
     generateEncryptionKey: generateEncryptionKey,
     encryptEncryptionKey: encryptEncryptionKey,
     decryptEncryptionKey: decryptEncryptionKey,
-    encryptBuffer: encryptBuffer,
-    decryptBuffer: decryptBuffer,
     encryptStream: encryptStream,
     decryptStream: decryptStream,
     encryptAccount: encryptAccount,

@@ -11,11 +11,11 @@ const serverID = require("./serverID");
 const authorization = require('./authorization');
 const accountManager = require('./accountManager');
 const blacklist = require('./blacklist');
-const webdav = require('./webdav');
+const webdav = require('./webdav/webdav');
 const log = require("./log");
 
 const app = express();
-app.use(webdav.handler("/webdav"));
+app.use(webdav.handler("/makdav"));
 
 
 const accountsRouter = require('./routes/accounts');
