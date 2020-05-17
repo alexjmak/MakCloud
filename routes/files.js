@@ -3,6 +3,7 @@ const fs = require("fs");
 const os = require('os');
 const path = require("path");
 const readify = require('readify');
+const stream = require('stream');
 const url = require('url');
 
 const accountManager = require('../accountManager');
@@ -57,9 +58,8 @@ router.get('/*', function(req, res, next) {
         } else {
             switch(parameter) {
                 case "download":
-                    fileManager.readFile(realFilePath, key, iv, function(contents) {
-                        if (err === null) res.send(contents);
-                        else next();
+                    fileManager.readFile(realFilePath, key, iv, function(contentStream) {
+                        contentStream.pipe(res);
                     });
                     break;
                 case "sharing":
@@ -74,11 +74,9 @@ router.get('/*', function(req, res, next) {
                     break;
                 default:
                     accountManager.getInformation("username", "id", authorization.getLoginTokenAudience(req), function (username) {
-                        fs.readFile(realFilePath, function (err, contents) {
-                            res.render('fileViewer', {
-                                username: username,
-                                hostname: os.hostname()
-                            });
+                        res.render('fileViewer', {
+                            username: username,
+                            hostname: os.hostname()
                         });
                     });
                     break;
@@ -192,7 +190,9 @@ router.put("/*", function(req, res, next) {
     const iv = owner !== "public" ? req.session.encryptionIV : undefined;
 
     if (fileContents) {
-        fileManager.writeFile(realFilePath, fileContents, key, iv, function(err) {
+        let contents = new stream.PassThrough();
+        contents.end(fileContents);
+        fileManager.writeFile(realFilePath, contents, key, iv, function(err) {
             if (err) res.status(500).send("Save failed");
             else res.send("Saved file");
         })

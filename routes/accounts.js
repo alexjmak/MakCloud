@@ -132,6 +132,7 @@ router.patch('/encrypted', function(req, res) {
                             if (id === authorization.getLoginTokenAudience(req)) {
                                 req.session.encryptionKey = undefined;
                                 req.session.encryptionIV = undefined;
+                                res.clearCookie("encryptionSession");
                             }
                             res.send("Decrypted account");
                         } else {

@@ -3,8 +3,8 @@ const preferences = require("./preferences");
 const path = require("path");
 const crypto = require("crypto");
 const fs = require("fs");
+const stream = require("stream");
 const log = require("./log");
-const stream = require('stream');
 const pbkdf2 = require("pbkdf2");
 
 function encryptionEnabled(req) {
@@ -99,18 +99,56 @@ function decryptEncryptionKey(id, password, next) {
 }
 
 function encryptBuffer(buffer, key, iv, next) {
-    log.write("Encrypting file...");
-    let encryptStream = new stream.PassThrough();
-    encryptStream.end(buffer);
+    let contentStream = new stream.PassThrough();
+    contentStream.end(buffer);
+    encryptStream(contentStream, key, iv, function(encryptedStream) {
+        let bufferArray = [];
+        encryptedStream.on("data", function(data) {
+            bufferArray.push(data);
+        })
+        encryptedStream.on("finish", function() {
+            let encryptedBuffer = Buffer.concat(bufferArray);
+            next(encryptedBuffer);
+        })
+    })
+}
+
+function decryptBuffer(buffer, key, iv, next) {
+    let contentStream = new stream.PassThrough();
+    contentStream.end(buffer);
+    decryptStream(contentStream, key, iv, function(decryptedStream) {
+        let bufferArray = [];
+        let error = false;
+        decryptedStream.on("error", function() {
+            error = true;
+            next(null);
+        })
+        decryptedStream.on("data", function(data) {
+            bufferArray.push(data);
+        })
+        decryptedStream.on("finish", function() {
+            if (error) return;
+            let decryptedStream = Buffer.concat(bufferArray);
+            next(decryptedStream);
+        })
+    })
+}
+
+function encryptStream(stream, key, iv, next) {
+    log.write("Encrypting...");
     key = Buffer.from(key, "hex");
     iv = Buffer.from(iv, "hex");
     let cipher = crypto.createCipheriv('aes-256-cbc', key, iv);
-    encryptStream = encryptStream.pipe(cipher);
-    if (next !== undefined) next(encryptStream);
+    stream = stream.pipe(cipher);
+    stream.on("error", function(err) {
+        log.write(err);
+    });
+    if (next !== undefined) next(stream);
+
 }
 
 function decryptStream(stream, key, iv, next) {
-    log.write("Decrypting file...");
+    log.write("Decrypting...");
     key = Buffer.from(key, "hex");
     iv = Buffer.from(iv, "hex");
     let cipher;
@@ -124,28 +162,37 @@ function decryptStream(stream, key, iv, next) {
     stream = stream.pipe(cipher);
     stream.on("error", function(err) {
         log.write(err);
-        if (next !== undefined) next(err);
     });
-    let bufferArray = [];
-    stream.on("data", function(data) {
-        bufferArray.push(data);
-    });
-    stream.on("end", function() {
-        let buffer = Buffer.concat(bufferArray);
-        if (next !== undefined) next(null, buffer);
-    });
+    if (next !== undefined) next(stream);
 }
 
 function encryptAccount(id, key, iv, next) {
     let filesPath = path.join(preferences.get("files"), id.toString());
     const fileManager = require("./fileManager");
     fileManager.walkDirectory(filesPath, function(filePath) {
-        fs.readFile(filePath, function(err, buffer) {
-            if (err) return log.write("File read error");
-            encryptBuffer(buffer, key, iv, function(stream) {
-                stream.pipe(fs.createWriteStream(filePath));
-            })
+        let readStream = fs.createReadStream(filePath);
+        let basename = Buffer.from(path.basename(filePath), "utf8");
+        encryptBuffer(basename, key, iv, function(encryptedBaseame) {
+            encryptedBaseame = encryptedBaseame.toString("hex");
+            let encryptedFilePath = path.join(path.dirname(filePath), encryptedBaseame);
+            encryptStream(readStream, key, iv, function(encryptedStream) {
+                let error = false;
+                encryptedStream.on("error", function() {
+                    error = true;
+                });
+                encryptedStream.on("finish", function() {
+                    if (!error) {
+                        encryptedStream.pipe(fs.createWriteStream(encryptedFilePath));
+                        try {
+                            fs.unlinkSync(filePath);
+                        } catch (err) {
+                            log.write(err);
+                        }
+                    }
+                });
+            });
         })
+
     }, next)
 }
 
@@ -154,11 +201,47 @@ function decryptAccount(id, key, iv, next) {
     const fileManager = require("./fileManager");
     fileManager.walkDirectory(filesPath, function(filePath) {
         try {
-            let stream = fs.createReadStream(filePath);
-            decryptStream(stream, key, iv, function(err, buffer) {
-                if (!err) fs.writeFileSync(filePath, buffer);
-            });
-        } catch (err) {return log.write(err)}
+            let readStream = fs.createReadStream(filePath);
+            let basename = path.basename(filePath);
+            let basenameBuffer;
+            try {
+                basenameBuffer = Buffer.from(basename, "hex");
+            } catch {
+                basenameBuffer = Buffer.from(basename, "utf8");
+            }
+            decryptBuffer(basenameBuffer, key, iv, function(decryptedBasename) {
+                if (decryptedBasename) decryptedBasename = decryptedBasename.toString("utf8");
+                else decryptedBasename = basename;
+
+                let decryptedFilePath = path.join(path.dirname(filePath), decryptedBasename);
+                decryptStream(readStream, key, iv, function(decryptedStream) {
+                    let error = false;
+                    decryptedStream.on("error", function() {
+                        error = true;
+                        console.log(decryptedBasename);
+                        if (decryptedBasename !== basename) {
+                            fs.rename(filePath, decryptedFilePath, function(err)  {
+                                if (err) log.write(err);
+                            })
+                        }
+                    })
+                    decryptedStream.on("finish", function() {
+                        if (!error) {
+                            decryptedStream.pipe(fs.createWriteStream(decryptedFilePath));
+                            if (decryptedBasename !== basename) {
+                                fs.unlink(filePath, function(err) {
+                                    if (err) log.write(err);
+                                });
+                            }
+                        }
+                    });
+                });
+
+            })
+
+        } catch (err) {
+            //todo backup key
+            return log.write(err)}
     }, next)
 
 }
@@ -171,6 +254,8 @@ module.exports = {
     encryptEncryptionKey: encryptEncryptionKey,
     decryptEncryptionKey: decryptEncryptionKey,
     encryptBuffer: encryptBuffer,
+    decryptBuffer: decryptBuffer,
+    encryptStream: encryptStream,
     decryptStream: decryptStream,
     encryptAccount: encryptAccount,
     decryptAccount: decryptAccount

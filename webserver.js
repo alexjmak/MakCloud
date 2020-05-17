@@ -15,7 +15,7 @@ const webdav = require('./webdav');
 const log = require("./log");
 
 const app = express();
-//app.use(webdav.handler("/webdav"));
+app.use(webdav.handler("/webdav"));
 
 
 const accountsRouter = require('./routes/accounts');

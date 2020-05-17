@@ -2,6 +2,7 @@ const archiver = require('archiver');
 const crypto = require("crypto");
 const fs = require("fs");
 const path = require("path");
+const stream = require("stream");
 const preferences = require("./preferences");
 const encryptionManager = require("./encryptionManager");
 const log = require("./log");
@@ -55,44 +56,51 @@ let createFolderArchive = function(directory, filePath, owner, next) {
 };
 
 let readFile = function(filePath, key, iv, next) {
+    let readStream = fs.createReadStream(filePath);
+    readStream.on("error", function(err) {
+        log.write(err);
+    });
     if (key && iv) {
-        let fileStream = fs.createReadStream(filePath);
-        encryptionManager.decryptStream(fileStream, key, iv, function(err, buffer) {
-            if (err) {
+        encryptionManager.decryptStream(readStream, key, iv, function(decryptedStream) {
+            let nextCalled = false;
+            decryptedStream.on("error", function() {
                 log.write("Sending raw file...");
-                fs.readFile(filePath, function (err, contents) {
-                    if (next !== undefined) next(contents);
-                });
-            } else {
-                if (next !== undefined) next(buffer);
-            }
+                if (next && !nextCalled) {
+                    nextCalled = true;
+                    next(fs.createReadStream(filePath));
+                }
+            })
+            decryptedStream.on("finish", function() {
+                if (next && !nextCalled) {
+                    nextCalled = true;
+                    next(decryptedStream);
+                }
+            })
         });
     } else {
-        fs.readFile(filePath, function (err, contents) {
-            if (next !== undefined) next(contents);
-        });
+        if (next !== undefined) next(readStream);
     }
 };
 
-let writeFile = function(filePath, data, key, iv, next) {
+let writeFile = function(filePath, contentStream, key, iv, next) {
     if (key && iv) {
-        encryptionManager.encryptBuffer(data, key, iv, function(encryptedStream) {
+        encryptionManager.encryptStream(contentStream, key, iv, function(encryptedStream) {
             encryptedStream = encryptedStream.pipe(fs.createWriteStream(filePath));
             encryptedStream.on("error", function(err) {
-                if (err && next) next(err);
+                log.write(err);
             });
-            encryptedStream.on("finish", function () {
+            encryptedStream.on("close", function () {
                 if (next) next();
             })
         });
     } else {
-        fs.writeFile(filePath, data, function(err) {
-            if (err) {
-                if (next) next(err);
-            } else {
-                if (next) next();
-            }
+        contentStream.pipe(fs.createWriteStream(filePath))
+        contentStream.on("error", function(err) {
+            log.write(err);
         });
+        contentStream.on("close", function () {
+            if (next) next();
+        })
     }
 };
 
@@ -108,7 +116,10 @@ let writeFiles = function(files, saveDirectory, key, iv, next) {
         file = files[file];
         let saveLocation = path.join(saveDirectory, file.name);
 
-        writeFile(saveLocation, file.data, key, iv, function(err) {
+        let contentStream = new stream.PassThrough();
+        contentStream.end(file.data)
+
+        writeFile(saveLocation, contentStream, key, iv, function(err) {
             if (err && returnErr === undefined) returnErr = err;
         })
     }

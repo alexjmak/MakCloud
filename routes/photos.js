@@ -56,9 +56,8 @@ router.get("/*", function(req, res, next) {
             next(createError(404));
         } else {
             if (parameter === "download") {
-                fileManager.readFile(realFilePath, key, iv, function(contents) {
-                    if (err === null) res.send(contents);
-                    else next();
+                fileManager.readFile(realFilePath, key, iv, function(contentStream) {
+                    contentStream.pipe(res);
                 });
             } else {
                 accountManager.getInformation("username", "id", authorization.getLoginTokenAudience(req), function (username) {
