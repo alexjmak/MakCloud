@@ -82,7 +82,7 @@ function createLink(parent, fileName, owner, options, next) {
                     if (next !== undefined) {
                         if (next !== false) {
                             addLinkAccess(parent, fileName, owner, -1, 0, null);
-                            let link = "/" + ["shared", key, fileName].join("/");
+                            let link = "/" + ["shared", key, encodeURIComponent(fileName)].join("/") + "?view";
                             next(link);
                         } else {
                             next(false);
@@ -209,7 +209,7 @@ function getLinkSummary(parent, fileName, owner, next) {
     let linkSummary = {};
     getLinkKey(parent, fileName, owner, function(key)  {
         if (key !== false){
-            linkSummary["link"] = "/" + ["shared", key, fileName].join("/");
+            linkSummary["link"] = "/" + ["shared", key, encodeURIComponent(fileName)].join("/") + "?view";
             getLinkInformation("hash", "key", key, function(hash) {
                 linkSummary["passwordEnabled"] = (hash !== null && hash !== undefined);
                 database.all("SELECT username, id, access, expiration FROM (SELECT username, sharing.id, access, expiration FROM sharing JOIN accounts ON (sharing.id = accounts.id) WHERE key = ? UNION SELECT username, sharing.id, access, expiration FROM sharing JOIN deleted_accounts ON (sharing.id = deleted_accounts.id) WHERE key = ? UNION SELECT null, id, access, expiration FROM sharing WHERE key = ? AND id = -1);", [key, key, key], function(sharing) {

@@ -5,29 +5,31 @@ const supportedTypes = ["txt", "json", "conf", "log", "properties", "yml", "pdf"
 const plainText = ["txt", "json", "conf", "log", "properties", "yml"];
 let oldFileContents;
 
-let getFile = function(filePath, mode, authorization, next) {
-    getRequest(filePath + "?" + mode, function(xmlHttpRequest) {
+let requestFile = function(method, filePath, authorization, next) {
+
+    request(method, filePath, null, function(xmlHttpRequest) {
         if (xmlHttpRequest.status === 200) {
             let content = $("#content");
             content.show();
-            if (mode === "authorize") {
+            if (method.toUpperCase() === "HEAD") {
                 authorized = true;
                 let extension = filePath.split(".").pop().toLowerCase();
-                if (supportedTypes.includes(extension)) {
+                let contentType = xmlHttpRequest.getResponseHeader("Content-Type");
+                if (supportedTypes.includes(extension) || contentType.startsWith("text/")) {
                     let encodedPathname = window.location.pathname.replace("'", "%27");
                     switch (extension) {
                         default:
-                            getFile(filePath, "download");
+                            requestFile("GET", filePath);
                             break;
                         case "pdf":
-                            content.append("<object data='/pdfjs/web/viewer.html?file=" + encodedPathname + "?download'></object>")
+                            content.append("<object data='/pdfjs/web/viewer.html?file=" + encodedPathname + "'></object>")
                             break;
                         case "apng": case "bmp": case "gif": case "ico": case "cur": case "jpg":
                         case "jpeg": case "pjpeg": case "pjp": case "png": case ".svg": case "webp":
-                            content.append("<img class='mdc-elevation--z10' src='" + encodedPathname + "?download'>");
+                            content.append("<img class='mdc-elevation--z10' src='" + encodedPathname + "'>");
                             break;
                         case "mp3": case "m4a":
-                            let audio = new Audio(encodedPathname + "?download");
+                            let audio = new Audio(encodedPathname);
                             audio.play();
                             break;
                     }
@@ -39,7 +41,7 @@ let getFile = function(filePath, mode, authorization, next) {
                     hideAuthorization();
                 }
             }
-            if (mode === "download") {
+            if (method.toUpperCase() === "GET") {
                 content.append("<pre id='fileContents' class='selectable mdc-elevation--z10'></pre>");
                 $("#fileContents").text(xmlHttpRequest.responseText);
                 $("#edit").show();
@@ -49,7 +51,7 @@ let getFile = function(filePath, mode, authorization, next) {
         } else if (xmlHttpRequest.status === 401 || xmlHttpRequest.status === 403) {
             showAuthorization();
             if (authorization !== undefined) {
-                $("#message").text(xmlHttpRequest.responseText);
+                $("#message").text("Incorrect password");
                 $("#password").val("");
             }
         } else if (xmlHttpRequest.status === 0) {
@@ -138,7 +140,7 @@ var authorize = function(event, next) {
         if ($.md5(password, randomNumberArray[0]) === usedPasswordMemory) return;
         usedPasswordMemory = $.md5(password, randomNumberArray[0]);
         password = btoa(":"+ password);
-        getFile(event.data.filePath, "authorize", "Basic " + password, next)
+        requestFile("HEAD", event.data.filePath, "Basic " + password, next)
     }
 
 };
@@ -172,7 +174,7 @@ $(document).ready(function() {
         $("#save").show();
     }
 
-    getFile(filePath, "authorize");
+    requestFile("HEAD", filePath);
 
     $("#edit").click({filePath: filePath}, edit);
 

@@ -1,11 +1,13 @@
 const express = require('express');
 const fs = require('fs');
+const mime = require('mime');
 const createError = require('http-errors');
 const readify = require('readify');
 const url = require('url');
 
 const accountManager = require('../accountManager');
 const authorization = require('../authorization');
+const fileManager = require('../fileManager');
 const sharingManager = require('../sharingManager');
 
 const router = express.Router();
@@ -24,32 +26,46 @@ router.get('/*', function(req, res, next) {
                     fs.stat(realFilePath, function (err, stats) {
                         if (err || !stats) return next(createError(404));
                         switch (parameter) {
-                            case "authorize":
-                                sharingManager.doAuthorization(key, fileName, req, res, function (token) {
-                                    if (!token) return next(createError(403));
-                                    res.send(token);
-                                });
-                                break;
                             case "download":
                                 sharingManager.doAuthorization(key, fileName, req, res, function (token) {
-                                    if (!token) return next(createError(403));
-                                    fs.readFile(realFilePath, function (err, contents) {
-                                        if (err) return next(createError(500));
-                                        res.send(contents);
-                                    });
+                                    if (!token) {
+                                        if (req.method === "HEAD") next(createError(403));
+                                        else res.redirect(req.originalUrl + "?view");
+                                    } else {
+                                        if (req.method === "HEAD") return res.sendStatus(200);
+                                        else {
+                                            fileManager.readFile(realFilePath, null, null, function (contentStream) {
+                                                res.writeHead(200, {
+                                                    "Content-Type": "application/octet-stream",
+                                                    "Content-Disposition": "attachment"
+                                                });
+                                                contentStream.pipe(res);
+                                            });
+                                        }
+                                    }
                                 });
                                 break;
+                            case "view":
+                                res.render('fileViewer', {username: username, file: {path: fileName}})
+                                break;
                             default:
-                                if (stats.isDirectory()) {
-                                    readify(realFilePath, {sort: 'type'}).then(function (files) {
-                                        res.render('directory', {
-                                            username: username,
-                                            directory: {path: fileName, files: JSON.stringify(files.files)}
-                                        });
-                                    });
-                                } else {
-                                    res.render('fileViewer', {username: username, file: {path: fileName}});
-                                }
+                                sharingManager.doAuthorization(key, fileName, req, res, function (token) {
+                                    if (!token) {
+                                        if (req.method === "HEAD") next(createError(403));
+                                        else res.redirect(fileName + "?view");
+                                    } else {
+                                        if (req.method === "HEAD") return res.sendStatus(200);
+                                        else {
+                                            fileManager.readFile(realFilePath, null, null, function(contentStream) {
+                                                res.writeHead(200, {
+                                                    "Content-Disposition": "inline",
+                                                    "Content-Type": mime.getType(realFilePath)
+                                                });
+                                                contentStream.pipe(res);
+                                            });
+                                        }
+                                    }
+                                });
                                 break;
                         }
                     });

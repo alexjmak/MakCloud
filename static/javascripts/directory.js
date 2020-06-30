@@ -1,6 +1,4 @@
 $(document).ready(function() {
-    let files = $("#files");
-
     folderContents = folderContents.filter(function(file) {
         return !file.name.startsWith(".");
     });
@@ -66,7 +64,7 @@ $(document).ready(function() {
         new mdc.ripple.MDCRipple(iconButtons[i]).unbounded = true;
     }
 
-    let fileNames = {};
+    let files = {};
 
 
     for (let fileIndex in folderContents) {
@@ -93,8 +91,8 @@ $(document).ready(function() {
                 icon = "folder";
             }
 
-            fileNames[fileIndex.toString()] = file.name;
-            files.append(`<tr class='underlinedTR file' name='${fileIndex}'><td><span class='file-icons material-icons'>${icon}</span></td><td><p>${file.name}</p></td><td><p>${file.size.toUpperCase()}</p></td><td><p>${file.date}</p></td></tr>`);
+            files[fileIndex.toString()] = file;
+            $("#files").append(`<tr class='underlinedTR file' name='${fileIndex}'><td><span class='file-icons material-icons'>${icon}</span></td><td><p>${file.name}</p></td><td><p>${file.size.toUpperCase()}</p></td><td><p>${file.date}</p></td></tr>`);
 
         }
     }
@@ -141,10 +139,7 @@ $(document).ready(function() {
     $(document).keypress(function(e) {
         switch (e.which) {
             case 13:
-                let fileId = $(selectedItem).attr("name");
-                let fileName = fileNames[fileId];
-                window.location = [location.pathname, fileName].join("/");
-                break;
+                fileDblClick();
         }
     });
 
@@ -163,7 +158,7 @@ $(document).ready(function() {
 
     $("#download").click(function () {
         let fileId = $(selectedItem).attr("name");
-        let fileName = fileNames[fileId];
+        let fileName = files[fileId].name;
         window.open([location.pathname, fileName].join("/") + "?download", "_blank");
     });
 
@@ -173,7 +168,7 @@ $(document).ready(function() {
 
     $("#delete").click(function () {
         let fileId = $(selectedItem).attr("name");
-        let fileName = fileNames[fileId];
+        let fileName = files[fileId].name;
         showDialog(yesNoDialog, "MakCloud", "Are you sure you want to delete " + fileName  + "?", {"yes": function() {
             deleteRequest([location.pathname, fileName].join("/"), null, function(xmlHttpRequest) {
                     if (xmlHttpRequest.status === 200)  {
@@ -190,7 +185,7 @@ $(document).ready(function() {
 
     $("#share").click(function () {
         let fileId = $(selectedItem).attr("name");
-        let fileName = fileNames[fileId];
+        let fileName = files[fileId].name;
         share({"data": {"filePath": [location.pathname, fileName].join("/")}});
     });
 
@@ -223,15 +218,18 @@ $(document).ready(function() {
         selectedItem = file;
     }
 
-    function fileDblClick(file) {
+    function fileDblClick() {
         let fileId = $(selectedItem).attr("name");
-        let fileName = fileNames[fileId];
-        window.location = [location.pathname, fileName].join("/");
+        let file = files[fileId];
+        let link = [location.pathname, file.name].join("/");
+        if (file.type !== "directory") link += "?view";
+        window.location = link;
     }
 
     function reload() {
         $(".file").remove();
-        fileNames = {};
+        files = {};
+        
         for (let fileIndex in folderContents) {
             if (folderContents.hasOwnProperty(fileIndex)) {
                 let file = folderContents[fileIndex];
@@ -242,8 +240,8 @@ $(document).ready(function() {
                     icon = "folder";
                 }
 
-                fileNames[fileIndex.toString()] = file.name;
-                files.append(`<tr class='underlinedTR file' name='${fileIndex}'><td><span class='file-icons material-icons'>${icon}</span></td><td><p>${file.name}</p></td><td><p>${file.size.toUpperCase()}</p></td><td><p>${file.date}</p></td></tr>`);
+                files[fileIndex.toString()] = file;
+                $("#files").append(`<tr class='underlinedTR file' name='${fileIndex}'><td><span class='file-icons material-icons'>${icon}</span></td><td><p>${file.name}</p></td><td><p>${file.size.toUpperCase()}</p></td><td><p>${file.date}</p></td></tr>`);
 
             }
         }

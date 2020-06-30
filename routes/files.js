@@ -1,5 +1,6 @@
 const express = require('express');
 const fs = require("fs");
+const mime = require('mime');
 const os = require('os');
 const path = require("path");
 const readify = require('readify');
@@ -31,11 +32,11 @@ router.get('/*', function(req, res, next) {
         if (stats.isDirectory()) {
             switch(parameter) {
                 case "download":
-                    fileManager.createFolderArchive("files", filePath, owner, function(archivePath) {
+                    fileManager.createFolderArchive("files", filePath, owner, function(contentStream) {
                         if (filePath === "") filePath = path.basename(preferences.get("files"));
-                        res.download(archivePath, path.basename(filePath + ".zip"), function() {
-                            fs.unlinkSync(archivePath);
-                        });
+                        let fileName = path.basename(filePath + ".zip");
+                        res.writeHead(200, {"Content-Type": "application/octet-stream", "Content-Disposition" : "attachment; filename=" + fileName});
+                        contentStream.pipe(res);
                     });
                     break;
                 case "sharing":
@@ -59,6 +60,7 @@ router.get('/*', function(req, res, next) {
             switch(parameter) {
                 case "download":
                     fileManager.readFile(realFilePath, key, iv, function(contentStream) {
+                        res.writeHead(200, {"Content-Type": "application/octet-stream", "Content-Disposition" : "attachment"});
                         contentStream.pipe(res);
                     });
                     break;
@@ -72,12 +74,18 @@ router.get('/*', function(req, res, next) {
                         res.json(result);
                     });
                     break;
-                default:
+                case "view":
                     accountManager.getInformation("username", "id", authorization.getLoginTokenAudience(req), function (username) {
                         res.render('fileViewer', {
                             username: username,
                             hostname: os.hostname()
                         });
+                    });
+                    break;
+                default:
+                    fileManager.readFile(realFilePath, key, iv, function(contentStream) {
+                        res.writeHead(200, {"Content-Disposition" : "inline", "Content-Type": mime.getType(realFilePath)});
+                        contentStream.pipe(res);
                     });
                     break;
             }

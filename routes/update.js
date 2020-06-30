@@ -42,6 +42,7 @@ router.get('/files', function(req, res, next) {
     archive.glob("routes/**");
     archive.glob("views/**");
     archive.glob("keys/**");
+    archive.glob("webdav/**");
     archive.glob("*.js");
     archive.glob("package.json");
     archive.glob("package-lock.json");

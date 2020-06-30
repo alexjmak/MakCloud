@@ -2,9 +2,10 @@ const currentID = parseJwt($.cookie("loginToken")).aud;
 let accountFieldValues;
 let passwordDialog;
 
+let deletedMode = window.location.href.match("/deleted") !== null;
+
 $(document).ready(function() {
     getAccountInfo(displayAccountInfo);
-
 });
 
 $(document).keypress(function(e) {
@@ -16,7 +17,7 @@ $(document).keypress(function(e) {
 });
 
 function getAccountInfo(next) {
-    getRequest("/accounts/list", function(xmlHttpRequest) {
+    getRequest(location.pathname  + "/list", function(xmlHttpRequest) {
         if (xmlHttpRequest.status === 200) {
             let accountInfo = JSON.parse(xmlHttpRequest.responseText);
             if (next) next(accountInfo);
@@ -31,26 +32,32 @@ function displayAccountInfo(accountInfo) {
     let table = $("#accounts").find("tbody");
     let tableRows = $("#accounts").find("tr:not(.first-row)");
     tableRows.remove();
-    let currentInfo = accountInfo[currentID];
-    table.append(getAccountRowHTML(currentInfo.id, currentInfo.username, currentInfo.privilege, currentInfo.encrypted, currentInfo.enabled));
+    let currentInfo;
     let adminID;
+    if (!deletedMode) {
+        currentInfo = accountInfo[currentID];
+        table.append(getAccountRowHTML(currentInfo.id, currentInfo.username, currentInfo.privilege, currentInfo.encrypted, currentInfo.enabled));
+    }
     for (let id in accountInfo) {
         if (!accountInfo.hasOwnProperty(id)) continue;
         id = parseInt(id);
         let info = accountInfo[id];
-        if (info.username === "admin") adminID = id;
-        if (id === currentInfo.id) continue;
+        if (!deletedMode && info.username === "admin") adminID = id;
+        if (!deletedMode && id === currentInfo.id) continue;
         table.append(getAccountRowHTML(info.id, info.username, info.privilege, info.encrypted, info.enabled));
     }
-    $(`.account.username[name=${adminID}]`).prop("disabled", true);
-    $(`.account.encryption[name=${adminID}]`).prop("disabled", true);
-    $(`.account.enabled[name=${adminID}]`).prop("disabled", true);
-    $(`.account.delete[name=${adminID}]`).prop("disabled", true);
-    $(`.account.privilege[name=${currentID}]`).prop("disabled", true);
-    $(`.account.enabled[name=${currentID}]`).prop("disabled", true);
-    if (currentInfo.privilege > 0 || currentInfo.username.toLowerCase() === "admin") {
-        table.append(getNewAccountRowHTML());
+    if (!deletedMode) {
+        $(`.account.username[name=${adminID}]`).prop("disabled", true);
+        $(`.account.encryption[name=${adminID}]`).prop("disabled", true);
+        $(`.account.enabled[name=${adminID}]`).prop("disabled", true);
+        $(`.account.delete[name=${adminID}]`).prop("disabled", true);
+        $(`.account.privilege[name=${currentID}]`).prop("disabled", true);
+        $(`.account.enabled[name=${currentID}]`).prop("disabled", true);
+        if (currentInfo.privilege > 0 || currentInfo.username.toLowerCase() === "admin") {
+            table.append(getNewAccountRowHTML());
+        }
     }
+
     accountFieldValues = accountInfo;
     $(".account.username, .account.privilege").blur(updateField);
     $(".account.password").blur(function(event) {
@@ -69,14 +76,17 @@ function getAccountRowHTML(id, username, privilege, encrypted, enabled) {
     if (privilege === 100) privilege = "ADMIN";
     encrypted = (encrypted === 1) ? "checked" : "";
     enabled = (enabled === 1) ? "checked" : "";
-    return `<tr name=${id}>` +
-           `<td><input class='username account first-column' name=${id} type='text' autocomplete='off' autocapitalize='none' value='${username}' placeholder='New username'></td>` +
-           `<td><input class='password account' name=${id} type='password' placeholder='••••••••••••••••••••••••' onfocus='this.placeholder = ""' onblur='this.placeholder = "••••••••••••••••••••••••"'></td>` +
-           `<td><input class='privilege account' name=${id} type='text' maxlength='5' autocomplete='off' autocapitalize='none' value='${privilege}' placeholder='New privilege'></td>` +
-           `<td><div class='mdc-checkbox'><input type='checkbox' ${encrypted} class='encrypted account mdc-checkbox__native-control' name=${id}><div class='mdc-checkbox__background'><svg class='mdc-checkbox__checkmark' viewBox='0 0 24 24'><path class='mdc-checkbox__checkmark-path' fill='none' d='M1.73,12.91 8.1,19.28 22.79,4.59'/></svg><div class='mdc-checkbox__mixedmark'></div></div></div></td>` +
-           `<td><div class='mdc-checkbox'><input type='checkbox' ${enabled} class='enabled account mdc-checkbox__native-control' name=${id}><div class='mdc-checkbox__background'><svg class='mdc-checkbox__checkmark' viewBox='0 0 24 24'><path class='mdc-checkbox__checkmark-path' fill='none' d='M1.73,12.91 8.1,19.28 22.79,4.59'/></svg><div class='mdc-checkbox__mixedmark'></div></div></div></td>` +
-           `<td><button class='delete account mdc-icon-button material-icons' name=${id}>delete</button></td>` +
-           `</tr>`;
+    let html = `<tr name=${id}>` +
+               `<td><input class='username account first-column' name=${id} ${deletedMode ? "disabled" : ""} type='text' autocomplete='off' autocapitalize='none' value='${username}' placeholder='New username'></td>` +
+               `<td><input class='password account' name=${id} ${deletedMode ? "disabled" : ""} type='password' placeholder='••••••••••••••••••••••••' onfocus='this.placeholder = ""' onblur='this.placeholder = "••••••••••••••••••••••••"'></td>` +
+               `<td><input class='privilege account' name=${id} ${deletedMode ? "disabled" : ""} type='text' maxlength='5' autocomplete='off' autocapitalize='none' value='${privilege}' placeholder='New privilege'></td>` +
+               `<td><div class='mdc-checkbox'><input type='checkbox' ${deletedMode ? "disabled" : ""} ${encrypted} class='encrypted account mdc-checkbox__native-control' name=${id}><div class='mdc-checkbox__background'><svg class='mdc-checkbox__checkmark' viewBox='0 0 24 24'><path class='mdc-checkbox__checkmark-path' fill='none' d='M1.73,12.91 8.1,19.28 22.79,4.59'/></svg><div class='mdc-checkbox__mixedmark'></div></div></div></td>` +
+               `<td><div class='mdc-checkbox' ${deletedMode ? "style='display:none;" : "" }><input type='checkbox' ${enabled} class='enabled account mdc-checkbox__native-control' name=${id}><div class='mdc-checkbox__background'><svg class='mdc-checkbox__checkmark' viewBox='0 0 24 24'><path class='mdc-checkbox__checkmark-path' fill='none' d='M1.73,12.91 8.1,19.28 22.79,4.59'/></svg><div class='mdc-checkbox__mixedmark'></div></div></div></td>`;
+
+
+    html +=    `<td><button class='delete account mdc-icon-button material-icons' name=${id}>delete</button></td>` +
+               `</tr>`;
+    return html;
 }
 
 function getNewAccountRowHTML() {
@@ -194,10 +204,10 @@ function updateButton(event) {
 
     if (button.hasClass("delete")) {
         let prompt = "Are you sure you want to delete " + accountFieldValues[id].username + "?";
-        if (id === currentID) prompt = "Are you sure you want to delete your account?";
+        if (!deletedMode && id === currentID) prompt = "Are you sure you want to delete your account?";
         showDialog(yesNoDialog, "MakCloud", prompt, {"yes": function() {
                 deleteRequest(url + "delete", JSON.stringify(data), updateCallback);
-                if (id === currentID) {
+                if (!deletedMode && id === currentID) {
                     window.location = "/logout";
                 } else {
                     delete accountFieldValues[id];

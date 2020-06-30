@@ -2,6 +2,7 @@ const fs = require("fs");
 const path = require("path");
 const crypto = require("crypto");
 const pbkdf2 = require('pbkdf2');
+const rimraf = require("rimraf");
 const database = require("./databaseInit");
 const child_process = require('child_process');
 const preferences = require("./preferences");
@@ -60,17 +61,17 @@ function getAccountsSummary(id, next) {
 function getDeletedAccountsSummary(id, next) {
     getInformation("privilege", "id", id, function(privilege) {
         getInformation("username", "id", id, function(username) {
-            database.all("SELECT id, username, privilege, dateDeleted, encryptKey NOT NULL AS encrypted FROM deleted_accounts WHERE ? OR id = ? OR privilege < ? ORDER BY username COLLATE NOCASE", [username === "admin", id, privilege], function (results) {
+            database.all("SELECT id, username, privilege, encryptKey NOT NULL AS encrypted FROM deleted_accounts WHERE ? OR id = ? OR privilege < ? ORDER BY username COLLATE NOCASE", [username === "admin", id, privilege], function (results) {
                 let resultsById = {};
                 for (let result in results) {
                     if (results.hasOwnProperty(result)) {
                         result = results[result];
-                        let id = result.id;
-                        delete result[id];
-                        resultsById[id] = result;
+                        let accountID = result.id;
+                        delete result[accountID];
+                        resultsById[accountID] = result;
                     }
                 }
-                if (next !== undefined) next(results);
+                if (next !== undefined) next(resultsById);
             });
         });
     });
@@ -88,6 +89,14 @@ function searchAccounts(query, next) {
             }
         }
         if (next !== undefined) next(results);
+    });
+}
+
+function getAccountInfoHash(id, next) {
+    database.get("SELECT * FROM accounts WHERE id = ?", id, function(result) {
+        let hash = crypto.createHash("md5").update(JSON.stringify(result))
+        hash = hash.digest("hex");
+        if (next) next(hash);
     });
 }
 
@@ -165,7 +174,7 @@ function deleteAccount(id, next) {
             }
             let dateDeleted = Math.floor(Date.now()/1000);
             let filePath = path.join(preferences.get("files"), id.toString()).toString();
-            let newFilePath = path.join(preferences.get("files"), "deleted", id.toString() + "-" + (dateDeleted).toString()).toString();
+            let newFilePath = path.join(preferences.get("files"), "deleted", id.toString()).toString();
             fs.rename(filePath, newFilePath, function() {
                 database.run("INSERT INTO deleted_accounts SELECT id, username, hash, salt, privilege, " + dateDeleted + " as dateDeleted, encryptKey, encryptIV, derivedKeySalt FROM accounts WHERE id = ?;", id);
 
@@ -185,6 +194,17 @@ function deleteAccount(id, next) {
             });
         })
     });
+}
+
+function deleteDeletedAccount(id, next) {
+    let directory = path.join(preferences.get("files"), "deleted", id.toString()).toString();
+    rimraf(directory, function(err) {
+        database.run("DELETE FROM deleted_accounts WHERE id = ?", id, function (result) {
+            if (next !== undefined) next(result);
+        });
+    });
+
+
 }
 
 function encryptAccount(id, password, next) {
@@ -419,11 +439,13 @@ module.exports = {
     getAccountsSummary: getAccountsSummary,
     getDeletedAccountsSummary: getDeletedAccountsSummary,
     searchAccounts: searchAccounts,
+    getAccountInfoHash: getAccountInfoHash,
     getInformation: getInformation,
     newAccount: newAccount,
     encryptAccount: encryptAccount,
     decryptAccount: decryptAccount,
     deleteAccount: deleteAccount,
+    deleteDeletedAccount: deleteDeletedAccount,
     enableAccount: enableAccount,
     disableAccount: disableAccount,
     updateUsername: updateUsername,

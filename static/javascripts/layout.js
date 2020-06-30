@@ -1,5 +1,8 @@
 let isMobile;
-
+/*console.log($(document.documentElement)[0].style)
+$(document.documentElement)[0].style.backgroundColor = "#181818"
+$(document.documentElement)[0].style.color = "white";
+*/
 $(document).ready(function() {
     checkMobileResize();
     $(window).resize(checkMobileResize);
@@ -106,6 +109,7 @@ $(document).ready(function() {
         }
 
         request("POST", location.pathname + "?upload", formData, function(xmlHttpRequest) {
+            console.log(xmlHttpRequest.status)
             showSnackbar(basicSnackbar, xmlHttpRequest.responseText);
         }, undefined, null);
     });

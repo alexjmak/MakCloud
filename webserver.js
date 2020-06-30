@@ -13,14 +13,19 @@ const accountManager = require('./accountManager');
 const blacklist = require('./blacklist');
 const webdav = require('./webdav/webdav');
 const log = require("./log");
+const preferences = require("./preferences");
 
 const app = express();
-app.use(webdav.handler("/makdav"));
 
+if (preferences.get("webdav")) {
+    app.use(webdav.handler("/webdav"));
+    app.use(webdav.handler("/makdav"));
+}
 
 const accountsRouter = require('./routes/accounts');
 const filesRouter = require('./routes/files');
 const photosRouter = require('./routes/photos');
+const mailRouter = require('./routes/mail');
 const sharedRouter = require('./routes/shared');
 const indexRouter = require('./routes/index');
 const logRouter = require('./routes/log');
@@ -56,13 +61,13 @@ app.use(function(req, res, next) {
     }
 });
 
-app.use(express.static(path.join(__dirname, "static")));
-
 const noLog = ["/accounts/list/hash", "/log/raw", "/log/size"];
 app.use(function(req, res, next) {
     if (noLog.indexOf(req.path) === -1) log.writeServer(req, req.method, req.url);
     next();
 });
+
+app.use(express.static(path.join(__dirname, "static")));
 
 app.use('/logout', logoutRouter);
 app.use(function(req, res, next) {
@@ -81,6 +86,7 @@ app.use("/log", logRouter);
 app.use("/files", filesRouter);
 app.use("/public", filesRouter);
 app.use("/photos", photosRouter);
+app.use("/mail", mailRouter);
 app.use("/accounts", accountsRouter);
 app.use("/error", errorRouter);
 

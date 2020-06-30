@@ -3,9 +3,11 @@ Object.defineProperty(exports, "__esModule", { value: true });
 
 let accountManager = require("../accountManager");
 let authorization = require("../authorization");
+let encryptionManager = require("../encryptionManager");
 
 var User = require("./User");
-var Errors_1 = require("webdav-server/lib/Errors");
+var Errors = require("webdav-server/lib/Errors").Errors;
+
 var UserManager = /** @class */ (function () {
     function UserManager() {
         this.users = {
@@ -17,30 +19,60 @@ var UserManager = /** @class */ (function () {
         callback(this.users.__default);
     };
 
-    UserManager.prototype.getUserByNamePassword = function (username, password, callback) {
-        accountManager.getInformation("id", "username", username, function(id) {
+    UserManager.prototype.getUserByName = function(username, callback) {
+        let _this = this;
+        accountManager.getInformation("id", "lower(username)", username.toLowerCase(), function(id) {
             if (!username) {
-                return callback(Errors_1.Errors.UserNotFound);
+                if (_this.users[id]) delete _this.users[id];
+                return callback(Errors.UserNotFound);
             }
-            accountManager.getInformation("privilege", "id", id, function(privilege) {
-                authorization.checkPassword(id, password, function(result) {
-                    switch (result) {
-                        case 0: //Success
-                            callback(null, new User(id, username, privilege));
-                            break;
-                        case 1: //Bad credentials
-                            callback(Errors_1.Errors.BadAuthentication);
-                            break;
-                        case 2: //Disabled
-                            callback(Errors_1.Errors.UserNotFound);
-                            break;
-                    }
-                })
+            accountManager.getAccountInfoHash(id, function(infoHash) {
+                if ((_this.users[id] && _this.users[id].infoHash !== infoHash) || !_this.users[id]) {
+                    accountManager.getInformation("privilege", "id", id, function(privilege) {
+                        _this.users[id] = new User(id, infoHash, username, privilege, undefined, undefined)
+                        callback(null, _this.users[id]);
+                    });
+                } else {
+                    callback(null, _this.users[id]);
+                }
             });
+
 
         })
 
+    }
+
+    UserManager.prototype.getUserByNamePassword = function (username, password, callback) {
+        this.getUserByName(username, function(e, user) {
+            if (e) return callback(e);
+            authorization.checkPassword(user.uid, password, function(result) {
+                switch (result) {
+                    case 0:
+                        if (user.key === undefined || user.iv === undefined)  {
+                            encryptionManager.decryptEncryptionKey(user.uid, password, function(key, iv) {
+                                if (key !== false) {
+                                    user.key = key;
+                                    user.iv = iv;
+                                } else {
+                                    user.key = null;
+                                    user.iv = null;
+                                    callback(null, user);
+                                }
+
+                            });
+                        } else {
+                            callback(null, user);
+                        }
+
+                        break;
+                    case 1: case 2:
+                        callback(Errors.BadAuthentication);
+                        break;
+                }
+            })
+        });
     };
+
     return UserManager;
 }());
 module.exports = UserManager;

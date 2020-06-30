@@ -17,6 +17,8 @@ var export_1 = require("webdav-server/lib/manager/v2/fileSystem/export");
 var path_1 = require("path");
 var Errors_1 = require("webdav-server/lib/Errors");
 var fs = require("fs");
+var encryptionManager = require("../encryptionManager");
+
 var PhysicalFileSystemResource = /** @class */ (function () {
     function PhysicalFileSystemResource(data) {
         if (!data) {
@@ -149,16 +151,85 @@ var UserFileSystem = /** @class */ (function (_super) {
             if (e)
                 return callback(Errors_1.Errors.ResourceNotFound);
             if (!resource)
-                _this.resources[path.toString()] = new PhysicalFileSystemResource();
-            callback(null, fs.createWriteStream(null, { fd: fd }));
+                _this.resources[path.toString()] = PhysicalFileSystemResource();
+            var stream = fs.createWriteStream(null, { fd: fd });
+            var key = ctx.context.user.key;
+            var iv = ctx.context.user.iv;
+            if (key && iv) {
+                encryptionManager.getCipher(key, iv, function(err, cipher) {
+                    if (err) {
+                        fs.open(realPath, 'w+', function (e, fd) {
+                            var stream = fs.createWriteStream(null, { fd: fd });
+                            callback(null, stream);
+                        });
+                    } else {
+                        let encryptedStream = cipher.pipe(stream);
+                        let callbackCalled = false;
+                        encryptedStream.on("error", function() {
+                            if (!callbackCalled) {
+                                callbackCalled = true;
+                                fs.open(realPath, 'w+', function (e, fd) {
+                                    var stream = fs.createWriteStream(null, { fd: fd });
+                                    callback(null, stream);
+                                });
+                            }
+                        });
+                        encryptedStream.on("finish", function() {
+                            if (!callbackCalled) {
+                                callbackCalled = true;
+                                callback(null, encryptedStream);
+                            }
+                        });
+                    }
+
+                });
+            } else {
+                callback(null, stream);
+            }
         });
     };
+
     FileSystem.prototype._openReadStream = function (path, ctx, callback) {
         var realPath = this.getRealPath(path, ctx).realPath;
         fs.open(realPath, 'r', function (e, fd) {
             if (e)
                 return callback(Errors_1.Errors.ResourceNotFound);
-            callback(null, fs.createReadStream(null, { fd: fd }));
+
+            var stream = fs.createReadStream(null, { fd: fd });
+
+            var key = ctx.context.user.key;
+            var iv = ctx.context.user.iv;
+
+            if (key && iv) {
+                encryptionManager.decryptStream(stream, key, iv, function(decryptedStream) {
+                    if (!decryptedStream) {
+                        fs.open(realPath, 'r', function (e, fd) {
+                            var stream = fs.createReadStream(null, { fd: fd });
+                            callback(null, stream);
+                        });
+                    } else {
+                        let callbackCalled = false;
+                        decryptedStream.on("error", function(err) {
+                            if (!callbackCalled) {
+                                callbackCalled = true;
+                                fs.open(realPath, 'r', function (e, fd) {
+                                    var stream = fs.createReadStream(null, { fd: fd });
+                                    callback(null, stream);
+                                });
+                            }
+                        });
+                        decryptedStream.on("finish", function() {
+                            if (!callbackCalled) {
+                                callbackCalled = true;
+                                callback(null, decryptedStream);
+                            }
+                        });
+                    }
+
+                });
+            } else {
+                callback(null, stream);
+            }
         });
     };
     FileSystem.prototype._move = function (pathFrom, pathTo, ctx, callback) {

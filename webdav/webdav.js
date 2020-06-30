@@ -4,6 +4,7 @@ const preferences = require("../preferences");
 const UserManager = require("./UserManager");
 const UserFileSystem = require("./UserFileSystem");
 const PrivilegeManager = require("./PrivilegeManager");
+const path = require("path");
 
 // User manager (tells who are the users)
 const userManager = new UserManager();
@@ -17,29 +18,33 @@ const server = new webdav.WebDAVServer({
     httpAuthentication: new webdav.HTTPBasicAuthentication(userManager, 'Default realm'),
     privilegeManager: privilegeManager,
     serverName: "MakCloud",
-    port: 1900, // Load the server on the port 2000 (if not specified, default is 1900)
-
+    port: null
 });
 
 
 server.afterRequest((arg, next) => {
-    // Display the method, the URI, the returned status code and the returned message
-    log.write(arg.requested.uri, '>', arg.response.statusCode, arg.response.statusMessage);
+    if (arg.response.statusCode !== 200) {
+        log.writeServer(arg.request, arg.request.method, arg.requested.uri, "(" + arg.response.statusCode, arg.response.statusMessage + ")");
+    }
     next();
 });
 
-
-server.setFileSystem("Files", new UserFileSystem("./files", "files"), (success) => {
-    server.setFileSystem("Photos", new UserFileSystem("./files", "photos", false), (success) => {
-        server.setFileSystem("Public", new webdav.PhysicalFileSystem("./files/public/files", false), (success) => {
-            server.start();
-        });
-
-    })
-
+server.beforeRequest((arg, next) => {
+    log.writeServer(arg.request, arg.request.method, arg.requested.uri);
+    if (arg.request.method === "GET" && arg.requested.uri === "/") arg.response.redirect("/");
+    next();
 })
 
 
+let filesPath = preferences.get("files");
+server.setFileSystem("Files", new UserFileSystem(filesPath, "files"), (success) => {
+    server.setFileSystem("Photos", new UserFileSystem(filesPath, "photos", false), (success) => {
+        server.setFileSystem("Public", new webdav.PhysicalFileSystem(path.join(filesPath, "public/files"), false), (success) => {
+            log.write("Starting server...")
+            server.start();
+        });
+    });
+});
 
 let handler = function(root) {
     return webdav.extensions.express(root, server);

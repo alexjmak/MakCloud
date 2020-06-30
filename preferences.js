@@ -6,7 +6,7 @@ const configurationFile = path.join(__dirname, "preferences.json");
 const defaultConfiguration = {files: "./files", sambaIntegration: false};
 let configuration;
 
-function reload() {
+function reload(next) {
     fs.readFile(configurationFile, function (err, data) {
         if (err) {
             fs.writeFileSync(configurationFile, JSON.stringify(defaultConfiguration));
@@ -19,6 +19,7 @@ function reload() {
         } catch(err) {
             log.write("Read error: " + err);
         }
+        if (next) next();
     });
 }
 
@@ -27,7 +28,5 @@ function get(property) {
         return configuration[property];
     }
 }
-
-reload();
 
 module.exports = {get: get, reload: reload};

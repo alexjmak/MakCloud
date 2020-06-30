@@ -1,5 +1,6 @@
 const express = require('express');
 const fs = require("fs");
+const mime = require('mime');
 const createError = require('http-errors');
 const os = require('os');
 const path = require('path');
@@ -55,18 +56,27 @@ router.get("/*", function(req, res, next) {
         if (stats.isDirectory()) {
             next(createError(404));
         } else {
-            if (parameter === "download") {
-                fileManager.readFile(realFilePath, key, iv, function(contentStream) {
-                    contentStream.pipe(res);
-                });
-            } else {
-                accountManager.getInformation("username", "id", authorization.getLoginTokenAudience(req), function (username) {
-                    res.render('fileViewer', {
-                        username: username,
-                        hostname: os.hostname(),
-                        file: {path: urlFilePath}
+            switch(parameter) {
+                case "download":
+                    fileManager.readFile(realFilePath, key, iv, function(contentStream) {
+                        res.writeHead(200, {"Content-Type": "application/octet-stream", "Content-Disposition" : "attachment"});
+                        contentStream.pipe(res);
                     });
-                });
+                    break;
+                case "view":
+                    accountManager.getInformation("username", "id", authorization.getLoginTokenAudience(req), function (username) {
+                        res.render('fileViewer', {
+                            username: username,
+                            hostname: os.hostname()
+                        });
+                    });
+                    break;
+                default:
+                    fileManager.readFile(realFilePath, key, iv, function(contentStream) {
+                        res.writeHead(200, {"Content-Disposition" : "inline", "Content-Type": mime.getType(realFilePath)});
+                        contentStream.pipe(res);
+                    });
+                    break;
             }
         }
     });

@@ -35,24 +35,14 @@ let deleteFile = function(directory, filePath, owner, next) {
 
 let createFolderArchive = function(directory, filePath, owner, next) {
     let folderPath = path.join(preferences.get("files"), owner.toString(), directory, filePath);
-    let outputArchiveName = "download-" + crypto.randomBytes(4).toString("hex") + ".zip";
-    let outputPath = path.join(preferences.get("files"), owner.toString(), outputArchiveName);
-
-    let fileOutput = fs.createWriteStream(outputPath);
-    fileOutput.on('error', function(err) {
-        log.write(err);
-    });
-    fileOutput.on('close', function () {
-        if (next !== undefined) next(path.resolve(outputPath))
-    });
-
     let archive = archiver('zip');
     archive.on('error', function(err) {
         log.write(err);
     });
-    archive.pipe(fileOutput);
+
     archive.directory(folderPath, false);
     archive.finalize();
+    next(archive);
 };
 
 let readFile = function(filePath, key, iv, next) {
@@ -61,44 +51,47 @@ let readFile = function(filePath, key, iv, next) {
         log.write(err);
     });
     if (key && iv) {
-        encryptionManager.decryptStream(readStream, key, iv, function(decryptedStream) {
-            let nextCalled = false;
-            decryptedStream.on("error", function() {
-                log.write("Sending raw file...");
-                if (next && !nextCalled) {
-                    nextCalled = true;
-                    next(fs.createReadStream(filePath));
-                }
-            })
-            decryptedStream.on("finish", function() {
-                if (next && !nextCalled) {
-                    nextCalled = true;
+        encryptionManager.isEncrypted(fs.createReadStream(filePath), key, iv, function(encrypted) {
+            if (encrypted) {
+                encryptionManager.decryptStream(readStream, key, iv, function(decryptedStream) {
                     next(decryptedStream);
-                }
-            })
-        });
+                });
+            } else {
+                log.write("Sending raw file...");
+                next(fs.createReadStream(filePath));
+            }
+        })
     } else {
         if (next !== undefined) next(readStream);
     }
 };
 
 let writeFile = function(filePath, contentStream, key, iv, next) {
+    let writeStream = fs.createWriteStream(filePath);
     if (key && iv) {
         encryptionManager.encryptStream(contentStream, key, iv, function(encryptedStream) {
-            encryptedStream = encryptedStream.pipe(fs.createWriteStream(filePath));
-            encryptedStream.on("error", function(err) {
+            if (encryptedStream) {
+                encryptedStream.pipe(writeStream);
+                encryptedStream.on("error", function(err) {
+                    log.write(err);
+                    if (next) next(err);
+                });
+                writeStream.on("close", function () {
+                    if (next) next();
+                })
+            } else {
+                let err = "Couldn't encrypt file";
                 log.write(err);
-            });
-            encryptedStream.on("close", function () {
-                if (next) next();
-            })
+                if (next) next(err);
+            }
         });
     } else {
-        contentStream.pipe(fs.createWriteStream(filePath))
+        contentStream.pipe(writeStream)
         contentStream.on("error", function(err) {
             log.write(err);
+            if (next) next(err);
         });
-        contentStream.on("close", function () {
+        writeStream.on("close", function () {
             if (next) next();
         })
     }

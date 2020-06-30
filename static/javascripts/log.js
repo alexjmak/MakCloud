@@ -21,8 +21,7 @@ $(document).ready(function() {
                     else getLog();
                     oldSize = size;
                 }
-            }
-            if (xmlHttpRequest.status === 0 && (noConnDialog === undefined || !noConnDialog.isOpen)) {
+            } else if (xmlHttpRequest.status === 0 && (noConnDialog === undefined || !noConnDialog.isOpen)) {
                 try {
                     noConnDialog = showDialog(okDialog, "MakCloud", "Connection lost", {
                         "close": function() {
@@ -35,6 +34,8 @@ $(document).ready(function() {
                 } catch (err) {
                 }
 
+            } else if (xmlHttpRequest.status === 403) {
+                location.reload();
             }
             if (automatic) {
                 window.setTimeout(getLogHash, 5000, true);

@@ -1,0 +1,30 @@
+extends layout
+
+block header
+    link(rel='stylesheet', type='text/css', href='/stylesheets/mail.css')
+    script(type= "text/javascript", src= "/javascripts/mail.js")
+
+block drawer
+    aside.mdc-drawer.mdc-top-app-bar--fixed-adjust
+        .mdc-drawer__content
+            .mdc-drawer__header
+                h3.mdc-drawer__title My Mail
+            nav.mdc-list
+                a.mdc-list-item.mdc-list-item--activated(href='/mail')#all-mail
+                    i.material-icons.mdc-list-item__graphic(aria-hidden='true') mail
+                    span.mdc-list-item__text All Mail
+                a.mdc-list-item(href='/mail/trash')#trash
+                    i.material-icons.mdc-list-item__graphic(aria-hidden='true') delete
+                    span.mdc-list-item__text Trash
+                .mdc-list-divider
+                a.mdc-list-item#upload
+                    i.material-icons.mdc-list-item__graphic(aria-hidden='true') cloud_upload
+                    span.mdc-list-item__text Upload
+                input#uploadButton(hidden type="file" multiple)
+                a.mdc-list-item#download-current-dir
+                    i.material-icons.mdc-list-item__graphic(aria-hidden='true') cloud_download
+                    span.mdc-list-item__text Download
+                .mdc-list-divider
+                a.mdc-list-item#logout
+                    i.material-icons.mdc-list-item__graphic(aria-hidden='true') launch
+                    span.mdc-list-item__text Logout

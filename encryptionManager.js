@@ -128,36 +128,83 @@ function decryptBuffer(buffer, key, iv, next) {
     })
 }
 
-function encryptStream(stream, key, iv, next) {
+function encryptStream(contentStream, key, iv, next) {
     log.write("Encrypting...");
-    key = Buffer.from(key, "hex");
-    iv = Buffer.from(iv, "hex");
-    let cipher = crypto.createCipheriv('aes-256-cbc', key, iv);
-    stream = stream.pipe(cipher);
-    stream.on("error", function(err) {
-        log.write(err);
-    });
-    if (next !== undefined) next(stream);
+    getCipher(key, iv, function(err, testCipher) {
+        if (err) {
+            log.write(err.code);
+            if (next !== undefined) next(null);
+        } else {
+            contentStream = contentStream.pipe(testCipher)
+            next(contentStream)
+        }
 
+
+    });
 }
 
-function decryptStream(stream, key, iv, next) {
+function decryptStream(contentStream, key, iv, next) {
     log.write("Decrypting...");
+    getDecipher(key, iv, function(err, testDecipher) {
+        if (err) {
+            log.write(err.code);
+            if (next !== undefined) next(null);
+        } else {
+            contentStream = contentStream.pipe(testDecipher)
+
+            contentStream.on("error", function(err) {
+                log.write(err)
+            });
+
+            next(contentStream)
+        }
+
+    });
+}
+
+function isEncrypted(contentStream, key, iv, next) {
+    getDecipher(key, iv, function(err, testDecipher) {
+        if (err) {
+            log.write(err.code);
+            if (next !== undefined) next(null);
+        }
+        contentStream = contentStream.pipe(testDecipher)
+
+        contentStream.on("data", function() {
+        });
+
+        contentStream.on("error", function(error) {
+            next(false)
+        });
+
+        contentStream.on("end", function() {
+            next(true)
+        });
+    });
+}
+
+function getCipher(key, iv, next) {
     key = Buffer.from(key, "hex");
     iv = Buffer.from(iv, "hex");
-    let cipher;
     try {
-        cipher = crypto.createDecipheriv('aes-256-cbc', key, iv);
+        let cipher = crypto.createCipheriv('aes-256-cbc', key, iv);
+        if (next) next(null, cipher)
     } catch (err) {
         log.write(err);
-        if (next !== undefined) next(err);
-        return;
+        if (next) return next(err);
     }
-    stream = stream.pipe(cipher);
-    stream.on("error", function(err) {
+}
+
+function getDecipher(key, iv, next) {
+    key = Buffer.from(key, "hex");
+    iv = Buffer.from(iv, "hex");
+    try {
+        let decipher = crypto.createDecipheriv('aes-256-cbc', key, iv);
+        if (next) next(null, decipher)
+    } catch (err) {
         log.write(err);
-    });
-    if (next !== undefined) next(stream);
+        if (next) return next(err);
+    }
 }
 
 function encryptAccount(id, key, iv, next) {
@@ -166,16 +213,10 @@ function encryptAccount(id, key, iv, next) {
     fileManager.walkDirectory(filesPath, function(filePath) {
         let readStream = fs.createReadStream(filePath);
         encryptStream(readStream, key, iv, function(encryptedStream) {
-            let error = false;
-            encryptedStream.on("error", function() {
-                error = true;
-            });
-            encryptedStream.on("finish", function() {
-                if (error) return;
+            if (encryptedStream) {
                 encryptedStream.pipe(fs.createWriteStream(filePath));
-            });
+            }
         });
-
     }, next)
 }
 
@@ -184,18 +225,9 @@ function decryptAccount(id, key, iv, next) {
     const fileManager = require("./fileManager");
     fileManager.walkDirectory(filesPath, function(filePath) {
         try {
-            let readStream = fs.createReadStream(filePath);
-            decryptStream(readStream, key, iv, function(decryptedStream) {
-                let error = false;
-                decryptedStream.on("error", function() {
-                    error = true;
-                })
-                decryptedStream.on("finish", function() {
-                    if (error) return;
-                    decryptedStream.pipe(fs.createWriteStream(filePath))
-                });
-            });
-
+            fileManager.readFile(filePath, key, iv, function(readStream) {
+                readStream.pipe(fs.createWriteStream(filePath));
+            })
         } catch (err) {
             //todo backup key
             return log.write(err)}
@@ -210,8 +242,11 @@ module.exports = {
     generateEncryptionKey: generateEncryptionKey,
     encryptEncryptionKey: encryptEncryptionKey,
     decryptEncryptionKey: decryptEncryptionKey,
+    isEncrypted: isEncrypted,
     encryptStream: encryptStream,
     decryptStream: decryptStream,
+    getCipher: getCipher,
+    getDecipher: getDecipher,
     encryptAccount: encryptAccount,
     decryptAccount: decryptAccount
 };

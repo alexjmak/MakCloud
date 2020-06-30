@@ -14,18 +14,6 @@ router.get('/', function(req, res) {
     });
 });
 
-router.get('/recover', function(req, res) {
-    accountManager.getInformation("username", "id", authorization.getLoginTokenAudience(req), function(username) {
-        res.render('accounts', {username: username, hostname: os.hostname(), recover: true});
-    });
-});
-
-router.get('/recover/list', function(req, res) {
-    accountManager.getDeletedAccountsSummary(authorization.getLoginTokenAudience(req), function (result) {
-        res.json(result);
-    });
-});
-
 router.get('/list', function(req, res) {
     accountManager.getAccountsSummary(authorization.getLoginTokenAudience(req), function (result) {
         res.json(result);
@@ -95,12 +83,6 @@ router.delete('/delete', function(req, res) {
             });
         });
     });
-
-
-});
-
-router.patch('/recover', function(req, res) {
-    //todo
 });
 
 router.patch('/encrypted', function(req, res) {
@@ -260,6 +242,42 @@ router.patch('/privilege', function(req, res) {
     });
 });
 
+router.use(function(req, res, next) {
+    let id = authorization.getLoginTokenAudience(req);
+    accountManager.getInformation("privilege", "id", id, function(privilege) {
+        if (privilege === 100) next();
+        else next(createError(403));
+    });
+});
+
+router.get('/deleted', function(req, res) {
+    accountManager.getInformation("username", "id", authorization.getLoginTokenAudience(req), function(username) {
+        res.render('accounts', {username: username, hostname: os.hostname(), deleted: true});
+    });
+});
+
+router.get('/deleted/list', function(req, res) {
+    accountManager.getDeletedAccountsSummary(authorization.getLoginTokenAudience(req), function (result) {
+        res.json(result);
+    });
+});
+
+router.delete('/deleted/delete', function(req, res) {
+    let id = parseInt(req.body.id);
+
+    if (!checkRequiredFields(res, id)) return;
+
+    accountManager.deleteDeletedAccount(id, function(result) {
+        if (result) {
+            res.send("Deleted account");
+        } else {
+            res.status(404).send("Account not found");
+        }
+    });
+
+});
+
+
 function checkRequiredFields(res, ...fields) {
     for (let field in fields) {
         field = fields[field];
@@ -307,5 +325,7 @@ function checkChangePrivilege(req, res, new_privilege, next) {
         });
     });
 }
+
+
 
 module.exports = router;
