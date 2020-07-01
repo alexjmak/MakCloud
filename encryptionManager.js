@@ -3,7 +3,9 @@ const preferences = require("./preferences");
 const path = require("path");
 const crypto = require("crypto");
 const fs = require("fs");
+const mkdirp = require('mkdirp');
 const stream = require("stream");
+const tmp = require('tmp');
 const log = require("./log");
 const pbkdf2 = require("pbkdf2");
 
@@ -214,7 +216,23 @@ function encryptAccount(id, key, iv, next) {
         let readStream = fs.createReadStream(filePath);
         encryptStream(readStream, key, iv, function(encryptedStream) {
             if (encryptedStream) {
-                encryptedStream.pipe(fs.createWriteStream(filePath));
+                let tmpdir = path.resolve(path.join(preferences.get("files"), "tmp"));
+                mkdirp(tmpdir, function() {
+                    tmp.tmpName({ tmpdir: tmpdir }, function _tempNameGenerated(err, tmpPath) {
+                        if (err) return log.write(err);
+                        let writeStream = fs.createWriteStream(tmpPath)
+                        encryptedStream.pipe(writeStream);
+                        writeStream.on("close", function() {
+                            fs.rename(tmpPath, filePath, function(err) {
+                                if (err) return log.write(err);
+                                //next
+                            })
+                        })
+
+                    });
+                })
+
+
             }
         });
     }, next)
@@ -226,7 +244,20 @@ function decryptAccount(id, key, iv, next) {
     fileManager.walkDirectory(filesPath, function(filePath) {
         try {
             fileManager.readFile(filePath, key, iv, function(readStream) {
-                readStream.pipe(fs.createWriteStream(filePath));
+                let tmpdir = path.resolve(path.join(preferences.get("files"), "tmp"));
+                mkdirp(tmpdir, function() {
+                    tmp.tmpName({ tmpdir: tmpdir }, function _tempNameGenerated(err, tmpPath) {
+                        let writeStream = fs.createWriteStream(tmpPath);
+                        readStream.pipe(writeStream);
+                        writeStream.on("close", function() {
+                            fs.rename(tmpPath, filePath, function(err) {
+                                if (err) log.write(err);
+                                //next
+                            })
+                        })
+                    });
+                });
+
             })
         } catch (err) {
             //todo backup key

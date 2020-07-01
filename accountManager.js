@@ -10,15 +10,25 @@ const log = require("./log");
 
 const checkAccountsTable = ["CREATE TABLE IF NOT EXISTS accounts (id INTEGER PRIMARY KEY);",
     "ALTER TABLE accounts ADD COLUMN id INTEGER PRIMARY KEY;",
-    "ALTER TABLE accounts ADD COLUMN username TEXT NOT NULL UNIQUE;",
-    "ALTER TABLE accounts ADD COLUMN hash TEXT NOT NULL;",
-    "ALTER TABLE accounts ADD COLUMN salt TEXT NOT NULL;",
+    "ALTER TABLE accounts ADD COLUMN username TEXT NOT NULL DEFAULT ' ';",
+    "ALTER TABLE accounts ADD COLUMN hash TEXT NOT NULL DEFAULT ' ';",
+    "ALTER TABLE accounts ADD COLUMN salt TEXT NOT NULL DEFAULT ' ';",
     "ALTER TABLE accounts ADD COLUMN privilege INTEGER NOT NULL DEFAULT 0;",
     "ALTER TABLE accounts ADD COLUMN encryptKey TEXT;",
     "ALTER TABLE accounts ADD COLUMN encryptIV TEXT;",
     "ALTER TABLE accounts ADD COLUMN derivedKeySalt TEXT;",
-    "ALTER TABLE accounts ADD COLUMN enabled INTEGER NOT NULL DEFAULT 1;"]
+    "ALTER TABLE accounts ADD COLUMN enabled INTEGER NOT NULL DEFAULT 1;"];
 
+const checkDeletedAccountsTable = ["CREATE TABLE IF NOT EXISTS deleted_accounts (id INTEGER);",
+    "ALTER TABLE deleted_accounts ADD COLUMN id INTEGER;",
+    "ALTER TABLE deleted_accounts ADD COLUMN username TEXT NOT NULL DEFAULT ' ';",
+    "ALTER TABLE deleted_accounts ADD COLUMN hash TEXT NOT NULL DEFAULT ' ';",
+    "ALTER TABLE deleted_accounts ADD COLUMN salt TEXT NOT NULL DEFAULT ' ';",
+    "ALTER TABLE deleted_accounts ADD COLUMN privilege INTEGER NOT NULL DEFAULT ' ';",
+    "ALTER TABLE deleted_accounts ADD COLUMN dateDeleted INTEGER NOT NULL DEFAULT ' ';",
+    "ALTER TABLE deleted_accounts ADD COLUMN encryptKey TEXT;",
+    "ALTER TABLE deleted_accounts ADD COLUMN encryptIV TEXT;",
+    "ALTER TABLE deleted_accounts ADD COLUMN derivedKeySalt TEXT;"];
 
 database.runList(checkAccountsTable, [], function() {
     newAccount("admin", "password", 100, false);
@@ -26,7 +36,8 @@ database.runList(checkAccountsTable, [], function() {
         updatePrivilege(id, 100);
     });
 }, false);
-database.run("CREATE TABLE IF NOT EXISTS deleted_accounts (id INTEGER, username TEXT NOT NULL, hash TEXT NOT NULL, salt TEXT NOT NULL, privilege INTEGER NOT NULL, dateDeleted INTEGER NOT NULL, encryptKey TEXT, encryptIV TEXT, derivedKeySalt TEXT);");
+
+database.runList(checkDeletedAccountsTable, [], function() {}, false);
 
 function accountExists(usernameOrID, enabledCheck, next) {
         let query;

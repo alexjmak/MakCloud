@@ -16,7 +16,7 @@ class Database {
             }
         });
 
-        if (args == null) args = [];
+        if (!args) args = [];
         stmt.run(args, function (err) {
             stmt.finalize();
             if (err != null) {
@@ -30,13 +30,16 @@ class Database {
     }
 
     runList(queries, args, next, verbose) {
+        let finalResult = true;
         while(queries.length !== 0) {
             let query = queries.shift();
             let arg;
-            if (args.length !== 0) arg = args.shift();
-            this.run(query, arg, function() {}, verbose)
+            if (args && args.length !== 0) arg = args.shift();
+            this.run(query, arg, function(result) {
+                if (!result) finalResult = false;
+            }, verbose)
         }
-        if (next) next();
+        if (next) next(finalResult);
 
     }
 
@@ -49,7 +52,7 @@ class Database {
             }
         });
 
-        if (args == null) args = [];
+        if (!args) args = [];
 
         stmt.all(args, function (err, results) {
             stmt.finalize();
