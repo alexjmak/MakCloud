@@ -6,12 +6,12 @@ class Database {
         this.database = new sqlite3.Database(path);
     }
 
-    run(query, args, next) {
+    run(query, args, next, verbose) {
         let database = this.database;
 
         var stmt = database.prepare(query, function (err) {
             if (err != null) {
-                log.write(err);
+                if (verbose === true || verbose === undefined) log.write(err);
                 if (next !== undefined) next(false);
             }
         });
@@ -20,7 +20,7 @@ class Database {
         stmt.run(args, function (err) {
             stmt.finalize();
             if (err != null) {
-                log.write(err);
+                if (verbose === true || verbose === undefined) log.write(err);
                 if (next !== undefined) next(false);
             } else {
                 if (next !== undefined) next(true);
@@ -29,11 +29,22 @@ class Database {
 
     }
 
-    all(query, args, next) {
+    runList(queries, args, next, verbose) {
+        while(queries.length !== 0) {
+            let query = queries.shift();
+            let arg;
+            if (args.length !== 0) arg = args.shift();
+            this.run(query, arg, function() {}, verbose)
+        }
+        if (next) next();
+
+    }
+
+    all(query, args, next, verbose) {
         let database = this.database;
         let stmt = database.prepare(query, function (err) {
             if (err != null) {
-                log.write(err);
+                if (verbose === true || verbose === undefined) log.write(err);
                 if (next !== undefined) next(false);
             }
         });
@@ -44,7 +55,7 @@ class Database {
             stmt.finalize();
 
             if (err != null) {
-                log.write(err);
+                if (verbose === true || verbose === undefined) log.write(err);
                 if (next !== undefined) next(false);
             } else if (results === undefined) {
                 if (next !== undefined) next(false);
@@ -54,11 +65,11 @@ class Database {
         });
     }
 
-    get(query, args, next) {
+    get(query, args, next, verbose) {
         let database = this.database;
         let stmt = database.prepare(query, function (err) {
             if (err != null) {
-                log.write(err);
+                if (verbose === true || verbose === undefined) log.write(err);
                 if (next !== undefined) next(false);
             }
         });
@@ -68,7 +79,7 @@ class Database {
             stmt.finalize();
 
             if (err != null) {
-                log.write(err);
+                if (verbose === true || verbose === undefined) log.write(err);
                 if (next !== undefined) next(false);
             } else if (result === undefined) {
                 if (next !== undefined) next(false);

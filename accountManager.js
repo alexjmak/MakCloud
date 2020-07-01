@@ -8,16 +8,28 @@ const child_process = require('child_process');
 const preferences = require("./preferences");
 const log = require("./log");
 
-database.run("CREATE TABLE IF NOT EXISTS accounts (id INTEGER PRIMARY KEY, username TEXT NOT NULL UNIQUE, hash TEXT NOT NULL, salt TEXT NOT NULL, privilege INTEGER NOT NULL DEFAULT 0, encryptKey TEXT, encryptIV TEXT, derivedKeySalt TEXT, enabled INTEGER NOT NULL DEFAULT 1);", [], function(result) {
+const checkAccountsTable = ["CREATE TABLE IF NOT EXISTS accounts (id INTEGER PRIMARY KEY);",
+    "ALTER TABLE accounts ADD COLUMN id INTEGER PRIMARY KEY;",
+    "ALTER TABLE accounts ADD COLUMN username TEXT NOT NULL UNIQUE;",
+    "ALTER TABLE accounts ADD COLUMN hash TEXT NOT NULL;",
+    "ALTER TABLE accounts ADD COLUMN salt TEXT NOT NULL;",
+    "ALTER TABLE accounts ADD COLUMN privilege INTEGER NOT NULL DEFAULT 0;",
+    "ALTER TABLE accounts ADD COLUMN encryptKey TEXT;",
+    "ALTER TABLE accounts ADD COLUMN encryptIV TEXT;",
+    "ALTER TABLE accounts ADD COLUMN derivedKeySalt TEXT;",
+    "ALTER TABLE accounts ADD COLUMN enabled INTEGER NOT NULL DEFAULT 1;"]
+
+
+database.runList(checkAccountsTable, [], function() {
     newAccount("admin", "password", 100, false);
     getInformation("id", "username", "admin", function(id) {
         updatePrivilege(id, 100);
     });
-});
+}, false);
 database.run("CREATE TABLE IF NOT EXISTS deleted_accounts (id INTEGER, username TEXT NOT NULL, hash TEXT NOT NULL, salt TEXT NOT NULL, privilege INTEGER NOT NULL, dateDeleted INTEGER NOT NULL, encryptKey TEXT, encryptIV TEXT, derivedKeySalt TEXT);");
 
 function accountExists(usernameOrID, enabledCheck, next) {
-    let query;
+        let query;
     if (usernameOrID === undefined) {
         if (next !== undefined) next(false);
         return;
