@@ -3,6 +3,23 @@ const strftime = require('strftime');
 
 let log = [];
 
+function formatFilename(fileName) {
+    fileName = path.basename(fileName);
+    fileName = fileName.substring(0, fileName.indexOf("."));
+    fileName = fileName.split("");
+    fileName[0] = fileName[0].toUpperCase();
+    for (let i = 1; i < fileName.length; i++) {
+        let char = fileName[i];
+        let previousChar = fileName[i - 1];
+        if (char === char.toUpperCase() && previousChar !== previousChar.toUpperCase()) {
+            fileName.splice(i, 0, " ");
+            i++;
+        }
+    }
+    fileName = fileName.join("");
+    return fileName;
+}
+
 function get() {
     return log.join("\n");
 }
@@ -20,23 +37,6 @@ function getCaller() {
         }
     }
     return __filename;
-}
-
-function formatFilename(fileName) {
-    fileName = path.basename(fileName);
-    fileName = fileName.substring(0, fileName.indexOf("."));
-    fileName = fileName.split("");
-    fileName[0] = fileName[0].toUpperCase();
-    for (let i = 1; i < fileName.length; i++) {
-        let char = fileName[i];
-        let previousChar = fileName[i - 1];
-        if (char === char.toUpperCase() && previousChar !== previousChar.toUpperCase()) {
-            fileName.splice(i, 0, " ");
-            i++;
-        }
-    }
-    fileName = fileName.join("");
-    return fileName;
 }
 
 function write(...text) {
