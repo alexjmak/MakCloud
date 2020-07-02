@@ -1,5 +1,5 @@
 const webdav = require("webdav-server").v2;
-const log = require("../log");
+const log = require("../core/log");
 const preferences = require("../preferences");
 const UserManager = require("./UserManager");
 const UserFileSystem = require("./UserFileSystem");

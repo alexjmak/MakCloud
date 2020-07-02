@@ -47,7 +47,7 @@ var UserManager = /** @class */ (function () {
             if (e) return callback(e);
             authorization.checkPassword(user.uid, password, function(result) {
                 switch (result) {
-                    case 0:
+                    case authorization.LOGIN_SUCESS:
                         if (user.key === undefined || user.iv === undefined)  {
                             encryptionManager.decryptEncryptionKey(user.uid, password, function(key, iv) {
                                 if (key !== false) {
@@ -65,7 +65,7 @@ var UserManager = /** @class */ (function () {
                         }
 
                         break;
-                    case 1: case 2:
+                    case authorization.LOGIN_FAIL: case authorization.LOGIN_DISABLED:
                         callback(Errors.BadAuthentication);
                         break;
                 }

@@ -4,7 +4,7 @@ const os = require("os");
 
 const accountManager = require("../accountManager");
 const authorization = require("../authorization");
-const log = require("../log");
+const log = require("../core/log");
 
 const router = express.Router();
 

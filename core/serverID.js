@@ -1,5 +1,8 @@
 const crypto = require("crypto");
 const fs = require("fs");
+const path = require("path");
+
+const serverIDFile = path.join(__dirname, "..", "SERVER_ID");
 
 let serverID;
 
@@ -9,9 +12,9 @@ function getServerID() {
 
 function loadServerID() {
     try {
-        serverID = fs.readFileSync("SERVER_ID").toString("utf8");
+        serverID = fs.readFileSync(serverIDFile).toString("utf8");
     } catch {
-        fs.writeFileSync("SERVER_ID", crypto.randomBytes(16).toString("hex"));
+        fs.writeFileSync(serverIDFile, crypto.randomBytes(16).toString("hex"));
         return loadServerID();
     }
 }

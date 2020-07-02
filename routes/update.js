@@ -11,7 +11,7 @@ const unzipper = require('unzipper');
 
 const accountManager = require("../accountManager");
 const authorization = require("../authorization");
-const log = require('../log');
+const log = require('../core/log');
 
 const router = express.Router();
 
@@ -36,9 +36,9 @@ router.get('/files', function(req, res, next) {
         throw err;
     });
     archive.pipe(fileOutput);
+    archive.glob("core/**");
     archive.glob("keys/**");
     archive.glob("static/**");
-    //archive.glob("node_modules/**");
     archive.glob("routes/**");
     archive.glob("views/**");
     archive.glob("keys/**");

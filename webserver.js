@@ -7,12 +7,12 @@ const cookieParser = require('cookie-parser');
 const fileUpload = require("express-fileupload");
 const session = require("express-session");
 const helmet = require("helmet");
-const serverID = require("./serverID");
+const serverID = require("./core/serverID");
 const authorization = require('./authorization');
 const accountManager = require('./accountManager');
-const blacklist = require('./blacklist');
+const blacklist = require('./core/blacklist');
 const webdav = require('./webdav/webdav');
-const log = require("./log");
+const log = require("./core/log");
 const preferences = require("./preferences");
 
 const app = express();
@@ -51,7 +51,6 @@ app.use(session({
     saveUninitialized: false,
     cookie: { secure: true, sameSite: true}
 }));
-
 
 app.use(function(req, res, next) {
     if (req.path.endsWith("/") && req.path !== "/") {

@@ -1,10 +1,11 @@
 const archiver = require('archiver');
+const crypto = require("crypto");
 const fs = require("fs");
 const path = require("path");
 const stream = require("stream");
 const preferences = require("./preferences");
-const encryptionManager = require("./encryptionManager");
-const log = require("./core/log");
+const encryptionManager = require("../encryptionManager");
+const log = require("./log");
 
 let createFolderArchive = function(directory, filePath, owner, next) {
     let folderPath = path.join(preferences.get("files"), owner.toString(), directory, filePath);
@@ -136,5 +137,5 @@ module.exports = {
     readFile: readFile,
     walkDirectory: walkDirectory,
     writeFile: writeFile,
-    writeFiles: writeFiles,
+    writeFiles: writeFiles
 };

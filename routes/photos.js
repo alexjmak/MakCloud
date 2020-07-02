@@ -10,10 +10,18 @@ const url = require('url');
 const accountManager = require('../accountManager');
 const authorization = require('../authorization');
 const fileManager = require("../fileManager");
-const log = require('../log');
+const log = require('../core/log');
 const preferences = require('../preferences');
 
 const router = express.Router();
+
+router.delete("/*", function(req, res, next) {
+    let filePath = decodeURIComponent(url.parse(req.url).pathname).substring(1);
+    fileManager.deleteFile("photos", filePath, authorization.getLoginTokenAudience(req), function(result) {
+        if (result) res.sendStatus(200);
+        else res.sendStatus(404);
+    });
+});
 
 router.get("/", function(req, res, next) {
     let filePath = decodeURIComponent(url.parse(req.url).pathname).substring(1);
@@ -105,14 +113,6 @@ router.post("/", function (req, res, next) {
     });
 
 
-});
-
-router.delete("/*", function(req, res, next) {
-    let filePath = decodeURIComponent(url.parse(req.url).pathname).substring(1);
-    fileManager.deleteFile("photos", filePath, authorization.getLoginTokenAudience(req), function(result) {
-        if (result) res.sendStatus(200);
-        else res.sendStatus(404);
-    });
 });
 
 module.exports = router;

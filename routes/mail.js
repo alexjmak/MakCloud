@@ -11,7 +11,7 @@ const simpleParser = require('mailparser').simpleParser;
 const accountManager = require('../accountManager');
 const authorization = require('../authorization');
 const fileManager = require("../fileManager");
-const log = require('../log');
+const log = require('../core/log');
 const preferences = require('../preferences');
 
 const router = express.Router();
@@ -21,7 +21,6 @@ router.get("/", function(req, res, next) {
         res.render('mail', {hostname: os.hostname(), username: username});
     });
 });
-
 
 router.get("/trash", function(req, res, next) {
     accountManager.getInformation("username", "id", authorization.getLoginTokenAudience(req), function (username) {

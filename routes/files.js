@@ -15,6 +15,16 @@ const sharingManager = require('../sharingManager');
 
 const router = express.Router();
 
+router.delete("/*", function(req, res, next) {
+    let filePath = decodeURIComponent(url.parse(req.url).pathname).substring(1);
+    let owner = authorization.getLoginTokenAudience(req).toString();
+    if (req.baseUrl === "/public") owner = "public";
+    fileManager.deleteFile("files", filePath, owner, function(result) {
+        if (result) res.sendStatus(200);
+        else res.sendStatus(404);
+    });
+});
+
 router.get('/*', function(req, res, next) {
     let filePath = decodeURIComponent(url.parse(req.url).pathname).substring(1);
     let owner = authorization.getLoginTokenAudience(req).toString();
@@ -207,17 +217,6 @@ router.put("/*", function(req, res, next) {
     } else {
         res.status(400).send("No contents");
     }
-});
-
-
-router.delete("/*", function(req, res, next) {
-    let filePath = decodeURIComponent(url.parse(req.url).pathname).substring(1);
-    let owner = authorization.getLoginTokenAudience(req).toString();
-    if (req.baseUrl === "/public") owner = "public";
-    fileManager.deleteFile("files", filePath, owner, function(result) {
-        if (result) res.sendStatus(200);
-        else res.sendStatus(404);
-    });
 });
 
 module.exports = router;

@@ -3,6 +3,10 @@ const strftime = require('strftime');
 
 let log = [];
 
+function get() {
+    return log.join("\n");
+}
+
 function getCaller() {
     let origPrepareStackTrace = Error.prepareStackTrace
     let err = new Error();
@@ -51,9 +55,6 @@ function writeServer(req, ...text) {
     log.push(logString);
 }
 
-function get() {
-    return log.join("\n");
-}
 
 module.exports = {get: get,
                   write: write,

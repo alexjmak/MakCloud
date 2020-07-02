@@ -2,8 +2,26 @@ const fs = require('fs');
 const path = require('path');
 const log = require('./log');
 
-const blacklistFile = path.join(__dirname, "blacklist.json");
+const blacklistFile = path.join(__dirname, "..", "blacklist.json");
 let blacklist;
+
+function add(ip) {
+    if (blacklist && !contains(ip)) {
+        blacklist[ip] = [Date.now()];
+        save();
+        log.write(`Added ${ip} to the blacklist`)
+    }
+}
+
+function contains(ip) {
+    if (blacklist) {
+        return blacklist.hasOwnProperty(ip);
+    }
+}
+
+function get() {
+    return Object.assign({}, blacklist);
+}
 
 function reload() {
     fs.readFile(blacklistFile, function (err, data) {
@@ -22,29 +40,11 @@ function reload() {
     });
 }
 
-function add(ip) {
-    if (blacklist && !contains(ip)) {
-        blacklist[ip] = [Date.now()];
-        save();
-        log.write(`Added ${ip} to the blacklist`)
-    }
-}
-
 function remove(ip) {
     if (blacklist && contains(ip)) {
         delete blacklist[ip]
         save();
         log.write(`Removed ${ip} to the blacklist`)
-    }
-}
-
-function get() {
-    return Object.assign({}, blacklist);
-}
-
-function contains(ip) {
-    if (blacklist) {
-        return blacklist.hasOwnProperty(ip);
     }
 }
 
@@ -56,7 +56,12 @@ function save() {
     })
 }
 
-
 reload();
 
-module.exports = {add: add, remove: remove, get: get, contains: contains, reload: reload};
+module.exports = {
+    add: add,
+    contains: contains,
+    get: get,
+    reload: reload,
+    remove: remove
+};
