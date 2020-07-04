@@ -2,6 +2,7 @@ const fs = require('fs');
 const jwt = require("jsonwebtoken");
 const database = require("./databaseInit");
 const crypto = require("crypto");
+const firewall = require("./firewall");
 const path = require("path");
 
 const accountManager = require("./accountManager")
@@ -14,6 +15,8 @@ const secretKey = fs.readFileSync(secretKeyFilePath, 'utf8');
 const LOGIN_SUCCESS = 0;
 const LOGIN_FAIL = 1;
 const LOGIN_DISABLED = 2;
+
+let bruteForceProtection = {};
 
 function checkCredentials(username, password, next) {
     database.get("SELECT id FROM accounts WHERE lower(username) = ?", username.toLowerCase(), function(result) {
@@ -129,21 +132,28 @@ function login(req, res, next) {
         checkCredentials(username, password, function(result, id) {
             switch(result) {
                 case LOGIN_SUCCESS:
+                    if (bruteForceProtection.hasOwnProperty(req.ip)) delete bruteForceProtection[req.ip];
                     res.cookie("loginToken", createToken({sub: "loginToken", aud: id}), {path: "/", secure: true, sameSite: "strict"});
                     if (next) next([id, username, password]);
                     else res.status(200).send();
                     break;
                 case LOGIN_FAIL:
+                    if (!bruteForceProtection.hasOwnProperty(req.ip)) bruteForceProtection[req.ip] = 0;
+                    bruteForceProtection[req.ip]++;
+                    if (bruteForceProtection[req.ip] >= 5) {
+                        res.status(429).send("Too many attempts. Try again in 10 minutes.");
+                        return firewall.blacklist.add(req.ip, 0.167);
+                    }
                     res.status(403).send("Invalid username and/or password");
                     if (next) next(false);
                     break;
                 case LOGIN_DISABLED:
+                    if (bruteForceProtection.hasOwnProperty(req.ip)) delete bruteForceProtection[req.ip];
                     res.status(403).send("Your account is disabled");
                     if (next) next(false);
                     break;
             }
-
-        })
+        });
     } else {
         res.redirect("/login");
         if (next) next(false);
@@ -155,7 +165,10 @@ function verifyToken(rawToken, req){
     try {
         return jwt.verify(rawToken, secretKey);
     } catch (err) {
-        if (req) log.writeServer(req, err);
+        if (req) {
+            firewall.blacklist.add(req.ip, 0.167)
+            log.writeServer(req, err);
+        }
         else log.write(err);
     }
     return false;

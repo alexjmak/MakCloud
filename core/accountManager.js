@@ -11,7 +11,6 @@ const checkAccountsTable = ["CREATE TABLE IF NOT EXISTS accounts (id INTEGER PRI
     "ALTER TABLE accounts ADD COLUMN salt TEXT NOT NULL DEFAULT ' ';",
     "ALTER TABLE accounts ADD COLUMN privilege INTEGER NOT NULL DEFAULT 0;",
     "ALTER TABLE accounts ADD COLUMN enabled INTEGER NOT NULL DEFAULT 1;"];
-
 const checkDeletedAccountsTable = ["CREATE TABLE IF NOT EXISTS deleted_accounts (id INTEGER);",
     "ALTER TABLE deleted_accounts ADD COLUMN id INTEGER;",
     "ALTER TABLE deleted_accounts ADD COLUMN username TEXT NOT NULL DEFAULT ' ';",

@@ -1,9 +1,8 @@
 const fs = require('fs');
-const path = require('path');
 const log = require('./log');
 
-const configurationFile = path.join(__dirname, "..", "preferences.json");
-let defaultConfiguration = {};
+const configurationFile = "preferences.json";
+let defaultConfiguration = {"blacklist": true, "whitelist": false};
 let configuration;
 
 function cleanup() {
@@ -29,7 +28,6 @@ function get(property) {
             } else {
                 log.write("Property '" + property + "' does not exist")
             }
-
         }
         return configuration[property];
     }
@@ -42,13 +40,17 @@ function reload(next) {
             return reload();
         }
         data = data.toString().trim();
-        log.write("Reading preferences: " + data);
+        log.write(`Reading ${configurationFile}...`);
+        log.write(data)
         try {
             configuration = JSON.parse(data);
             cleanup();
         } catch(err) {
             log.write("Read error: " + err);
+            configuration = defaultConfiguration;
+            save();
         }
+
         if (next) next();
     });
 }

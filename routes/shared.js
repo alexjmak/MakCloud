@@ -2,7 +2,6 @@ const express = require('express');
 const fs = require('fs');
 const mime = require('mime');
 const createError = require('http-errors');
-const readify = require('readify');
 const url = require('url');
 
 const accountManager = require('../accountManager');

@@ -19,7 +19,7 @@ function doAuthorization(req, res, next) {
     });
 }
 
-function login(req, res, next) {
+function login(req, res) {
     authorization.login(req, res, function(result) {
         if (result !== false) {
             let id = result[0]
@@ -31,13 +31,10 @@ function login(req, res, next) {
                     req.session.encryptionIV = iv;
                 }
                 res.status(200).send();
-                if (next) next();
             });
             if (preferences.get("sambaIntegration")) {
                 child_process.exec("(echo " + password + "; echo " + password + ") | sudo smbpasswd -a " + username.toLowerCase(), function (err, stdout, stderr) {});
             }
-        } else {
-            if (next) next();
         }
     });
 }

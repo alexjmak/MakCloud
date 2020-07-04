@@ -3,6 +3,8 @@ const os = require("os");
 
 const authorization = require('../authorization');
 const accountManager = require('../accountManager');
+const firewall = require('../core/firewall');
+const preferences = require('../preferences');
 
 const router = express.Router();
 
@@ -20,7 +22,6 @@ router.get('/', function(req, res) {
     } else res.render('login', {hostname: os.hostname()});
 
 });
-
 
 router.use('/token', authorization.login);
 

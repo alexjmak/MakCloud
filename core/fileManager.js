@@ -1,5 +1,4 @@
 const archiver = require('archiver');
-const crypto = require("crypto");
 const fs = require("fs");
 const path = require("path");
 const stream = require("stream");

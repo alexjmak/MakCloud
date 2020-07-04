@@ -2,11 +2,11 @@ extends layout
 
 block header
     link(rel='stylesheet', type='text/css', href='/stylesheets/login.css')
+    script.
+        let firewall = "#{firewall}";
+        let firewallEnd = parseInt("#{firewallEnd}");
     script(type= "text/javascript", src= "/javascripts/login.js")
-
 block content
-
-
     .box
         #mobile-background.box.mdc-card.mdc-elevation--z10
         img(id="login" src="/cloud_shadow.png")

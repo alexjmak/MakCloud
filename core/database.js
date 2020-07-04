@@ -3,6 +3,7 @@ const log = require("./log");
 
 class Database {
     constructor(path) {
+        log.write(`Connecting to ${path}...`);
         this.database = new sqlite3.Database(path);
     }
 
@@ -26,8 +27,6 @@ class Database {
             } else if (results === undefined) {
                 if (next !== undefined) next(false);
             } else if (next !== undefined) next(results);
-
-
         });
     }
 
@@ -74,7 +73,6 @@ class Database {
                 if (next !== undefined) next(true);
             }
         });
-
     }
 
     runList(queries, args, next, verbose) {
@@ -88,7 +86,6 @@ class Database {
             }, verbose)
         }
         if (next) next(finalResult);
-
     }
 }
 

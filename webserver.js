@@ -10,7 +10,7 @@ const helmet = require("helmet");
 const serverID = require("./core/serverID");
 const authorization = require('./authorization');
 const accountManager = require('./accountManager');
-const blacklist = require('./core/blacklist');
+const firewall = require('./core/firewall');
 const webdav = require('./webdav/webdav');
 const log = require("./core/log");
 const preferences = require("./preferences");
@@ -69,13 +69,8 @@ app.use(function(req, res, next) {
 app.use(express.static(path.join(__dirname, "static")));
 
 app.use('/logout', logoutRouter);
-app.use(function(req, res, next) {
-    if (blacklist.contains(req.ip) || !req.ip) {
-        next(createError(403, "Blacklisted from server"));
-    } else {
-        next();
-    }
-})
+if (preferences.get("blacklist")) app.use(firewall.blacklist.enforce);
+if (preferences.get("whitelist")) app.use(firewall.whitelist.enforce);
 app.use('/login', loginRouter);
 app.use("/shared", sharedRouter);
 app.use("/update", updateRouter);
@@ -122,22 +117,6 @@ function start() {
     return serverInstances;
 }
 
-function stop(next) {
-    for (let server in serverInstances) {
-        if (serverInstances.hasOwnProperty(server)) {
-            server = serverInstances[server];
-            server.close();
-        }
-    }
-    log.write("Server stopped");
-    if (next !== undefined) next();
-}
-
-function restart() {
-    stop(function() {
-        start();
-    })
-}
 
 function httpRedirectServer() {
     let httpServer = express();
@@ -149,7 +128,5 @@ function httpRedirectServer() {
 }
 
 module.exports = {
-    start: start,
-    stop: stop,
-    restart: restart
+    start: start
 };

@@ -1,7 +1,7 @@
 /.idea/
 /files/
 /node_modules/
-/blacklist.json
+/firewall.json
 /database.db
 /preferences.json
 /SERVER_ID
