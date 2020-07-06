@@ -8,14 +8,13 @@ $(document).ready(function() {
     let noConnDialog;
 
     let getLogHash = function(automatic) {
-
         getRequest("/log/size", function(xmlHttpRequest) {
             if (xmlHttpRequest.status === 200) {
                 if (noConnDialog !== undefined && noConnDialog.isOpen) noConnDialog.close();
                 let size = parseInt(xmlHttpRequest.responseText);
-                if (xmlHttpRequest.responseURL.search("login") !== -1) {
+                if (new URL(xmlHttpRequest.responseURL).pathname === "/login") {
                     automatic = false;
-                    showDialog(okDialog, "MakCloud", "Your session has expired", {"close": function() {window.location = "/logout"}});
+                    showDialog(okDialog, "MakCloud", "Your session has expired", {"close": function() {location.reload()}});
                 } else if (oldSize !== size) {
                     if (size > oldSize) getLog(oldSize);
                     else getLog();
@@ -65,6 +64,5 @@ $(document).ready(function() {
             }
         });
     };
-
     getLogHash(true);
 });

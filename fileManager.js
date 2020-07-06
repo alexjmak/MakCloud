@@ -44,6 +44,30 @@ let deleteFile = function(directory, filePath, owner, next) {
     }
 };
 
+let readDirectory = function(dir, callback, next) {
+    fs.readdir(dir, function(err, files) {
+        if (err) {
+            log.write(err);
+            if (next) next(err);
+            return;
+        }
+
+        function nextDir(i) {
+            if (files.hasOwnProperty(i)) {
+                let file = files[i];
+                let dirPath = path.join(dir, file);
+                callback(dirPath, function() {
+                    nextDir(i + 1);
+                })
+            } else {
+                next();
+            }
+        }
+
+        nextDir(0);
+    });
+
+}
 let readFile = function(filePath, key, iv, next) {
     let readStream = fs.createReadStream(filePath);
     readStream.on("error", function(err) {
@@ -66,37 +90,48 @@ let readFile = function(filePath, key, iv, next) {
 };
 
 let walkDirectory = function(dir, callback, next) {
-    let files = fs.readdirSync(dir);
-    for (let file in files) {
-        if (!files.hasOwnProperty(file)) continue;
-        file = files[file];
-        let dirPath = path.join(dir, file);
+    readDirectory(dir, function(dirPath, next) {
         let isDirectory = fs.statSync(dirPath).isDirectory();
-        isDirectory ? walkDirectory(dirPath, callback, undefined) : callback(path.join(dir, file));
-    }
-    if (next) next();
-};
-
-let writeFile = function(filePath, contentStream, key, iv, next) {
-    let writeStream = fs.createWriteStream(filePath);
-    if (key && iv) {
-        encryptionManager.encryptStream(contentStream, key, iv, function(encryptedStream) {
-            if (encryptedStream) {
-                encryptedStream.pipe(writeStream);
-                encryptedStream.on("error", function(err) {
-                    log.write(err);
-                    if (next) next(err);
-                });
-                writeStream.on("close", function () {
+        callback(dirPath, isDirectory, function(newDirPath) {
+            if (!newDirPath) newDirPath = dirPath;
+            if (isDirectory) {
+                walkDirectory(newDirPath, callback, function() {
                     if (next) next();
-                })
+                });
             } else {
-                let err = "Couldn't encrypt file";
-                log.write(err);
-                if (next) next(err);
+                if (next) next();
             }
         });
+    }, next);
+};
+
+
+let writeFile = function(filePath, contentStream, key, iv, next) {
+    if (key && iv) {
+        encryptionManager.encryptFilePath(filePath, key, iv, function(encryptedFilePath) {
+            if (!encryptedFilePath) encryptedFilePath = filePath;
+            let writeStream = fs.createWriteStream(encryptedFilePath);
+            encryptionManager.encryptStream(contentStream, key, iv, function(encryptedStream) {
+                if (encryptedStream) {
+                    encryptedStream.pipe(writeStream);
+                    encryptedStream.on("error", function(err) {
+                        log.write(err);
+                        if (next) next(err);
+                    });
+                    writeStream.on("close", function () {
+                        if (next) next();
+                    })
+                } else {
+                    let err = "Couldn't encrypt file";
+                    log.write(err);
+                    if (next) next(err);
+                }
+            });
+        })
+
+
     } else {
+        let writeStream = fs.createWriteStream(filePath);
         contentStream.pipe(writeStream)
         contentStream.on("error", function(err) {
             log.write(err);
@@ -133,6 +168,7 @@ let writeFiles = function(files, saveDirectory, key, iv, next) {
 module.exports = {
     createFolderArchive: createFolderArchive,
     deleteFile: deleteFile,
+    readDirectory: readDirectory,
     readFile: readFile,
     walkDirectory: walkDirectory,
     writeFile: writeFile,

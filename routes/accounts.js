@@ -9,7 +9,7 @@ const authorization = require('../authorization');
 const router = express.Router();
 
 router.delete('/delete', function(req, res) {
-    let id = parseInt(req.body.id);
+    let id = req.body.id;
 
     if (!checkRequiredFields(res, id)) return;
 
@@ -29,19 +29,19 @@ router.delete('/delete', function(req, res) {
 });
 
 router.get('/', function(req, res) {
-    accountManager.getInformation("username", "id", authorization.getLoginTokenAudience(req), function(username) {
+    accountManager.getInformation("username", "id", authorization.getID(req), function(username) {
         res.render('accounts', {username: username, hostname: os.hostname(), recover: false});
     });
 });
 
 router.get('/list', function(req, res) {
-    accountManager.getAccountsSummary(authorization.getLoginTokenAudience(req), function (result) {
+    accountManager.getAccountsSummary(authorization.getID(req), function (result) {
         res.json(result);
     });
 });
 
 router.get('/list/hash', function(req, res) {
-    accountManager.getAccountsSummary(authorization.getLoginTokenAudience(req), function (result) {
+    accountManager.getAccountsSummary(authorization.getID(req), function (result) {
         res.send(crypto.createHash('md5').update(JSON.stringify(result)).digest('hex'));
     })
 });
@@ -58,7 +58,7 @@ router.get('/search', function(req, res, next) {
 });
 
 router.patch('/enabled', function(req, res) {
-    let id = parseInt(req.body.id);
+    let id = req.body.id;
     let enabled = req.body.enabled;
 
     if (!checkRequiredFields(res, id, enabled)) return;
@@ -74,7 +74,7 @@ router.patch('/enabled', function(req, res) {
                 }
             });
         } else {
-            if (Number(authorization.getLoginTokenAudience(req)) === id) {
+            if (Number(authorization.getID(req)) === id) {
                 res.status(404).send("Cannot disable your own account");
                 return;
             }
@@ -91,7 +91,7 @@ router.patch('/enabled', function(req, res) {
 });
 
 router.patch('/encrypted', function(req, res) {
-    let id = parseInt(req.body.id);
+    let id = req.body.id;
     let encrypted = req.body.encrypted;
     let password = req.body.password;
 
@@ -104,7 +104,7 @@ router.patch('/encrypted', function(req, res) {
                 if (encrypted) {
                     accountManager.encryptAccount(id, password,function (result, decryptedKey, iv) {
                         if (result) {
-                            if (id === authorization.getLoginTokenAudience(req)) {
+                            if (id === authorization.getID(req)) {
                                 req.session.encryptionKey = decryptedKey;
                                 req.session.encryptionIV = iv;
                             }
@@ -116,7 +116,7 @@ router.patch('/encrypted', function(req, res) {
                 } else {
                     accountManager.decryptAccount(id, password, function (result) {
                         if (result) {
-                            if (id === authorization.getLoginTokenAudience(req)) {
+                            if (id === authorization.getID(req)) {
                                 req.session.encryptionKey = undefined;
                                 req.session.encryptionIV = undefined;
                                 res.clearCookie("encryptionSession");
@@ -136,7 +136,7 @@ router.patch('/encrypted', function(req, res) {
 });
 
 router.patch('/password', function(req, res) {
-    let id = parseInt(req.body.id);
+    let id = req.body.id;
     let new_password = req.body.password;
     let old_password = req.body.old_password;
 
@@ -175,7 +175,7 @@ router.patch('/password', function(req, res) {
 });
 
 router.patch('/privilege', function(req, res) {
-    let id = parseInt(req.body.id);
+    let id = req.body.id;
     let new_privilege = req.body.privilege;
 
     if (!checkRequiredFields(res, id, new_privilege)) return;
@@ -197,7 +197,7 @@ router.patch('/privilege', function(req, res) {
 });
 
 router.patch('/username', function(req, res) {
-    let id = parseInt(req.body.id);
+    let id = req.body.id;
     let new_username = req.body.username;
 
     if (!checkRequiredFields(res, id, new_username)) return;
@@ -234,7 +234,7 @@ router.put('/new', function(req, res) {
                 if (result) {
                     res.send("Created account: " + username);
                 } else {
-                    res.status(401).send("Account already exists");
+                    res.status(409).send("Account already exists");
                 }
             });
         });
@@ -242,7 +242,7 @@ router.put('/new', function(req, res) {
 });
 
 router.use(function(req, res, next) {
-    let id = authorization.getLoginTokenAudience(req);
+    let id = authorization.getID(req);
     accountManager.getInformation("privilege", "id", id, function(privilege) {
         if (privilege === 100) next();
         else next(createError(403));
@@ -250,7 +250,7 @@ router.use(function(req, res, next) {
 });
 
 router.delete('/deleted/delete', function(req, res) {
-    let id = parseInt(req.body.id);
+    let id = req.body.id;
 
     if (!checkRequiredFields(res, id)) return;
 
@@ -265,13 +265,13 @@ router.delete('/deleted/delete', function(req, res) {
 });
 
 router.get('/deleted', function(req, res) {
-    accountManager.getInformation("username", "id", authorization.getLoginTokenAudience(req), function(username) {
+    accountManager.getInformation("username", "id", authorization.getID(req), function(username) {
         res.render('accounts', {username: username, hostname: os.hostname(), deleted: true});
     });
 });
 
 router.get('/deleted/list', function(req, res) {
-    accountManager.getDeletedAccountsSummary(authorization.getLoginTokenAudience(req), function (result) {
+    accountManager.getDeletedAccountsSummary(authorization.getID(req), function (result) {
         res.json(result);
     });
 });
@@ -283,8 +283,8 @@ function checkChangePrivilege(req, res, new_privilege, next) {
         return next(false);
     }
 
-    accountManager.getInformation("privilege", "id", authorization.getLoginTokenAudience(req), function(currentPrivilege) {
-        accountManager.getInformation("username", "id", authorization.getLoginTokenAudience(req), function (currentUsername) {
+    accountManager.getInformation("privilege", "id", authorization.getID(req), function(currentPrivilege) {
+        accountManager.getInformation("username", "id", authorization.getID(req), function (currentUsername) {
             if (currentUsername !== "admin" && currentPrivilege <= new_privilege) {
                 res.status(401).send("Insufficient privilege level");
                 return next(false);
@@ -295,7 +295,7 @@ function checkChangePrivilege(req, res, new_privilege, next) {
 }
 
 function checkPrivilege(req, res, accountID, next) {
-    let currentID = authorization.getLoginTokenAudience(req);
+    let currentID = authorization.getID(req);
     accountManager.getInformation("username", "id", currentID, function(currentUsername) {
         accountManager.getInformation("username", "id", accountID, function(accountUsername) {
             accountManager.getInformation("privilege", "id", currentID, function(currentPrivilege) {

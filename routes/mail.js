@@ -17,13 +17,13 @@ const preferences = require('../preferences');
 const router = express.Router();
 
 router.get("/", function(req, res, next) {
-    accountManager.getInformation("username", "id", authorization.getLoginTokenAudience(req), function (username) {
+    accountManager.getInformation("username", "id", authorization.getID(req), function (username) {
         res.render('mail', {hostname: os.hostname(), username: username});
     });
 });
 
 router.get("/trash", function(req, res, next) {
-    accountManager.getInformation("username", "id", authorization.getLoginTokenAudience(req), function (username) {
+    accountManager.getInformation("username", "id", authorization.getID(req), function (username) {
         res.render('mail', {hostname: os.hostname(), username: username});
     });
 });
@@ -48,7 +48,7 @@ router.post("/", function(req, res, next) {
             let concurrentFiles = 20;
             let writeFile = function(i) {
                 let buffer = messages[i];
-                let filePath = path.join(preferences.get("files"), authorization.getLoginTokenAudience(req).toString(), "mail", md5(buffer) + ".eml");
+                let filePath = path.join(preferences.get("files"), authorization.getID(req), "mail", md5(buffer) + ".eml");
                 let contentStream = new stream.PassThrough();
                 contentStream.end(buffer);
                 fileManager.writeFile(filePath, contentStream, req.session.encryptionKey, req.session.encryptionIV, function(err) {

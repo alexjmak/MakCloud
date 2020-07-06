@@ -52,7 +52,7 @@ router.get('/files', function(req, res, next) {
 router.use(authorization.doAuthorization);
 
 router.use(function(req, res, next) {
-    let id = authorization.getLoginTokenAudience(req);
+    let id = authorization.getID(req);
     accountManager.getInformation("privilege", "id", id, function(privilege) {
         if (privilege === 100) next();
         else next(createError(403));
@@ -60,7 +60,7 @@ router.use(function(req, res, next) {
 });
 
 router.get('/', function(req, res, next) {
-    accountManager.getInformation("username", "id", authorization.getLoginTokenAudience(req), function (username) {
+    accountManager.getInformation("username", "id", authorization.getID(req), function (username) {
         res.render('update', {hostname: os.hostname(), username: username});
     });
 });

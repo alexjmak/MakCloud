@@ -77,6 +77,7 @@ app.use("/update", updateRouter);
 app.use(authorization.doAuthorization);
 app.use('/', indexRouter);
 app.use("/log", logRouter);
+app.use("/logs", filesRouter);
 app.use("/files", filesRouter);
 app.use("/public", filesRouter);
 app.use("/photos", photosRouter);
@@ -94,7 +95,7 @@ app.use(function(err, req, res, next) {
     log.writeServer(req, req.method, req.url + " (" + (err.status || 500) + " " + err.message + ")");
     res.status(err.status || 500);
     if (res.headersSent) return;
-    accountManager.getInformation("username", "id", authorization.getLoginTokenAudience(req), function(username) {
+    accountManager.getInformation("username", "id", authorization.getID(req), function(username) {
         res.render('error', {message: err.message, status: err.status, username: username});
     });
 });

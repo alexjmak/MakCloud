@@ -1,23 +1,30 @@
-let usedCredentialsMemory;
-
 $(document).ready(function() {
     let username = $("#username");
     let password = $("#password");
 
+    $("header").find("button").prop("onclick", null);
+    $("header").find("h3").prop("onclick", null);
+
     let login = function (xmlHttpRequest) {
         if (xmlHttpRequest.status === 200) {
-            $("#message").html("");
-            let redirect = getQueryVariable("redirect");
-            if (redirect != null) {
-                window.location = redirect;
+            if ($.cookie("loginToken")) {
+                $("#message").html("");
+                let redirect = getQueryVariable("redirect");
+                if (redirect != null) {
+                    window.location = redirect;
+                } else {
+                    window.location = "/";
+                }
+            } else if (new URL(xmlHttpRequest.responseURL).pathname !== "/login") {
+                $("#message").text("Please enable cookies");
             } else {
-                window.location = "/";
+                location.reload();
             }
+
+
         } else if (xmlHttpRequest.status === 0) {
             $("#message").text("Connection lost");
-            usedCredentialsMemory = "";
         } else {
-            if (xmlHttpRequest.status === 403) usedCredentialsMemory = "";
             if (xmlHttpRequest.status === 429) {
                 firewall = true;
                 $("#submit").prop("disabled", true);
@@ -36,17 +43,36 @@ $(document).ready(function() {
 
     let submit = function() {
         if (firewall) return;
+
         let usernameValue = username.val().trim();
         let passwordValue = password.val();
-        if (usernameValue.trim() === "") {
-            $("#message").text("Enter your username");
-            return;
-        } else if (passwordValue === "") {
-            $("#message").text("Enter your password");
+
+        if (usernameValue === "") {
+            let message = "Enter your username";
+            if (!username.is(":focus")) {
+                if ($("#message").text() !== message) $("#message").text("");
+                username.focus();
+            }
+            else {
+                $("#message").text(message);
+            }
             return;
         }
-        if ($.md5(usernameValue + ":" + passwordValue, randomNumberArray[0]) === usedCredentialsMemory) return;
-        usedCredentialsMemory = $.md5(usernameValue + ":" + passwordValue, randomNumberArray[0]);
+
+        if (passwordValue === "") {
+            let message = "Enter your password";
+            if (!password.is(":focus")) {
+                if ($("#message").text() !== message) $("#message").text("");
+                password.focus();
+            }
+            else {
+                $("#message").text(message);
+            }
+            return;
+        }
+
+
+
         getRequest("/login/token", login, "Basic " + btoa(usernameValue + ":" + passwordValue));
     };
 
@@ -54,12 +80,7 @@ $(document).ready(function() {
     $(document).keypress(function(e) {
         let key = e.which;
         if (key === 13) {
-            if (username.is(":focus") && password.val() === "") {
-                if ($("#message").text() !== "") $("#message").text("");
-                password.focus();
-            } else {
-                submit();
-            }
+            submit();
 
         }
     });
@@ -76,10 +97,12 @@ function showFirewall() {
     $("#submit").prop("disabled", true);
     let message = firewall.charAt(0).toUpperCase() + firewall.slice(1);
     if (firewallEnd) {
-        message += " until " + new Date(firewallEnd).toLocaleString("en-US");
+        message += " until " + new Date(firewallEnd).toLocaleString();
+        let timeout = firewallEnd - Date.now();
+        if (timeout < 0) timeout *= -1;
         setTimeout(function() {
             location.reload();
-        }, firewallEnd - Date.now() + 10000)
+        }, timeout + 3000);
     }
     $("#message").text(message);
 

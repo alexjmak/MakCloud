@@ -9,7 +9,7 @@ const log = require("../core/log");
 const router = express.Router();
 
 router.use(function(req, res, next) {
-    let id = authorization.getLoginTokenAudience(req);
+    let id = authorization.getID(req);
     accountManager.getInformation("privilege", "id", id, function(privilege) {
         if (privilege === 100) next();
         else next(createError(403));
@@ -17,7 +17,7 @@ router.use(function(req, res, next) {
 });
 
 router.get('/', function(req, res, next) {
-    accountManager.getInformation("username", "id", authorization.getLoginTokenAudience(req), function(username) {
+    accountManager.getInformation("username", "id", authorization.getID(req), function(username) {
         res.render('log', {username: username, hostname: os.hostname()});
     });
 

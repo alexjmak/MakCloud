@@ -40,7 +40,6 @@ function displayAccountInfo(accountInfo) {
     }
     for (let id in accountInfo) {
         if (!accountInfo.hasOwnProperty(id)) continue;
-        id = parseInt(id);
         let info = accountInfo[id];
         if (!deletedMode && info.username === "admin") adminID = id;
         if (!deletedMode && id === currentInfo.id) continue;
@@ -140,7 +139,7 @@ function updateValidation(id, field, fieldName, newValue) {
 function updateField(event, data) {
     let field = $(event.target);
     let value = field.val();
-    let id = parseInt(field.attr("name"));
+    let id = field.attr("name");
     if (!data) data = {};
     data["id"] = id;
     let url = location.pathname + "/";
@@ -162,7 +161,7 @@ function updateField(event, data) {
 function showPromptPassword(event) {
     let field = $(event.target);
     if (field.val().trim() === "") return;
-    let id = parseInt(field.attr("name"));
+    let id = field.attr("name");
     let username = accountFieldValues[id].username;
     let dialogBody = `<div class='mdc-text-field'><input class='mdc-text-field__input' id='current-password' type='password' tabindex='1'><div class='mdc-line-ripple'></div><label class='mdc-floating-label'>Password</label></div>`;
     passwordDialog = showDialog(okDialog, "Confirm current password for " + username, dialogBody);
@@ -184,7 +183,7 @@ function showPromptPassword(event) {
 function updateCheckbox(event, data) {
     let checkbox = $(event.target);
     let checked = checkbox.prop("checked");
-    let id = parseInt(checkbox.attr("name"));
+    let id = checkbox.attr("name");
     if (!data) data = {};
     data["id"] = id;
     let url = location.pathname + "/";
@@ -198,7 +197,7 @@ function updateCheckbox(event, data) {
 
 function updateButton(event) {
     let button = $(event.target);
-    let id = parseInt(button.attr("name"));
+    let id = button.attr("name");
     let data = {"id": id};
     let url = location.pathname + "/";
 
@@ -235,7 +234,7 @@ function updateButton(event) {
         data["encrypted"] = encrypted;
         putRequest(url + "new", JSON.stringify(data), function(xmlHttpRequest) {
             if (xmlHttpRequest.status === 0) {
-                showSnackbar(basicSnackbar, "Connection lost");
+                showDialog(okDialog, "MakCloud", "Your session has expired", {"close": function() {location.reload()}});
             } else {
                 if (xmlHttpRequest.status !== 200) {
                     showSnackbar(basicSnackbar, xmlHttpRequest.responseText);

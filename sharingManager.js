@@ -114,7 +114,7 @@ function doAuthorization(key, fileName, req, res, next) {
     fileName = decodeURIComponent(fileName);
     if (fileName.indexOf("/") !== -1) fileName = fileName.substring(0, fileName.indexOf("/"));
 
-    let currentID = authorization.getLoginTokenAudience(req);
+    let currentID = authorization.getID(req);
     if (currentID === undefined) currentID = -1;
 
     database.get("SELECT sharing.key, id, owner FROM sharing JOIN links ON sharing.key = links.key WHERE sharing.key = ? AND ((id >= 0 AND id = ?) OR (owner = ?)) AND access > 0 AND (expiration > ? OR expiration IS NULL)", [key, currentID, currentID, Date.now()/1000], function(result) {

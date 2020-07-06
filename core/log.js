@@ -1,7 +1,20 @@
+const fs = require('fs');
+const mkdirp = require('mkdirp');
 const path = require('path');
 const strftime = require('strftime');
 
 let log = [];
+
+const folder = "logs";
+const logFile = path.join(folder, `log-${Date.now()}.txt`)
+mkdirp.sync(folder);
+
+let logStream = fs.createWriteStream(logFile, {flags:'a+'});
+
+function add(text) {
+    log.push(text);
+    logStream.write(text + "\n");
+}
 
 function formatFilename(fileName) {
     fileName = path.basename(fileName);
@@ -28,7 +41,7 @@ function getCaller() {
     let origPrepareStackTrace = Error.prepareStackTrace
     let err = new Error();
     Error.prepareStackTrace = function (err, stack) { return stack; };
-    let stack = err.stack;
+    err.stack;
     Error.prepareStackTrace = origPrepareStackTrace;
     for (let i = 0; i < err.stack.length; i++) {
         let fileName = err.stack[i].getFileName();
@@ -42,20 +55,22 @@ function getCaller() {
 function write(...text) {
     let name = formatFilename(getCaller());
     text = text.join(" ");
-    let logString = "[" + name + "] [" + strftime("%H:%M:%S") + "]: " + text;
+    let logString = `[${name}] [${strftime("%H:%M:%S")}]: ${text}`;
     console.log(logString);
-    log.push(logString);
+    add(logString);
 }
 
 function writeServer(req, ...text) {
     let name = formatFilename(getCaller());
     text = text.join(" ");
-    let logString = "[" + name + "] [" + strftime("%H:%M:%S") + "] [" + (req.ip) + "]: " + text;
+    let logString = `[${name}] [${strftime("%H:%M:%S")}] [${req.ip}]: ${text}`;
     console.log(logString);
-    log.push(logString);
+    add(logString);
 }
 
-
-module.exports = {get: get,
-                  write: write,
-                  writeServer: writeServer};
+module.exports = {
+    folder: folder,
+    get: get,
+    write: write,
+    writeServer: writeServer
+};

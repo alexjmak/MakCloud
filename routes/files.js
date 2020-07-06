@@ -10,6 +10,7 @@ const url = require('url');
 const accountManager = require('../accountManager');
 const authorization = require('../authorization');
 const fileManager = require('../fileManager');
+const log = require("../core/log");
 const preferences = require("../preferences");
 const sharingManager = require('../sharingManager');
 
@@ -17,7 +18,7 @@ const router = express.Router();
 
 router.delete("/*", function(req, res, next) {
     let filePath = decodeURIComponent(url.parse(req.url).pathname).substring(1);
-    let owner = authorization.getLoginTokenAudience(req).toString();
+    let owner = authorization.getID(req);
     if (req.baseUrl === "/public") owner = "public";
     fileManager.deleteFile("files", filePath, owner, function(result) {
         if (result) res.sendStatus(200);
@@ -27,15 +28,23 @@ router.delete("/*", function(req, res, next) {
 
 router.get('/*', function(req, res, next) {
     let filePath = decodeURIComponent(url.parse(req.url).pathname).substring(1);
-    let owner = authorization.getLoginTokenAudience(req).toString();
+    let owner = authorization.getID(req);
     if (req.baseUrl === "/public") owner = "public";
     let realFilePath = path.join(preferences.get("files"), owner, "files", filePath);
-    let urlFilePath = path.join(req.baseUrl, filePath);
 
     const parameter = Object.keys(req.query)[0];
 
-    const key = owner !== "public" ? req.session.encryptionKey : undefined;
-    const iv = owner !== "public" ? req.session.encryptionIV : undefined;
+    let key = owner !== "public" ? req.session.encryptionKey : undefined;
+    let iv = owner !== "public" ? req.session.encryptionIV : undefined;
+
+
+    if (req.baseUrl === "/logs") {
+        filePath = path.join("logs", filePath);
+        realFilePath = filePath;
+        console.log(filePath);
+        key = undefined;
+        iv = undefined;
+    }
 
     fs.stat(realFilePath, function(err, stats) {
         if (err !== null) return next();
@@ -54,7 +63,7 @@ router.get('/*', function(req, res, next) {
                 default:
                     fs.readdir(realFilePath, function (err, files) {
                         if (err !== null) return next();
-                        accountManager.getInformation("username", "id", authorization.getLoginTokenAudience(req), function (username) {
+                        accountManager.getInformation("username", "id", authorization.getID(req), function (username) {
                             readify(realFilePath, {sort: 'type'}).then(function (files) {
                                 res.render('directory', {
                                     username: username,
@@ -85,7 +94,7 @@ router.get('/*', function(req, res, next) {
                     });
                     break;
                 case "view":
-                    accountManager.getInformation("username", "id", authorization.getLoginTokenAudience(req), function (username) {
+                    accountManager.getInformation("username", "id", authorization.getID(req), function (username) {
                         res.render('fileViewer', {
                             username: username,
                             hostname: os.hostname()
@@ -105,7 +114,7 @@ router.get('/*', function(req, res, next) {
 
 router.post("/*", function(req, res, next) {
     let filePath = decodeURIComponent(url.parse(req.url).pathname).substring(1);
-    let owner = authorization.getLoginTokenAudience(req).toString();
+    let owner = authorization.getID(req);
     if (req.baseUrl === "/public") owner = "public";
     let realFilePath = path.join(preferences.get("files"), owner, "files", filePath);
     let filePathSplit = filePath.split("/");
@@ -153,7 +162,7 @@ router.post("/*", function(req, res, next) {
                 case "addAccess":
                     let addLinkAccess = function(id) {
                         sharingManager.addLinkAccess(parent, fileName, owner, id, access, expiration,function(result) {
-                            if (result) res.status(200).send(id.toString());
+                            if (result) res.status(200).send(id);
                             else res.sendStatus(400);
                         });
                     };
@@ -166,7 +175,7 @@ router.post("/*", function(req, res, next) {
                     break;
                 case "updateAccess":
                     sharingManager.updateLinkAccess(parent, fileName, owner, id, access, expiration, function(result) {
-                        if (result) res.status(200).send(id.toString());
+                        if (result) res.status(200).send(id);
                         else res.sendStatus(400);
                     });
                     break;
@@ -199,7 +208,7 @@ router.post("/*", function(req, res, next) {
 
 router.put("/*", function(req, res, next) {
     let filePath = decodeURIComponent(url.parse(req.url).pathname).substring(1);
-    let owner = authorization.getLoginTokenAudience(req).toString();
+    let owner = authorization.getID(req);
     if (req.baseUrl === "/public") owner = "public";
     let realFilePath = path.join(preferences.get("files"), owner, "files", filePath);
     let fileContents = req.files.data.data;

@@ -10,7 +10,7 @@ const router = express.Router();
 
 router.get('/', function(req, res) {
     if (authorization.verifyToken(req.cookies.loginToken, req)) {
-        accountManager.accountExists(authorization.getLoginTokenAudience(req), true, function(exists) {
+        accountManager.idExists(authorization.getID(req), true, function(exists) {
             if (exists) {
                 let redirect = req.query.redirect;
                 if (redirect === undefined) redirect = "";

@@ -7,12 +7,6 @@ $(document).ready(function() {
     checkMobileResize();
     $(window).resize(checkMobileResize);
 
-    if (window.location.pathname === "/login" || $.cookie("loginToken") === undefined) {
-        $('#accountButton').click(function() {
-            window.location.href = "/login";
-        });
-    }
-
     const topAppBar = mdc.topAppBar.MDCTopAppBar.attachTo(document.querySelector('.mdc-top-app-bar'));
 
 
@@ -80,10 +74,11 @@ $(document).ready(function() {
     });
 
     $("#accountButton").click(function() {
+        if (window.location.pathname === "/login") return;
         if (!accountCard.is(":visible") && $.cookie("loginToken") !== undefined) {
             accountCard.show();
-        } else if ($.cookie("loginToken") === undefined) {
-            window.location = "/accounts";
+        } else if (!$.cookie("loginToken")) {
+            window.location = "/login";
         }
     });
 

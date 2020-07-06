@@ -2,10 +2,11 @@ const path = require("path");
 const crypto = require("crypto");
 const mkdirp = require('mkdirp');
 const database = require("./databaseInit");
+const log = require("../core/log");
 const preferences = require("../preferences");
 
-const checkAccountsTable = ["CREATE TABLE IF NOT EXISTS accounts (id INTEGER PRIMARY KEY);",
-    "ALTER TABLE accounts ADD COLUMN id INTEGER PRIMARY KEY;",
+const checkAccountsTable = ["CREATE TABLE IF NOT EXISTS accounts (id INTEGER PRIMARY KEY AUTOINCREMENT);",
+    "ALTER TABLE accounts ADD COLUMN id INTEGER PRIMARY KEY AUTOINCREMENT;",
     "ALTER TABLE accounts ADD COLUMN username TEXT NOT NULL DEFAULT ' ';",
     "ALTER TABLE accounts ADD COLUMN hash TEXT NOT NULL DEFAULT ' ';",
     "ALTER TABLE accounts ADD COLUMN salt TEXT NOT NULL DEFAULT ' ';",
@@ -29,37 +30,14 @@ database.runList(checkAccountsTable, [], function() {
 
 database.runList(checkDeletedAccountsTable, [], function() {}, false);
 
-function accountExists(usernameOrID, enabledCheck, next) {
-    let query;
-    if (usernameOrID === undefined) {
-        if (next !== undefined) next(false);
-        return;
-    } else if (Number.isInteger(usernameOrID)) {
-        query = "SELECT * FROM accounts WHERE id = ?";
-
-    } else {
-        query = "SELECT * FROM accounts WHERE lower(username) = ?";
-    }
-    if (enabledCheck) query += " AND enabled = 1";
-
-    database.all(query, usernameOrID, function(result) {
-        if (result.length === 1) {
-            if (next !== undefined) next(true);
-        } else {
-            if (next !== undefined) next(false);
-        }
-
-    });
-}
-
 function deleteAccount(id, next) {
-    accountExists(id, false, function(result) {
+    idExists(id, false, function(result) {
         getInformation("username", "id", id, function(username) {
             if (!result) {
                 if (next !== undefined) next(false);
                 return
             }
-            let dateDeleted = Math.floor(Date.now()/1000);
+            let dateDeleted = Math.floor(Date.now() / 1000);
             database.run("INSERT INTO deleted_accounts (id, username, hash, salt, privilege, dateDeleted) SELECT id, username, hash, salt, privilege, " + dateDeleted + " as dateDeleted FROM accounts WHERE id = ?;", id, function() {
                 database.get("SELECT * FROM accounts WHERE id = ?", id, function(result) {
                     database.run("DELETE FROM accounts WHERE id = ?", id, function() {
@@ -78,7 +56,7 @@ function deleteDeletedAccount(id, next) {
 }
 
 function disableAccount(id, next) {
-    accountExists(id, false, function(result) {
+    idExists(id, false, function(result) {
         if (!result) {
             if (next !== undefined) next(false);
             return;
@@ -92,7 +70,7 @@ function disableAccount(id, next) {
 }
 
 function enableAccount(id, next) {
-    accountExists(id, false, function(result) {
+    idExists(id, false, function(result) {
         if (!result) {
             if (next !== undefined) next(false);
             return;
@@ -157,8 +135,25 @@ function getInformation(select, whereKey, whereValue, next) {
     });
 }
 
+function idExists(id, enabledCheck, next) {
+    let query;
+    if (id === undefined) {
+        if (next !== undefined) next(false);
+        return;
+    }
+    query = "SELECT * FROM accounts WHERE id = ?";
+    if (enabledCheck) query += " AND enabled = 1";
+    database.all(query, id, function(result) {
+        if (result.length === 1) {
+            if (next !== undefined) next(true);
+        } else {
+            if (next !== undefined) next(false);
+        }
+    });
+}
+
 function newAccount(username, password, privilege, next) {
-    accountExists(username, false, function(result) {
+    usernameExists(username, false, function(result) {
         if (result) {
             if (next !== undefined) next(false);
             return
@@ -168,32 +163,31 @@ function newAccount(username, password, privilege, next) {
         let salt = authorization.generateSalt();
         let hash = authorization.getHash(password, salt);
 
-        nextID(function(id) {
-            let filePath = path.join(preferences.get("files"), id.toString()).toString();
-            mkdirp(path.join(filePath, "files")).then(function() {
-                mkdirp(path.join(filePath, "photos")).then(function() {
-                    mkdirp(path.join(filePath, "mail")).then(function() {
-                        database.run("INSERT INTO accounts (id, username, hash, salt, privilege) VALUES (?, ?, ?, ?, ?)", [id, username, hash, salt, privilege], function(result) {
-                            if (!result && username !== undefined && password !== undefined && privilege !== undefined) {
-                                newAccount(username, password, privilege, next);
-                            } else next(result);
+        let id = newID();
+        database.run("INSERT INTO accounts (id, username, hash, salt, privilege) VALUES (?, ?, ?, ?, ?)", [id, username, hash, salt, privilege], function(result) {
+            if (!result && username !== undefined && password !== undefined && privilege !== undefined) {
+                log.write("Error creating new account. Trying again...");
+                newAccount(username, password, privilege, next);
+            } else {
+                let filePath = path.join(preferences.get("files"), id).toString();
+                mkdirp(path.join(filePath, "files")).then(function() {
+                    mkdirp(path.join(filePath, "photos")).then(function() {
+                        mkdirp(path.join(filePath, "mail")).then(function() {
+                            if (next) next(result);
                         });
                     });
                 });
-            });
+
+            }
         });
+
+
 
     });
 }
 
-function nextID(next) {
-    database.get("SELECT max(id) as id FROM (SELECT id FROM accounts UNION SELECT id FROM deleted_accounts);", null, function(result) {
-        if (result.id !== null) {
-            if (next !== undefined) next(result.id + 1);
-        } else {
-            if (next !== undefined) next(0);
-        }
-    });
+function newID() {
+    return parseInt("" + Date.now() + Math.floor(Math.random() * 100)).toString(36).toUpperCase();
 }
 
 function searchAccounts(query, next) {
@@ -212,7 +206,7 @@ function searchAccounts(query, next) {
 }
 
 function updatePassword(id, newPassword, next) {
-    accountExists(id, false, function(result) {
+    idExists(id, false, function(result) {
         if (!result) {
             if (next !== undefined) next(false);
             return;
@@ -231,7 +225,7 @@ function updatePassword(id, newPassword, next) {
 
 function updatePrivilege(id, newPrivilege, next) {
     if (newPrivilege >= 100) newPrivilege = 100;
-    accountExists(id, false, function(result) {
+    idExists(id, false, function(result) {
         if (!result) {
             if (next !== undefined) next(false);
             return;
@@ -251,22 +245,39 @@ function updateUsername(id, newUsername, next) {
             return;
         }
 
-        accountExists(newUsername, false, function(result) {
+        usernameExists(newUsername, false, function(result) {
             if (result) {
                 if (next !== undefined) next(false);
                 return;
             }
 
             database.run("UPDATE accounts SET username = ? WHERE id = ?", [newUsername, id], function(result) {
-                if (next !== undefined) next(result);
+                if (next !== undefined) next(result, username);
             });
         });
     });
 
 }
 
+function usernameExists(username, enabledCheck, next) {
+    let query;
+    if (username === undefined) {
+        if (next !== undefined) next(false);
+        return;
+    }
+    query = "SELECT * FROM accounts WHERE lower(username) = ?";
+    if (enabledCheck) query += " AND enabled = 1";
+    database.all(query, username, function(result) {
+        if (result.length === 1) {
+            if (next !== undefined) next(true);
+        } else {
+            if (next !== undefined) next(false);
+        }
+
+    });
+}
+
 module.exports = {
-    accountExists: accountExists,
     deleteAccount: deleteAccount,
     deleteDeletedAccount: deleteDeletedAccount,
     disableAccount: disableAccount,
@@ -275,9 +286,11 @@ module.exports = {
     getAccountsSummary: getAccountsSummary,
     getDeletedAccountsSummary: getDeletedAccountsSummary,
     getInformation: getInformation,
+    idExists: idExists,
     newAccount: newAccount,
     searchAccounts: searchAccounts,
     updatePassword: updatePassword,
     updatePrivilege: updatePrivilege,
-    updateUsername: updateUsername
+    updateUsername: updateUsername,
+    usernameExists: usernameExists
 };

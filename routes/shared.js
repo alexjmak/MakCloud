@@ -18,10 +18,10 @@ router.get('/*', function(req, res, next) {
 
     const parameter = Object.keys(req.query)[0];
 
-    sharingManager.linkCheck(key, fileName, authorization.getLoginTokenAudience(req),function(exists) {
+    sharingManager.linkCheck(key, fileName, authorization.getID(req),function(exists) {
         if (exists === true) {
             sharingManager.getRealFilePathLink(key, fileName, function (realFilePath) {
-                accountManager.getInformation("username", "id", authorization.getLoginTokenAudience(req), function (username) {
+                accountManager.getInformation("username", "id", authorization.getID(req), function (username) {
                     fs.stat(realFilePath, function (err, stats) {
                         if (err || !stats) return next(createError(404));
                         switch (parameter) {

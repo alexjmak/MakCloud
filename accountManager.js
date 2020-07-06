@@ -1,15 +1,17 @@
+const child_process = require('child_process');
 const fs = require("fs");
+const mkdirp = require("mkdirp");
 const path = require("path");
 const rimraf = require("rimraf");
+
 const database = require("./core/databaseInit");
-const child_process = require('child_process');
 const preferences = require("./preferences");
 const log = require("./core/log");
 
 const accountManager = require("./core/accountManager");
 
 function decryptAccount(id, password, next) {
-    accountManager.accountExists(id, false, function(result) {
+    accountManager.idExists(id, false, function(result) {
         if (!result) {
             if (next !== undefined) next(false);
             return;
@@ -59,23 +61,34 @@ function deleteAccount(id, next) {
 
         database.run("UPDATE deleted_accounts SET encryptKey = ?, encryptIV = ?, derivedKeySalt = ? WHERE id = ?", [encryptKey, encryptIV, derivedKeySalt, id])
 
-        let filePath = path.join(preferences.get("files"), id.toString()).toString();
-        let newFilePath = path.join(preferences.get("files"), "deleted", id.toString()).toString();
-        fs.renameSync(filePath, newFilePath);
+        let deletedFilesPath = path.join(preferences.get("files"), "deleted");
+
+        let filePath = path.join(preferences.get("files"), id);
+        let newFilePath = path.join(deletedFilesPath, id);
+
+        mkdirp(deletedFilesPath).then(function() {
+            fs.rename(filePath, newFilePath, function() {
+                next(true);
+            });
+        })
 
         if (preferences.get("sambaIntegration")) {
-            accountManager.getInformation("username", "id", id, function(username) {
-                try {
-                    fs.unlinkSync(path.join(__dirname, preferences.get("files"), "smb", username.toLowerCase()).toString());
-                } catch (err) {
+            database.get("SELECT username FROM deleted_accounts WHERE id = ?", id, function(result) {
+                if (result) {
+                    let username = result.username;
+                    try {
+                        fs.unlinkSync(path.join(__dirname, preferences.get("files"), "smb", username.toLowerCase()));
+                    } catch (err) {
+                    }
+                    child_process.exec("sudo smbpasswd -x " + username.toLowerCase() + "; sudo userdel -r " + username.toLowerCase(), function (err, stdout, stderr) {
+                        if (stderr !== "") log.write(stderr);
+                    });
                 }
-                child_process.exec("sudo smbpasswd -x " + username.toLowerCase() + "; sudo userdel -r " + username.toLowerCase(), function (err, stdout, stderr) {
-                    if (stderr !== "") log.write(stderr);
-                });
+
             });
         }
 
-        next(true);
+
     })
 }
 
@@ -85,7 +98,7 @@ function deleteDeletedAccount(id, next) {
             if (next) next(false);
             return;
         }
-        let directory = path.join(preferences.get("files"), "deleted", id.toString()).toString();
+        let directory = path.join(preferences.get("files"), "deleted", id);
         rimraf(directory, function(err) {
             if (err) {
                 log.write(err);
@@ -105,7 +118,7 @@ function disableAccount(id, next) {
         if (preferences.get("sambaIntegration")) {
             accountManager.getInformation("username", "id", id, function (username) {
                 try {
-                    fs.unlinkSync(path.join(__dirname, preferences.get("files"), "smb", username.toLowerCase()).toString());
+                    fs.unlinkSync(path.join(__dirname, preferences.get("files"), "smb", username.toLowerCase()));
                 } catch (err) {
                     log.write(err.toString());
                 }
@@ -129,7 +142,7 @@ function enableAccount(id, next) {
         if (preferences.get("sambaIntegration")) {
             accountManager.getInformation("username", "id", id, function (username) {
                 try {
-                    fs.symlinkSync(path.join(__dirname, preferences.get("files"), id.toString()), path.join(__dirname, preferences.get("files"), "smb", username.toLowerCase()), "dir");
+                    fs.symlinkSync(path.join(__dirname, preferences.get("files"), id), path.join(__dirname, preferences.get("files"), "smb", username.toLowerCase()), "dir");
                 } catch (err) {
                     log.write(err.toString());
                 }
@@ -145,7 +158,7 @@ function enableAccount(id, next) {
 }
 
 function encryptAccount(id, password, next) {
-    accountManager.accountExists(id, false, function(result) {
+    accountManager.idExists(id, false, function(result) {
         if (!result) {
             if (next !== undefined) next(false);
             return;
@@ -177,24 +190,24 @@ function newAccount(username, password, privilege, encrypted, next) {
             return;
         }
 
-        if (encrypted) {
-            accountManager.getInformation("id", "username", username, function (id) {
+        accountManager.getInformation("id", "username", username, function (id) {
+            if (encrypted) {
                 encryptAccount(id, password, function () {
                     if (next) next(true);
                 });
-            });
-        } else if (next) next(true);
+            } else if (next) next(true);
 
-        if (preferences.get("sambaIntegration")) {
-            try {
-                fs.symlinkSync(path.join(__dirname, preferences.get("files"), id.toString()), path.join(__dirname, preferences.get("files"), "smb", username.toLowerCase()), "dir");
-            } catch (err) {
-                log.write(err.toString());
+            if (preferences.get("sambaIntegration")) {
+                try {
+                    fs.symlinkSync(path.join(__dirname, preferences.get("files"), id), path.join(__dirname, preferences.get("files"), "smb", username.toLowerCase()), "dir");
+                } catch (err) {
+                    log.write(err.toString());
+                }
+                child_process.exec("sudo useradd -G makcloud --no-create-home --no-user-group --system " + username.toLowerCase() + "; (echo " + password + "; echo " + password + ") | sudo smbpasswd -a " + username.toLowerCase(), function (err, stdout, stderr) {
+                    if (stderr !== "") log.write(stderr);
+                });
             }
-            child_process.exec("sudo useradd -G makcloud --no-create-home --no-user-group --system " + username.toLowerCase() + "; (echo " + password + "; echo " + password + ") | sudo smbpasswd -a " + username.toLowerCase(), function (err, stdout, stderr) {
-                if (stderr !== "") log.write(stderr);
-            });
-        }
+        });
     });
 }
 
@@ -253,7 +266,7 @@ function updatePassword(id, newPassword, oldPassword, next) {
 }
 
 function updateUsername(id, newUsername, next) {
-    accountManager.updateUsername(id, function(result) {
+    accountManager.updateUsername(id, newUsername, function(result, oldUsername) {
         if (!result) {
             if (next !== undefined) next(false);
             return;
@@ -261,11 +274,11 @@ function updateUsername(id, newUsername, next) {
 
         if (preferences.get("sambaIntegration")) {
             try {
-                fs.renameSync(path.join(__dirname, preferences.get("files"), "smb", username.toLowerCase()).toString(), path.join(__dirname, preferences.get("files"), "smb", newUsername.toLowerCase()).toString());
+                fs.renameSync(path.join(__dirname, preferences.get("files"), "smb", oldUsername.toLowerCase()), path.join(__dirname, preferences.get("files"), "smb", newUsername.toLowerCase()));
             } catch (err) {
                 log.write(err.toString());
             }
-            child_process.exec("sudo smbpasswd -x " + username.toLowerCase() + "; sudo usermod -l " + newUsername.toLowerCase() + " " + username.toLowerCase(), function (err, stdout, stderr) {
+            child_process.exec("sudo smbpasswd -x " + oldUsername.toLowerCase() + "; sudo usermod -l " + newUsername.toLowerCase() + " " + oldUsername.toLowerCase(), function (err, stdout, stderr) {
                 if (stderr !== "") log.write(stderr);
             });
         }

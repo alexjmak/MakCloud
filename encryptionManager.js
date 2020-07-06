@@ -22,31 +22,45 @@ function checkEncryptionSession(req, next) {
 }
 
 function decryptAccount(id, key, iv, next) {
-    let filesPath = path.join(preferences.get("files"), id.toString());
-    let tmpdir = path.resolve(path.join(preferences.get("files"), id.toString(), "tmp"));
+    let accountPath = path.join(preferences.get("files"), id);
+    let tmpdir = path.resolve(path.join(preferences.get("files"), id, "tmp"));
     const fileManager = require("./fileManager");
-    fileManager.walkDirectory(filesPath, function(filePath) {
-        try {
-            fileManager.readFile(filePath, key, iv, function(readStream) {
-                mkdirp(tmpdir).then(function() {
-                    tmp.tmpName({ tmpdir: tmpdir }, function(err, tmpPath) {
-                        let writeStream = fs.createWriteStream(tmpPath);
-                        readStream.pipe(writeStream);
-                        writeStream.on("close", function() {
-                            fs.rename(tmpPath, filePath, function(err) {
-                                if (err) log.write(err);
-                                //next
+    fileManager.readDirectory(accountPath, function(dirPath, next) {
+        fileManager.walkDirectory(dirPath, function(filePath, isDirectory, next) {
+            try {
+                decryptFilePath(filePath, key, iv, function(decryptedFilePath) {
+                    if (!decryptedFilePath) decryptedFilePath = filePath;
+                    fs.rename(filePath, decryptedFilePath, function(err) {
+                        if (err) {
+                            log.write(err);
+                        }
+                        if (isDirectory) {
+                            if (next) next(decryptedFilePath);
+                            return;
+                        }
+                        fileManager.readFile(decryptedFilePath, key, iv, function(readStream) {
+                            mkdirp(tmpdir).then(function() {
+                                tmp.tmpName({ tmpdir: tmpdir }, function(err, tmpPath) {
+                                    let writeStream = fs.createWriteStream(tmpPath);
+                                    readStream.pipe(writeStream);
+                                    writeStream.on("close", function() {
+                                        fs.rename(tmpPath, decryptedFilePath, function(err) {
+                                            if (err) log.write(err);
+                                            if (next) next(decryptedFilePath);
+                                        });
+                                    });
+                                });
                             });
                         });
-                    });
+                    })
                 });
-
-            });
-        } catch (err) {
-            //todo backup key
-            return log.write(err)}
+            } catch (err) {
+                //todo backup key
+                log.write(err)
+                if (next) next();
+            }
+        }, next);
     }, next);
-
 }
 
 function decryptBuffer(buffer, key, iv, next) {
@@ -54,14 +68,24 @@ function decryptBuffer(buffer, key, iv, next) {
     contentStream.end(buffer);
     decryptStream(contentStream, key, iv, function(decryptedStream) {
         let bufferArray = [];
+        let error = false;
+        decryptedStream.on("error", function(err) {
+            error = true;
+        });
+
         decryptedStream.on("data", function(data) {
             bufferArray.push(data);
-        })
+        });
+
         decryptedStream.on("finish", function() {
-            let decryptedStream = Buffer.concat(bufferArray);
-            next(decryptedStream);
-        })
-    })
+            if (error) {
+                if (next) next(null);
+                return;
+            }
+            let decryptedBuffer = Buffer.concat(bufferArray);
+            if (next) next(decryptedBuffer);
+        });
+    });
 }
 
 function decryptEncryptionKey(id, password, next) {
@@ -95,6 +119,23 @@ function decryptEncryptionKey(id, password, next) {
     });
 }
 
+function decryptFilePath(filePath, key, iv, next) {
+    let basename = path.basename(filePath);
+    let dirname = path.dirname(filePath);
+
+    basename = basename.replace(/-/g, "+").replace(/_/g, "/");
+    let buffer = Buffer.from(basename, 'base64')
+    decryptBuffer(buffer, key, iv, function(decryptedBuffer) {
+        if (decryptedBuffer) {
+            let decryptedBasename = decryptedBuffer.toString("utf8");
+            let decryptedFilePath = path.join(dirname, decryptedBasename);
+            if (next) next(decryptedFilePath);
+        } else {
+            if (next) next(null);
+        }
+    });
+}
+
 function decryptStream(contentStream, key, iv, next) {
     log.write("Decrypting...");
     getDecipher(key, iv, function(err, testDecipher) {
@@ -115,31 +156,47 @@ function decryptStream(contentStream, key, iv, next) {
 }
 
 function encryptAccount(id, key, iv, next) {
-    let filesPath = path.join(preferences.get("files"), id.toString());
-    let tmpdir = path.resolve(path.join(preferences.get("files"), id.toString(), "tmp"));
+    let accountPath = path.join(preferences.get("files"), id);
+    let tmpdir = path.resolve(path.join(preferences.get("files"), id, "tmp"));
     const fileManager = require("./fileManager");
-    fileManager.walkDirectory(filesPath, function(filePath) {
-        let readStream = fs.createReadStream(filePath);
-        encryptStream(readStream, key, iv, function(encryptedStream) {
-            if (encryptedStream) {
-                mkdirp(tmpdir).then(function() {
-                    tmp.tmpName({ tmpdir: tmpdir }, function(err, tmpPath) {
-                        if (err) return log.write(err);
-                        let writeStream = fs.createWriteStream(tmpPath)
-                        encryptedStream.pipe(writeStream);
-                        writeStream.on("close", function() {
-                            fs.rename(tmpPath, filePath, function(err) {
-                                if (err) return log.write(err);
-                                //next
-                            })
-                        })
-
-                    });
+    fileManager.readDirectory(accountPath, function(dirPath, next) {
+        fileManager.walkDirectory(dirPath, function(filePath, isDirectory, next) {
+            try {
+                encryptFilePath(filePath, key, iv, function(encryptedFilePath) {
+                    fs.rename(filePath, encryptedFilePath, function(err) {
+                        if (err) {
+                            encryptedFilePath = filePath;
+                            log.write(err);
+                        }
+                        if (isDirectory) {
+                            if (next) next(encryptedFilePath);
+                            return;
+                        }
+                        let readStream = fs.createReadStream(encryptedFilePath);
+                        encryptStream(readStream, key, iv, function(encryptedStream) {
+                            if (encryptedStream) {
+                                mkdirp(tmpdir).then(function() {
+                                    tmp.tmpName({ tmpdir: tmpdir }, function(err, tmpPath) {
+                                        if (err) return log.write(err);
+                                        let writeStream = fs.createWriteStream(tmpPath)
+                                        encryptedStream.pipe(writeStream);
+                                        writeStream.on("close", function() {
+                                            fs.rename(tmpPath, encryptedFilePath, function(err) {
+                                                if (err)  log.write(err);
+                                                if (next) next(encryptedFilePath);
+                                            });
+                                        })
+                                    });
+                                });
+                            }
+                        });
+                    })
                 });
-
-
+            } catch (err) {
+                log.write(err)
+                if (next) next();
             }
-        });
+        }, next);
     }, next);
 }
 
@@ -165,6 +222,20 @@ function encryptEncryptionKey(key, iv, pbkdf2, next) {
     if (next !== undefined) next(encrypted);
 }
 
+function encryptFilePath(filePath, key, iv, next) {
+    let basename = path.basename(filePath);
+    let dirname = path.dirname(filePath);
+    let buffer = Buffer.from(basename, 'utf8')
+    encryptBuffer(buffer, key, iv, function(encryptedBuffer) {
+        let encryptedBasename = encryptedBuffer.toString("base64")
+                                    .replace(/\+/g, "-")
+                                    .replace(/\//g, "_")
+                                    .replace(/=/g, "");
+        let encryptedFilePath = path.join(dirname, encryptedBasename);
+        if (next) next(encryptedFilePath);
+    });
+}
+
 function encryptionEnabled(req) {
     return req.session && req.session.encryptionKey;
 }
@@ -185,7 +256,7 @@ function encryptStream(contentStream, key, iv, next) {
 function generateAccountPbkdf2(id, password, next) {
     const authorization = require("./authorization");
     authorization.checkPassword(id, password, function(result) {
-        if (result === authorization.LOGIN_FAIL) {
+        if (result === authorization.LOGIN.FAIL) {
             if (next !== undefined) next(false);
         } else {
             accountManager.getInformation("derivedKeySalt", "id", id, function(derivedKeySalt) {
@@ -269,9 +340,11 @@ module.exports = {
     checkEncryptionSession: checkEncryptionSession,
     decryptAccount: decryptAccount,
     decryptEncryptionKey: decryptEncryptionKey,
+    decryptFilePath: decryptFilePath,
     decryptStream: decryptStream,
     encryptAccount: encryptAccount,
     encryptEncryptionKey: encryptEncryptionKey,
+    encryptFilePath: encryptFilePath,
     encryptionEnabled: encryptionEnabled,
     encryptStream: encryptStream,
     generateEncryptionKey: generateEncryptionKey,

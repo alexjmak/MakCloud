@@ -17,7 +17,7 @@ const router = express.Router();
 
 router.delete("/*", function(req, res, next) {
     let filePath = decodeURIComponent(url.parse(req.url).pathname).substring(1);
-    fileManager.deleteFile("photos", filePath, authorization.getLoginTokenAudience(req), function(result) {
+    fileManager.deleteFile("photos", filePath, authorization.getID(req), function(result) {
         if (result) res.sendStatus(200);
         else res.sendStatus(404);
     });
@@ -25,7 +25,7 @@ router.delete("/*", function(req, res, next) {
 
 router.get("/", function(req, res, next) {
     let filePath = decodeURIComponent(url.parse(req.url).pathname).substring(1);
-    let realFilePath = path.join(preferences.get("files"), authorization.getLoginTokenAudience(req).toString(), "photos", filePath);
+    let realFilePath = path.join(preferences.get("files"), authorization.getID(req), "photos", filePath);
     fs.readdir(realFilePath, function (err, files) {
         if (err !== null) return next();
         readify(realFilePath, {sort: 'date', order: 'desc'}).then(function (files) {
@@ -40,7 +40,7 @@ router.get("/", function(req, res, next) {
                 let extension = file.split(".").pop().toLowerCase();
                 return !file.startsWith(".") && supportedTypes.includes(extension);
             });
-            accountManager.getInformation("username", "id", authorization.getLoginTokenAudience(req), function (username) {
+            accountManager.getInformation("username", "id", authorization.getID(req), function (username) {
                 res.render('photos', {username: username, photos: photos});
             });
         });
@@ -51,7 +51,7 @@ router.get("/", function(req, res, next) {
 
 router.get("/*", function(req, res, next) {
     let filePath = decodeURIComponent(url.parse(req.url).pathname).substring(1);
-    let realFilePath = path.join(preferences.get("files"), authorization.getLoginTokenAudience(req).toString(), "photos", filePath);
+    let realFilePath = path.join(preferences.get("files"), authorization.getID(req), "photos", filePath);
     let urlFilePath = path.join(req.baseUrl, filePath);
 
     const parameter = Object.keys(req.query)[0];
@@ -72,7 +72,7 @@ router.get("/*", function(req, res, next) {
                     });
                     break;
                 case "view":
-                    accountManager.getInformation("username", "id", authorization.getLoginTokenAudience(req), function (username) {
+                    accountManager.getInformation("username", "id", authorization.getID(req), function (username) {
                         res.render('fileViewer', {
                             username: username,
                             hostname: os.hostname()
@@ -92,7 +92,7 @@ router.get("/*", function(req, res, next) {
 
 router.post("/", function (req, res, next) {
     let filePath = decodeURIComponent(url.parse(req.url).pathname).substring(1);
-    let realFilePath = path.join(preferences.get("files"), authorization.getLoginTokenAudience(req).toString(), "photos", filePath);
+    let realFilePath = path.join(preferences.get("files"), authorization.getID(req), "photos", filePath);
 
     const parameter = Object.keys(req.query)[0];
 
