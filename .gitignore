@@ -1,5 +1,6 @@
 /.idea/
 /files/
+/logs/
 /node_modules/
 /firewall.json
 /database.db
