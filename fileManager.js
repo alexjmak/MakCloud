@@ -3,7 +3,6 @@ const fs = require("fs");
 const path = require("path");
 const stream = require("stream");
 const preferences = require("./preferences");
-const encryptionManager = require("./encryptionManager");
 const log = require("./core/log");
 
 let createFolderArchive = function(directory, filePath, owner, next) {
@@ -44,27 +43,27 @@ let deleteFile = function(directory, filePath, owner, next) {
     }
 };
 
-let readDirectory = function(dir, callback, next) {
-    fs.readdir(dir, function(err, files) {
+let readDirectory = function(directory, callback, next) {
+    fs.readdir(directory, function(err, files) {
         if (err) {
             log.write(err);
             if (next) next(err);
             return;
         }
-
-        function nextDir(i) {
+        function nextFile(i) {
             if (files.hasOwnProperty(i)) {
                 let file = files[i];
-                let dirPath = path.join(dir, file);
-                callback(dirPath, function() {
-                    nextDir(i + 1);
-                })
+                let filePath = path.join(directory, file);
+                fs.stat(filePath, function(err, stats) {
+                    callback(filePath, stats.isDirectory(), function() {
+                        nextFile(i + 1);
+                    });
+                });
             } else {
                 next();
             }
         }
-
-        nextDir(0);
+        nextFile(0);
     });
 
 }
@@ -74,6 +73,7 @@ let readFile = function(filePath, key, iv, next) {
         log.write(err);
     });
     if (key && iv) {
+        const encryptionManager = require("./encryptionManager");
         encryptionManager.isEncrypted(fs.createReadStream(filePath), key, iv, function(encrypted) {
             if (encrypted) {
                 encryptionManager.decryptStream(readStream, key, iv, function(decryptedStream) {
@@ -89,13 +89,12 @@ let readFile = function(filePath, key, iv, next) {
     }
 };
 
-let walkDirectory = function(dir, callback, next) {
-    readDirectory(dir, function(dirPath, next) {
-        let isDirectory = fs.statSync(dirPath).isDirectory();
-        callback(dirPath, isDirectory, function(newDirPath) {
-            if (!newDirPath) newDirPath = dirPath;
+let walkDirectory = function(directory, callback, next) {
+    readDirectory(directory, function(filePath, isDirectory, next) {
+        callback(filePath, isDirectory, function(newFilePath) {
+            if (!newFilePath) newFilePath = filePath;
             if (isDirectory) {
-                walkDirectory(newDirPath, callback, function() {
+                walkDirectory(newFilePath, callback, function() {
                     if (next) next();
                 });
             } else {
@@ -108,6 +107,7 @@ let walkDirectory = function(dir, callback, next) {
 
 let writeFile = function(filePath, contentStream, key, iv, next) {
     if (key && iv) {
+        const encryptionManager = require("./encryptionManager");
         encryptionManager.encryptFilePath(filePath, key, iv, function(encryptedFilePath) {
             if (!encryptedFilePath) encryptedFilePath = filePath;
             let writeStream = fs.createWriteStream(encryptedFilePath);

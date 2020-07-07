@@ -1,4 +1,5 @@
 const accountManager = require("./accountManager");
+const fileManager = require("./fileManager");
 const preferences = require("./preferences");
 const path = require("path");
 const crypto = require("crypto");
@@ -25,8 +26,12 @@ function decryptAccount(id, key, iv, next) {
     let accountPath = path.join(preferences.get("files"), id);
     let tmpdir = path.resolve(path.join(preferences.get("files"), id, "tmp"));
     const fileManager = require("./fileManager");
-    fileManager.readDirectory(accountPath, function(dirPath, next) {
-        fileManager.walkDirectory(dirPath, function(filePath, isDirectory, next) {
+    fileManager.readDirectory(accountPath, function(filePath, isDirectory, next) {
+        if (!isDirectory || path.basename(filePath) === "tmp") {
+            if (next) next();
+            return;
+        }
+        fileManager.walkDirectory(filePath, function(filePath, isDirectory, next) {
             try {
                 decryptFilePath(filePath, key, iv, function(decryptedFilePath) {
                     if (!decryptedFilePath) decryptedFilePath = filePath;
@@ -136,6 +141,23 @@ function decryptFilePath(filePath, key, iv, next) {
     });
 }
 
+function decryptFilePaths(filePaths, key, iv, next) {
+    let decryptedFilePaths = {};
+    function callback(i) {
+        if (filePaths.hasOwnProperty(i)) {
+            let filePath = filePaths[i];
+            decryptFilePath(filePath, key, iv, function(decryptedFilePath) {
+                if (!decryptedFilePath) decryptedFilePath = filePath;
+                decryptedFilePaths[filePath] = decryptedFilePath;
+                callback(i + 1);
+            });
+        } else {
+            if (next) next(decryptedFilePaths);
+        }
+    }
+    callback(0);
+}
+
 function decryptStream(contentStream, key, iv, next) {
     log.write("Decrypting...");
     getDecipher(key, iv, function(err, testDecipher) {
@@ -159,10 +181,15 @@ function encryptAccount(id, key, iv, next) {
     let accountPath = path.join(preferences.get("files"), id);
     let tmpdir = path.resolve(path.join(preferences.get("files"), id, "tmp"));
     const fileManager = require("./fileManager");
-    fileManager.readDirectory(accountPath, function(dirPath, next) {
-        fileManager.walkDirectory(dirPath, function(filePath, isDirectory, next) {
+    fileManager.readDirectory(accountPath, function(filePath, isDirectory, next) {
+        if (!isDirectory || path.basename(filePath) === "tmp") {
+            if (next) next();
+            return;
+        }
+        fileManager.walkDirectory(filePath, function(filePath, isDirectory, next) {
             try {
                 encryptFilePath(filePath, key, iv, function(encryptedFilePath) {
+                    if (!encryptedFilePath) encryptedFilePath = filePath;
                     fs.rename(filePath, encryptedFilePath, function(err) {
                         if (err) {
                             encryptedFilePath = filePath;
@@ -205,10 +232,21 @@ function encryptBuffer(buffer, key, iv, next) {
     contentStream.end(buffer);
     encryptStream(contentStream, key, iv, function(encryptedStream) {
         let bufferArray = [];
+        let error = false;
+
+        encryptedStream.on("error", function(err) {
+            error = true;
+        });
+
         encryptedStream.on("data", function(data) {
             bufferArray.push(data);
-        })
+        });
+
         encryptedStream.on("finish", function() {
+            if (error) {
+                if (next) next(null)
+                return;
+            }
             let encryptedBuffer = Buffer.concat(bufferArray);
             next(encryptedBuffer);
         })
@@ -227,12 +265,17 @@ function encryptFilePath(filePath, key, iv, next) {
     let dirname = path.dirname(filePath);
     let buffer = Buffer.from(basename, 'utf8')
     encryptBuffer(buffer, key, iv, function(encryptedBuffer) {
-        let encryptedBasename = encryptedBuffer.toString("base64")
-                                    .replace(/\+/g, "-")
-                                    .replace(/\//g, "_")
-                                    .replace(/=/g, "");
-        let encryptedFilePath = path.join(dirname, encryptedBasename);
-        if (next) next(encryptedFilePath);
+        if (encryptedBuffer) {
+            let encryptedBasename = encryptedBuffer.toString("base64")
+                .replace(/\+/g, "-")
+                .replace(/\//g, "_")
+                .replace(/=/g, "");
+            let encryptedFilePath = path.join(dirname, encryptedBasename);
+            if (next) next(encryptedFilePath);
+        } else {
+            if (next) next(null);
+        }
+
     });
 }
 
@@ -341,6 +384,7 @@ module.exports = {
     decryptAccount: decryptAccount,
     decryptEncryptionKey: decryptEncryptionKey,
     decryptFilePath: decryptFilePath,
+    decryptFilePaths: decryptFilePaths,
     decryptStream: decryptStream,
     encryptAccount: encryptAccount,
     encryptEncryptionKey: encryptEncryptionKey,

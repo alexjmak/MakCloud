@@ -64,12 +64,30 @@ router.get('/*', function(req, res, next) {
                     fs.readdir(realFilePath, function (err, files) {
                         if (err !== null) return next();
                         accountManager.getInformation("username", "id", authorization.getID(req), function (username) {
-                            readify(realFilePath, {sort: 'type'}).then(function (files) {
-                                res.render('directory', {
-                                    username: username,
-                                    hostname: os.hostname(),
-                                    directory: {files: Buffer.from(JSON.stringify(files.files)).toString("base64")}
-                                });
+                            readify(realFilePath, {sort: 'type'}).then(function(files) {
+                                function render(decryptedFilePaths) {
+                                    if (decryptedFilePaths) {
+                                        decryptedFilePaths = Buffer.from(JSON.stringify(decryptedFilePaths)).toString("base64");
+                                    }
+                                    res.render('directory', {
+                                        username: username,
+                                        hostname: os.hostname(),
+                                        directory: {files: Buffer.from(JSON.stringify(files.files)).toString("base64"),
+                                                    decryptedFilePaths: decryptedFilePaths}
+                                    });
+                                }
+
+                                if (!key || !iv) render();
+                                else {
+                                    const encryptionManager = require('../encryptionManager');
+                                    encryptionManager.decryptFilePaths(files.files.map(x => x.name), key, iv, function(decryptedFilePaths) {
+                                        render(decryptedFilePaths);
+                                    })
+
+                                }
+
+
+
                             });
                         });
                     });

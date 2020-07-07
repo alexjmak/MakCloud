@@ -110,7 +110,7 @@ router.patch('/encrypted', function(req, res) {
                             }
                             res.send("Encrypted account");
                         } else {
-                            res.status(404).send("Account not found");
+                            res.status(500).send("Encryption Error");
                         }
                     });
                 } else {
@@ -123,7 +123,7 @@ router.patch('/encrypted', function(req, res) {
                             }
                             res.send("Decrypted account");
                         } else {
-                            res.status(404).send("Account not found");
+                            res.status(500).send("Decryption Error");
                         }
                     });
                 }

@@ -10,6 +10,11 @@ block header
             }).join(''));
         }
         let folderContents = JSON.parse(b64DecodeUnicode("#{directory.files}"));
+        let decryptedFilePaths;
+        if ("#{directory.decryptedFilePaths}" !== "") {
+            decryptedFilePaths = JSON.parse(b64DecodeUnicode("#{directory.decryptedFilePaths}"));
+        }
+
     script(type='text/javascript', src= "/javascripts/directory.js")
 
 

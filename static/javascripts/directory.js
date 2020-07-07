@@ -92,7 +92,10 @@ $(document).ready(function() {
             }
 
             files[fileIndex.toString()] = file;
-            $("#files").append(`<tr class='underlinedTR file' name='${fileIndex}'><td><span class='file-icons material-icons'>${icon}</span></td><td><p>${file.name}</p></td><td><p>${file.size.toUpperCase()}</p></td><td><p>${file.date}</p></td></tr>`);
+
+            let fileDisplayName = file.name;
+            if (decryptedFilePaths) fileDisplayName = decryptedFilePaths[fileDisplayName];
+            $("#files").append(`<tr class='underlinedTR file' name='${fileIndex}'><td><span class='file-icons material-icons'>${icon}</span></td><td><p>${fileDisplayName}</p></td><td><p>${file.size.toUpperCase()}</p></td><td><p>${file.date}</p></td></tr>`);
 
         }
     }
@@ -241,7 +244,10 @@ $(document).ready(function() {
                 }
 
                 files[fileIndex.toString()] = file;
-                $("#files").append(`<tr class='underlinedTR file' name='${fileIndex}'><td><span class='file-icons material-icons'>${icon}</span></td><td><p>${file.name}</p></td><td><p>${file.size.toUpperCase()}</p></td><td><p>${file.date}</p></td></tr>`);
+
+                let fileDisplayName = file.name;
+                if (decryptedFilePaths) fileDisplayName = decryptedFilePaths[fileDisplayName];
+                $("#files").append(`<tr class='underlinedTR file' name='${fileIndex}'><td><span class='file-icons material-icons'>${icon}</span></td><td><p>${fileDisplayName}</p></td><td><p>${file.size.toUpperCase()}</p></td><td><p>${file.date}</p></td></tr>`);
 
             }
         }
