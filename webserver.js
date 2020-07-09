@@ -5,8 +5,10 @@ const fs = require("fs");
 const path = require("path");
 const cookieParser = require('cookie-parser');
 const fileUpload = require("express-fileupload");
-const session = require("express-session");
 const helmet = require("helmet");
+const session = require("express-session");
+const MemoryStore = require("memorystore")(session);
+
 const serverID = require("./core/serverID");
 const authorization = require('./authorization');
 const accountManager = require('./accountManager');
@@ -47,10 +49,14 @@ app.use(express.json());
 app.use(session({
     name: "encryptionSession",
     secret: serverID,
+    store: new MemoryStore({
+       checkPeriod: 1 * 60 * 60 * 1000
+    }),
     resave: false,
     saveUninitialized: false,
-    cookie: { secure: true, sameSite: true}
+    cookie: { secure: true, sameSite: true, maxAge: 1 * 60 * 60 * 1000}
 }));
+
 
 app.use(function(req, res, next) {
     if (req.path.endsWith("/") && req.path !== "/") {

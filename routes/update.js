@@ -66,35 +66,40 @@ router.get('/', function(req, res, next) {
 });
 
 router.post('/', function(req, res) {
-    let authorizationToken = authorization.createToken({sub: "updateToken"}, "10s");
-    request(req.protocol + "://" + req.body.server + "/update/files", {encoding: "binary", headers: {authorization: authorizationToken}}, function(err, response, body) {
-        if (response !== undefined && response.statusCode === 200) {
-            log.writeServer(req, "Updating server...");
-            fs.writeFile("update.zip", body, "binary", function(err) {
-                let readSteam = fs.createReadStream('update.zip');
-                let pipeSteam = readSteam.pipe(unzipper.Extract({ path: path.join(__dirname, "..") }));
-                pipeSteam.on("finish", function() {
-                    fs.unlink("update.zip", function() {
-                        log.writeServer(req, "Update complete");
-                        if (!res.headersSent) res.sendStatus(200);
-                        child_process.exec("sudo service MakCloud restart");
-                    });
-                });
-                let error = function(e) {
-                    log.writeServer(req, "Update failed. " + e);
-                    fs.unlink("update.zip", function() {
-                        if (!res.headersSent) res.sendStatus(500);
-                    });
-                };
-                readSteam.on("error", error);
-                pipeSteam.on("error", error);
-            });
-        } else {
-            if (response !== undefined) log.writeServer(req, "Update failed. Update server responded with error " + response.statusCode);
-            else log.writeServer(req, "Update failed. No response from server.");
-            res.sendStatus(400);
+    authorization.createJwtToken({sub: "updateToken"}, function(err, authorizationToken) {
+        if (err) {
+            return res.sendStatus(500);
         }
-    });
+        request(req.protocol + "://" + req.body.server + "/update/files", {encoding: "binary", headers: {authorization: authorizationToken}}, function(err, response, body) {
+            if (response !== undefined && response.statusCode === 200) {
+                log.writeServer(req, "Updating server...");
+                fs.writeFile("update.zip", body, "binary", function(err) {
+                    let readSteam = fs.createReadStream('update.zip');
+                    let pipeSteam = readSteam.pipe(unzipper.Extract({ path: path.join(__dirname, "..") }));
+                    pipeSteam.on("finish", function() {
+                        fs.unlink("update.zip", function() {
+                            log.writeServer(req, "Update complete");
+                            if (!res.headersSent) res.sendStatus(200);
+                            child_process.exec("sudo service MakCloud restart");
+                        });
+                    });
+                    let error = function(e) {
+                        log.writeServer(req, "Update failed. " + e);
+                        fs.unlink("update.zip", function() {
+                            if (!res.headersSent) res.sendStatus(500);
+                        });
+                    };
+                    readSteam.on("error", error);
+                    pipeSteam.on("error", error);
+                });
+            } else {
+                if (response !== undefined) log.writeServer(req, "Update failed. Update server responded with error " + response.statusCode);
+                else log.writeServer(req, "Update failed. No response from server.");
+                res.sendStatus(400);
+            }
+        });
+    }, 10 * 1000);
+
 });
 
 module.exports = router;

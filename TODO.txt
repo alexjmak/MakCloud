@@ -1,0 +1,14 @@
+Decrypt encrypted file names for client
+Fix uploading big files
+Fix sharing box lines
+Show public entry when sharing new file
+Add links to /public and admin tools like /log
+Separate routers into individual functions for core
+Add more file managing functions like renaming, show hidden files
+Add right click menu to directory viewer
+Drag and drop upload
+Folder uploads
+Account bans
+Firewall manager
+allow files or glob in file Manager's create archive
+Download all photos button

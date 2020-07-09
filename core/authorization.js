@@ -55,11 +55,25 @@ function checkPayload(token, payload) {
     return token.iss === serverID;
 }
 
-function createToken(payload, expiration) {
+function createJwtToken(payload, next, maxAge) {
+    if (!maxAge) maxAge = 7 * 24 * 60 * 60 * 1000;
     if (payload.hasOwnProperty("iss")) delete payload.iss;
-    if (expiration === undefined) expiration = "7d";
+
     payload = Object.assign({}, payload, {iss: serverID});
-    return jwt.sign(payload, secretKey, {expiresIn: expiration});
+    jwt.sign(payload, secretKey, {expiresIn: maxAge + "ms"}, next);
+}
+
+function createLoginTokenCookie(res, id, next, maxAge) {
+    if (!maxAge) maxAge = 7 * 24 * 60 * 60 * 1000;
+    createJwtToken({sub: "loginToken", aud: id}, function(err, token) {
+        if (err) {
+            if (next) next(false);
+            return;
+        }
+        res.cookie("loginToken", token, {maxAge: maxAge, path: "/", secure: true, sameSite: "strict"});
+        next(true);
+    }, maxAge);
+
 }
 
 function doAuthorization(req, res, next) {
@@ -131,9 +145,15 @@ function login(req, res, next) {
             switch(result) {
                 case LOGIN.SUCCESS:
                     if (bruteForceProtection.hasOwnProperty(req.ip)) delete bruteForceProtection[req.ip];
-                    res.cookie("loginToken", createToken({sub: "loginToken", aud: id}), {path: "/", secure: true, sameSite: "strict"});
-                    if (next) next([id, username, password]);
-                    else res.status(200).send();
+                    createLoginTokenCookie(res, id,function(result) {
+                        if (result) {
+                            if (next) next([id, username, password]);
+                            else res.status(200).send();
+                        } else {
+                            res.status(500).send("Token creation error");
+                            if (next) next(false);
+                        }
+                    });
                     break;
                 case LOGIN.FAIL:
                     if (!bruteForceProtection.hasOwnProperty(req.ip)) bruteForceProtection[req.ip] = 0;
@@ -177,7 +197,7 @@ module.exports = {
     checkCredentials: checkCredentials,
     checkPassword: checkPassword,
     checkPayload: checkPayload,
-    createToken: createToken,
+    createJwtToken: createJwtToken,
     doAuthorization: doAuthorization,
     generateSalt: generateSalt,
     getHash: getHash,

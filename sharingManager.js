@@ -44,14 +44,20 @@ function checkPassword(req, res, key, fileName, hash, salt, next) {
     }
 
     if ((hash === null && salt === null) || hash === authorization.getHash(password, salt)) {
-        let fileToken = authorization.createToken({sub: "fileToken", path: [key, fileName].join("/")});
-        fileName = encodeURIComponent(fileName);
-        res.cookie("fileToken", fileToken, {
-            path: path.join("/", "shared", key, fileName),
-            secure: true,
-            sameSite: "strict"
+        authorization.createJwtToken({sub: "fileToken", path: [key, fileName].join("/")}, function(err, token) {
+            if (err) {
+                if (next) next(null);
+                return;
+            }
+            fileName = encodeURIComponent(fileName);
+            res.cookie("fileToken", token, {
+                path: path.join("/", "shared", key, fileName),
+                secure: true,
+                sameSite: "strict"
+            });
+            if (next) next(token);
         });
-        if (next !== undefined) next(fileToken);
+
     } else res.status(403).send("Invalid password");
 }
 

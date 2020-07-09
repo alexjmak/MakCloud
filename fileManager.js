@@ -5,17 +5,36 @@ const stream = require("stream");
 const preferences = require("./preferences");
 const log = require("./core/log");
 
-let createFolderArchive = function(directory, filePath, owner, next) {
-    let folderPath = path.join(preferences.get("files"), owner.toString(), directory, filePath);
+let createArchive = function(directories, key, iv, next) {
     let archive = archiver('zip');
     archive.on('error', function(err) {
         log.write(err);
     });
+    if (typeof directories === "string") directories = [directories];
+    function callback(i) {
+        if (directories.hasOwnProperty(i)) {
+            walkDirectory(directories[i], function(filePath, isDirectory, next) {
+                if (isDirectory) return next();
+                readFile(filePath, key, iv, function(readStream) {
+                    let name = path.relative(path.dirname(directories[i]), filePath);
+                    const encryptionManager = require("./encryptionManager");
 
-    archive.directory(folderPath, false);
-    archive.finalize();
-    next(archive);
-};
+                    encryptionManager.decryptFilePath(name, key, iv, function(decryptedName) {
+                        archive.append(readStream, { name: decryptedName});
+                        return next();
+                    })
+
+                })
+            }, function() {
+                callback(i + 1);
+            });
+        } else {
+            archive.finalize();
+            next(archive);
+        }
+    }
+    callback(0);
+}
 
 let deleteFile = function(directory, filePath, owner, next) {
     let realFilePath = path.join(preferences.get("files"), owner.toString(), directory, filePath);
@@ -166,7 +185,7 @@ let writeFiles = function(files, saveDirectory, key, iv, next) {
 };
 
 module.exports = {
-    createFolderArchive: createFolderArchive,
+    createArchive: createArchive,
     deleteFile: deleteFile,
     readDirectory: readDirectory,
     readFile: readFile,

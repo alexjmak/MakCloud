@@ -35,6 +35,7 @@
 }
 
 #console {
+    height: 100%;
     overflow: scroll;
     padding: 5px;
     background-color: #151515;

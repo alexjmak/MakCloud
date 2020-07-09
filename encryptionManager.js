@@ -19,6 +19,7 @@ function checkEncryptionSession(req, next) {
             return;
         }
     }
+
     if (next !== undefined) next(true);
 }
 
@@ -33,7 +34,7 @@ function decryptAccount(id, key, iv, next) {
         }
         fileManager.walkDirectory(filePath, function(filePath, isDirectory, next) {
             try {
-                decryptFilePath(filePath, key, iv, function(decryptedFilePath) {
+                decryptFileName(filePath, key, iv, function(decryptedFilePath) {
                     if (!decryptedFilePath) decryptedFilePath = filePath;
                     fs.rename(filePath, decryptedFilePath, function(err) {
                         if (err) {
@@ -72,6 +73,10 @@ function decryptBuffer(buffer, key, iv, next) {
     let contentStream = new stream.PassThrough();
     contentStream.end(buffer);
     decryptStream(contentStream, key, iv, function(decryptedStream) {
+        if (!decryptedStream) {
+            if (next) next(null);
+            return;
+        }
         let bufferArray = [];
         let error = false;
         decryptedStream.on("error", function(err) {
@@ -124,7 +129,7 @@ function decryptEncryptionKey(id, password, next) {
     });
 }
 
-function decryptFilePath(filePath, key, iv, next) {
+function decryptFileName(filePath, key, iv, next) {
     let basename = path.basename(filePath);
     let dirname = path.dirname(filePath);
 
@@ -141,24 +146,48 @@ function decryptFilePath(filePath, key, iv, next) {
     });
 }
 
-function decryptFilePaths(filePaths, key, iv, next) {
-    let decryptedFilePaths = {};
+function decryptFileNames(filePaths, key, iv, next) {
+    let decryptedFileNames = {};
     function callback(i) {
         if (filePaths.hasOwnProperty(i)) {
             let filePath = filePaths[i];
-            decryptFilePath(filePath, key, iv, function(decryptedFilePath) {
+            decryptFileName(filePath, key, iv, function(decryptedFilePath) {
                 if (!decryptedFilePath) decryptedFilePath = filePath;
-                decryptedFilePaths[filePath] = decryptedFilePath;
+                decryptedFileNames[filePath] = decryptedFilePath;
                 callback(i + 1);
             });
         } else {
-            if (next) next(decryptedFilePaths);
+            if (next) next(decryptedFileNames);
+        }
+    }
+    callback(0);
+}
+
+function decryptFilePath(filePath, key, iv, next) {
+    filePath = filePath.split(path.sep);
+    let decryptedFilePath = [];
+    function callback(i) {
+
+        if (filePath.hasOwnProperty(i)) {
+            let fileName = filePath[i];
+            decryptFileName(fileName, key, iv, function(decryptedFileName) {
+                if (!decryptedFileName) decryptedFileName = fileName;
+                decryptedFilePath.push(decryptedFileName);
+                callback(i + 1);
+            });
+        } else {
+            decryptedFilePath = decryptedFilePath.join(path.sep);
+            if (next) next(decryptedFilePath);
         }
     }
     callback(0);
 }
 
 function decryptStream(contentStream, key, iv, next) {
+    if (!key || !iv) {
+        if (next) next(null);
+        return;
+    }
     log.write("Decrypting...");
     getDecipher(key, iv, function(err, testDecipher) {
         if (err) {
@@ -231,6 +260,10 @@ function encryptBuffer(buffer, key, iv, next) {
     let contentStream = new stream.PassThrough();
     contentStream.end(buffer);
     encryptStream(contentStream, key, iv, function(encryptedStream) {
+        if (!encryptedStream) {
+            if (next) next(null);
+            return;
+        }
         let bufferArray = [];
         let error = false;
 
@@ -284,6 +317,10 @@ function encryptionEnabled(req) {
 }
 
 function encryptStream(contentStream, key, iv, next) {
+    if (!key || !iv) {
+        if (next) next(null);
+        return;
+    }
     log.write("Encrypting...");
     getCipher(key, iv, function(err, testCipher) {
         if (err) {
@@ -383,8 +420,9 @@ module.exports = {
     checkEncryptionSession: checkEncryptionSession,
     decryptAccount: decryptAccount,
     decryptEncryptionKey: decryptEncryptionKey,
+    decryptFileName: decryptFileName,
+    decryptFileNames: decryptFileNames,
     decryptFilePath: decryptFilePath,
-    decryptFilePaths: decryptFilePaths,
     decryptStream: decryptStream,
     encryptAccount: encryptAccount,
     encryptEncryptionKey: encryptEncryptionKey,
