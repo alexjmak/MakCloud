@@ -187,7 +187,7 @@ function newAccount(username, password, privilege, next) {
 }
 
 function newID() {
-    return parseInt("" + Date.now() + Math.floor(Math.random() * 100)).toString(36).toUpperCase();
+    return parseInt("" + Date.now() + Math.floor(Math.random() * (100 - 10) + 10)).toString(36).toUpperCase();
 }
 
 function searchAccounts(query, next) {

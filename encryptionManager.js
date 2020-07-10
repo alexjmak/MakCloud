@@ -217,7 +217,7 @@ function encryptAccount(id, key, iv, next) {
         }
         fileManager.walkDirectory(filePath, function(filePath, isDirectory, next) {
             try {
-                encryptFilePath(filePath, key, iv, function(encryptedFilePath) {
+                encryptFileName(filePath, key, iv, function(encryptedFilePath) {
                     if (!encryptedFilePath) encryptedFilePath = filePath;
                     fs.rename(filePath, encryptedFilePath, function(err) {
                         if (err) {
@@ -293,7 +293,7 @@ function encryptEncryptionKey(key, iv, pbkdf2, next) {
     if (next !== undefined) next(encrypted);
 }
 
-function encryptFilePath(filePath, key, iv, next) {
+function encryptFileName(filePath, key, iv, next) {
     let basename = path.basename(filePath);
     let dirname = path.dirname(filePath);
     let buffer = Buffer.from(basename, 'utf8')
@@ -415,7 +415,6 @@ function isEncrypted(contentStream, key, iv, next) {
     });
 }
 
-
 module.exports = {
     checkEncryptionSession: checkEncryptionSession,
     decryptAccount: decryptAccount,
@@ -426,7 +425,7 @@ module.exports = {
     decryptStream: decryptStream,
     encryptAccount: encryptAccount,
     encryptEncryptionKey: encryptEncryptionKey,
-    encryptFilePath: encryptFilePath,
+    encryptFileName: encryptFileName,
     encryptionEnabled: encryptionEnabled,
     encryptStream: encryptStream,
     generateEncryptionKey: generateEncryptionKey,

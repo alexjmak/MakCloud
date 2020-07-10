@@ -1,0 +1,37 @@
+extends layout
+
+block header
+    link(rel='stylesheet', type='text/css', href='/stylesheets/firewall.css')
+    script.
+        const list = parseInt("#{list}");
+    script(type='text/javascript', src="/javascripts/firewall.js")
+
+block drawer
+    aside.mdc-drawer.mdc-top-app-bar--fixed-adjust
+        .mdc-drawer__content
+            nav.mdc-list
+                a.mdc-list-item(href='/files')
+                    i.material-icons.mdc-list-item__graphic(aria-hidden='true') folder
+                    span.mdc-list-item__text File Manager
+                a.mdc-list-item.mdc-list-item--activated(href='/firewall')
+                    i.material-icons.mdc-list-item__graphic(aria-hidden='true') list
+                    span.mdc-list-item__text Firewall
+
+                .mdc-list-divider
+                a.mdc-list-item(href='/logout')
+                    i.material-icons.mdc-list-item__graphic(aria-hidden='true') launch
+                    span.mdc-list-item__text Logout
+
+block content
+    table#firewall
+        tbody#firewall_input
+            tr.first-row
+                td
+                    h4.first-column IP address
+                td
+                    h4 Start date
+                td
+                    h4 End date
+                td
+
+

@@ -37,7 +37,6 @@ router.get('/*', function(req, res, next) {
     let key = owner !== "public" ? req.session.encryptionKey : undefined;
     let iv = owner !== "public" ? req.session.encryptionIV : undefined;
 
-
     if (req.baseUrl === "/logs") {
         filePath = path.join("logs", filePath);
         realFilePath = filePath;

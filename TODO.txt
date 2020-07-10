@@ -12,3 +12,10 @@ Account bans
 Firewall manager
 allow files or glob in file Manager's create archive
 Download all photos button
+Download file and archive name for encrypted accounts is encrypted
+work on /mail
+webdav
+shared with me / others
+locales (express-locale?)
+backup before encryption
+backup encryption key

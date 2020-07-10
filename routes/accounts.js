@@ -11,7 +11,7 @@ const router = express.Router();
 router.delete('/delete', function(req, res) {
     let id = req.body.id;
 
-    if (!checkRequiredFields(res, id)) return;
+    if (!hasFields(res, id)) return;
 
     accountManager.getInformation("username", "id", id, function(username) {
         if (username === "admin") return res.status(403).send("Cannot delete the admin account");
@@ -61,7 +61,7 @@ router.patch('/enabled', function(req, res) {
     let id = req.body.id;
     let enabled = req.body.enabled;
 
-    if (!checkRequiredFields(res, id, enabled)) return;
+    if (!hasFields(res, id, enabled)) return;
 
     checkPrivilege(req, res, id, function(result) {
         if (!result) return;
@@ -95,7 +95,7 @@ router.patch('/encrypted', function(req, res) {
     let encrypted = req.body.encrypted;
     let password = req.body.password;
 
-    if (!checkRequiredFields(res, id, encrypted, password)) return;
+    if (!hasFields(res, id, encrypted, password)) return;
 
     checkPrivilege(req, res, id, function(result) {
         if (!result) return;
@@ -140,7 +140,7 @@ router.patch('/password', function(req, res) {
     let new_password = req.body.password;
     let old_password = req.body.old_password;
 
-    if (!checkRequiredFields(res, id, new_password)) return;
+    if (!hasFields(res, id, new_password)) return;
 
     let changePassword = function() {
         checkPrivilege(req, res, id, function(result) {
@@ -157,7 +157,7 @@ router.patch('/password', function(req, res) {
 
     accountManager.getInformation("encryptKey", "id", id, function(encrypted) {
         if (encrypted) {
-            if (!checkRequiredFields(res, old_password)) return;
+            if (!hasFields(res, old_password)) return;
             authorization.checkPassword(id, old_password, function(result) {
                 if (result !== 1) {
                     changePassword();
@@ -178,7 +178,7 @@ router.patch('/privilege', function(req, res) {
     let id = req.body.id;
     let new_privilege = req.body.privilege;
 
-    if (!checkRequiredFields(res, id, new_privilege)) return;
+    if (!hasFields(res, id, new_privilege)) return;
     checkPrivilege(req, res, id, function(result) {
         if (!result) return;
         if (new_privilege > 100 || new_privilege.toString().toUpperCase() === "ADMIN") new_privilege = 100;
@@ -200,7 +200,7 @@ router.patch('/username', function(req, res) {
     let id = req.body.id;
     let new_username = req.body.username;
 
-    if (!checkRequiredFields(res, id, new_username)) return;
+    if (!hasFields(res, id, new_username)) return;
     checkPrivilege(req, res, id, function(result) {
         if (!result) return;
         accountManager.updateUsername(id, new_username, function (result) {
@@ -219,7 +219,7 @@ router.put('/new', function(req, res) {
     let privilege = req.body.privilege;
     let encrypted = req.body.encrypted;
 
-    if (!checkRequiredFields(res, username, password)) return;
+    if (!hasFields(res, username, password)) return;
     if (username === "admin")  return res.status(401).send("Insufficient privilege level");
 
     checkPrivilege(req, res, undefined, function(result) {
@@ -252,7 +252,7 @@ router.use(function(req, res, next) {
 router.delete('/deleted/delete', function(req, res) {
     let id = req.body.id;
 
-    if (!checkRequiredFields(res, id)) return;
+    if (!hasFields(res, id)) return;
 
     accountManager.deleteDeletedAccount(id, function(result) {
         if (result) {
@@ -314,11 +314,11 @@ function checkPrivilege(req, res, accountID, next) {
     });
 }
 
-function checkRequiredFields(res, ...fields) {
+function hasFields(res, ...fields) {
     for (let field in fields) {
         field = fields[field];
         if (field === undefined) {
-            res.status(404).send("Missing required fields");
+            res.status(400).send("Missing required fields");
             return false;
         }
     }

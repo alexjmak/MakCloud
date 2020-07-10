@@ -127,7 +127,7 @@ let walkDirectory = function(directory, callback, next) {
 let writeFile = function(filePath, contentStream, key, iv, next) {
     if (key && iv) {
         const encryptionManager = require("./encryptionManager");
-        encryptionManager.encryptFilePath(filePath, key, iv, function(encryptedFilePath) {
+        encryptionManager.encryptFileName(filePath, key, iv, function(encryptedFilePath) {
             if (!encryptedFilePath) encryptedFilePath = filePath;
             let writeStream = fs.createWriteStream(encryptedFilePath);
             encryptionManager.encryptStream(contentStream, key, iv, function(encryptedStream) {
