@@ -1,8 +1,8 @@
-const child_process = require("child_process");
 const encryptionManager = require("./encryptionManager");
 const preferences = require("./preferences");
 
 const authorization = require("./core/authorization");
+const terminal = require("./core/terminal");
 
 function doAuthorization(req, res, next) {
     authorization.doAuthorization(req, res, function(result) {
@@ -33,7 +33,7 @@ function login(req, res) {
                 res.status(200).send();
             });
             if (preferences.get("sambaIntegration")) {
-                child_process.exec("(echo " + password + "; echo " + password + ") | sudo smbpasswd -a " + username.toLowerCase(), function (err, stdout, stderr) {});
+                terminal("(echo " + password + "; echo " + password + ") | sudo smbpasswd -a " + username.toLowerCase(), null, null, false);
             }
         }
     });

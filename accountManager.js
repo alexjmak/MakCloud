@@ -1,4 +1,3 @@
-const child_process = require('child_process');
 const fs = require("fs");
 const mkdirp = require("mkdirp");
 const path = require("path");
@@ -7,6 +6,7 @@ const rimraf = require("rimraf");
 const database = require("./core/databaseInit");
 const preferences = require("./preferences");
 const log = require("./core/log");
+const terminal = require("./core/terminal");
 
 const accountManager = require("./core/accountManager");
 
@@ -84,9 +84,8 @@ function deleteAccount(id, next) {
                         fs.unlinkSync(path.join(__dirname, preferences.get("files"), "smb", username.toLowerCase()));
                     } catch (err) {
                     }
-                    child_process.exec("sudo smbpasswd -x " + username.toLowerCase() + "; sudo userdel -r " + username.toLowerCase(), function (err, stdout, stderr) {
-                        if (stderr !== "") log.write(stderr);
-                    });
+
+                    terminal("sudo smbpasswd -x " + username.toLowerCase() + "; sudo userdel -r " + username.toLowerCase(), null, null, false);
                 }
 
             });
@@ -126,9 +125,7 @@ function disableAccount(id, next) {
                 } catch (err) {
                     log.write(err.toString());
                 }
-                child_process.exec("sudo smbpasswd -d " + username.toLowerCase(), function (err, stdout, stderr) {
-                    if (stderr !== "") log.write(stderr);
-                });
+                terminal("sudo smbpasswd -d " + username.toLowerCase(), null, null, false);
             });
         }
 
@@ -151,9 +148,7 @@ function enableAccount(id, next) {
                     log.write(err.toString());
                 }
 
-                child_process.exec("sudo smbpasswd -e " + username.toLowerCase(), function (err, stdout, stderr) {
-                    if (stderr !== "") log.write(stderr);
-                });
+                terminal("sudo smbpasswd -e " + username.toLowerCase(), null, null, false);
             });
         }
 
@@ -211,9 +206,7 @@ function newAccount(username, password, privilege, encrypted, next) {
                 } catch (err) {
                     log.write(err.toString());
                 }
-                child_process.exec("sudo useradd -G makcloud --no-create-home --no-user-group --system " + username.toLowerCase() + "; (echo " + password + "; echo " + password + ") | sudo smbpasswd -a " + username.toLowerCase(), function (err, stdout, stderr) {
-                    if (stderr !== "") log.write(stderr);
-                });
+                terminal("sudo useradd -G makcloud --no-create-home --no-user-group --system " + username.toLowerCase() + "; (echo " + password + "; echo " + password + ") | sudo smbpasswd -a " + username.toLowerCase(), null, null, false);
             }
         });
     });
@@ -259,14 +252,10 @@ function updatePassword(id, newPassword, oldPassword, next) {
 
     if (preferences.get("sambaIntegration")) {
         accountManager.getInformation("username", "id", id, function (username) {
-            child_process.exec("(echo " + newPassword + "; echo " + newPassword + ") | sudo smbpasswd -a " + username.toLowerCase(), function (err, stdout, stderr) {
-                if (stderr !== "") log.write(stderr);
-            });
+            terminal("(echo " + newPassword + "; echo " + newPassword + ") | sudo smbpasswd -a " + username.toLowerCase(), null, null, false);
             accountManager.getInformation("enabled", "id", id, function (enabled) {
                 if (!enabled) {
-                    child_process.exec("sudo smbpasswd -d " + username.toLowerCase(), function (err, stdout, stderr) {
-                        if (stderr !== "") log.write(stderr);
-                    });
+                    terminal("sudo smbpasswd -d " + username.toLowerCase(), null, null, false);
                 }
             });
         });
@@ -286,9 +275,7 @@ function updateUsername(id, newUsername, next) {
             } catch (err) {
                 log.write(err.toString());
             }
-            child_process.exec("sudo smbpasswd -x " + oldUsername.toLowerCase() + "; sudo usermod -l " + newUsername.toLowerCase() + " " + oldUsername.toLowerCase(), function (err, stdout, stderr) {
-                if (stderr !== "") log.write(stderr);
-            });
+            terminal("sudo smbpasswd -x " + oldUsername.toLowerCase() + "; sudo usermod -l " + newUsername.toLowerCase() + " " + oldUsername.toLowerCase(), null, null, false);
         }
 
         next(true);

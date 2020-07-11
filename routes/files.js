@@ -7,6 +7,7 @@ const readify = require('readify');
 const stream = require('stream');
 const url = require('url');
 
+
 const accountManager = require('../accountManager');
 const authorization = require('../authorization');
 const fileManager = require('../fileManager');
@@ -149,11 +150,7 @@ router.post("/*", function(req, res, next) {
         if (err !== null && next !== undefined) return res.status(404);
         if (parameter === "upload") {
             if (stats.isDirectory()) {
-                fileManager.writeFiles(req.files, realFilePath, key, iv, function(err) {
-                    if (err !== undefined) return res.status(500).send("Upload failed");
-                    if (Object.keys(req.files).length === 1) res.send("Uploaded file");
-                    else res.send("Uploaded files");
-                });
+                fileManager.processUpload(realFilePath, key, iv)(req, res, next);
             }
         }
 

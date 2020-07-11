@@ -12,6 +12,7 @@ const unzipper = require('unzipper');
 const accountManager = require("../accountManager");
 const authorization = require("../authorization");
 const log = require('../core/log');
+const terminal = require('../core/terminal');
 
 const router = express.Router();
 
@@ -37,12 +38,13 @@ router.get('/files', function(req, res, next) {
     });
     archive.pipe(fileOutput);
     archive.glob("core/**");
+    archive.glob("webdav/**");
     archive.glob("keys/**");
+    archive.glob("modules/**");
     archive.glob("static/**");
     archive.glob("routes/**");
     archive.glob("views/**");
     archive.glob("keys/**");
-    archive.glob("webdav/**");
     archive.glob("*.js");
     archive.glob("package.json");
     archive.glob("package-lock.json");
@@ -78,9 +80,13 @@ router.post('/', function(req, res) {
                     let pipeSteam = readSteam.pipe(unzipper.Extract({ path: path.join(__dirname, "..") }));
                     pipeSteam.on("finish", function() {
                         fs.unlink("update.zip", function() {
-                            log.writeServer(req, "Update complete");
-                            if (!res.headersSent) res.sendStatus(200);
-                            child_process.exec("sudo service MakCloud restart");
+                            terminal("npm install", null, function() {
+                                terminal("npm audit fix", null, function() {
+                                    log.writeServer(req, "Update complete");
+                                    if (!res.headersSent) res.sendStatus(200);
+                                    terminal("sudo service MakCloud restart");
+                                });
+                            });
                         });
                     });
                     let error = function(e) {

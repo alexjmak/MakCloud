@@ -54,7 +54,7 @@ function getCaller() {
 
 function write(...text) {
     let name = formatFilename(getCaller());
-    text = text.join(" ");
+    text = text.join(" ").trim();
     let logString = `[${name}] [${strftime("%H:%M:%S")}]: ${text}`;
     console.log(logString);
     add(logString);
@@ -62,7 +62,7 @@ function write(...text) {
 
 function writeServer(req, ...text) {
     let name = formatFilename(getCaller());
-    text = text.join(" ");
+    text = text.join(" ").trim();
     let logString = `[${name}] [${strftime("%H:%M:%S")}] [${req.ip}]: ${text}`;
     console.log(logString);
     add(logString);

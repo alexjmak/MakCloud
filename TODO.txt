@@ -19,3 +19,6 @@ shared with me / others
 locales (express-locale?)
 backup before encryption
 backup encryption key
+Date picker for blacklist manager and share
+music player
+music library

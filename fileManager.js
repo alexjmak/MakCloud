@@ -1,195 +1,133 @@
-const archiver = require('archiver');
 const fs = require("fs");
+const multer = require("multer")
+const multerStorage = require('./modules/multer/StorageEngine');
 const path = require("path");
-const stream = require("stream");
-const preferences = require("./preferences");
 const log = require("./core/log");
 
+const fileManager = require("./core/fileManager");
+
 let createArchive = function(directories, key, iv, next) {
-    let archive = archiver('zip');
-    archive.on('error', function(err) {
-        log.write(err);
-    });
-    if (typeof directories === "string") directories = [directories];
-    function callback(i) {
-        if (directories.hasOwnProperty(i)) {
-            walkDirectory(directories[i], function(filePath, isDirectory, next) {
-                if (isDirectory) return next();
-                readFile(filePath, key, iv, function(readStream) {
-                    let name = path.relative(path.dirname(directories[i]), filePath);
-                    const encryptionManager = require("./encryptionManager");
-
-                    encryptionManager.decryptFilePath(name, key, iv, function(decryptedName) {
-                        archive.append(readStream, { name: decryptedName});
-                        return next();
-                    })
-
-                })
-            }, function() {
-                callback(i + 1);
-            });
-        } else {
-            archive.finalize();
-            next(archive);
-        }
-    }
-    callback(0);
-}
-
-let deleteFile = function(directory, filePath, owner, next) {
-    let realFilePath = path.join(preferences.get("files"), owner.toString(), directory, filePath);
-    let deleteFilePath = path.join(preferences.get("files"), owner.toString(), directory, ".recycle", filePath);
-    let deleteFilePathParent = path.parse(deleteFilePath).dir;
-
-    if (fs.existsSync(realFilePath)) {
-        fs.mkdir(deleteFilePathParent, {recursive: true }, function(err) {
-            if (!err) {
-                fs.rename(realFilePath, deleteFilePath, function (err) {
-                    if (err) {
-                        log.write(err);
-                        if (next !== undefined) next(false);
-                    } else {
-                        if (next !== undefined) next(true);
-                    }
-                });
-            } else {
-                log.write(err);
-                if (next !== undefined) next(false);
-            }
-        });
-    } else {
-        if (next !== undefined) next(false);
-    }
-};
-
-let readDirectory = function(directory, callback, next) {
-    fs.readdir(directory, function(err, files) {
-        if (err) {
-            log.write(err);
-            if (next) next(err);
-            return;
-        }
-        function nextFile(i) {
-            if (files.hasOwnProperty(i)) {
-                let file = files[i];
-                let filePath = path.join(directory, file);
-                fs.stat(filePath, function(err, stats) {
-                    callback(filePath, stats.isDirectory(), function() {
-                        nextFile(i + 1);
-                    });
-                });
-            } else {
-                next();
-            }
-        }
-        nextFile(0);
-    });
-
-}
-let readFile = function(filePath, key, iv, next) {
-    let readStream = fs.createReadStream(filePath);
-    readStream.on("error", function(err) {
-        log.write(err);
-    });
     if (key && iv) {
-        const encryptionManager = require("./encryptionManager");
-        encryptionManager.isEncrypted(fs.createReadStream(filePath), key, iv, function(encrypted) {
-            if (encrypted) {
-                encryptionManager.decryptStream(readStream, key, iv, function(decryptedStream) {
-                    next(decryptedStream);
-                });
-            } else {
-                log.write("Sending raw file...");
-                next(fs.createReadStream(filePath));
+        fileManager.initArchive(function(archive) {
+            if (typeof directories === "string") directories = [directories];
+            function callback(i) {
+                if (directories.hasOwnProperty(i)) {
+                    fileManager.walkDirectory(directories[i], function(filePath, isDirectory, next) {
+                        if (isDirectory) return next();
+                        readFile(filePath, key, iv, function(readStream) {
+                            let name = path.relative(path.dirname(directories[i]), filePath);
+                            const encryptionManager = require("./encryptionManager");
+
+                            encryptionManager.decryptFilePath(name, key, iv, function(decryptedName) {
+                                archive.append(readStream, { name: decryptedName});
+                                return next();
+                            })
+
+                        })
+                    }, function() {
+                        callback(i + 1);
+                    });
+                } else {
+                    archive.finalize();
+                    next(archive);
+                }
             }
+            callback(0);
         })
     } else {
-        if (next !== undefined) next(readStream);
+        fileManager.createArchive(directories, next);
     }
-};
+}
 
-let walkDirectory = function(directory, callback, next) {
-    readDirectory(directory, function(filePath, isDirectory, next) {
-        callback(filePath, isDirectory, function(newFilePath) {
-            if (!newFilePath) newFilePath = filePath;
-            if (isDirectory) {
-                walkDirectory(newFilePath, callback, function() {
-                    if (next) next();
-                });
-            } else {
-                if (next) next();
-            }
+let processUpload = function(saveLocation, key, iv) {
+    return function(req, res, next) {
+        let uploadFile = function(file, next) {
+            let filePath = path.join(saveLocation, file.originalname);
+            writeFile(filePath, file.stream, key, iv, next);
+        }
+        return multer({storage: multerStorage(uploadFile)}).any()(req, res, function(err) {
+            if (err) return res.status(500).send("Upload failed");
+            if (Object.keys(req.files).length === 1) res.send("Uploaded file");
+            else res.send("Uploaded files");
         });
-    }, next);
+    }
+}
+
+let readFile = function(filePath, key, iv, next) {
+    fileManager.readFile(filePath, function(readStream) {
+        if (key && iv) {
+            const encryptionManager = require("./encryptionManager");
+            encryptionManager.isEncrypted(fs.createReadStream(filePath), key, iv, function(encrypted) {
+                if (encrypted) {
+                    encryptionManager.decryptStream(readStream, key, iv, function(decryptedStream) {
+                        next(decryptedStream);
+                    });
+                } else {
+                    log.write("Sending raw file...");
+                    fileManager.readFile(filePath, next);
+                }
+            })
+        } else {
+            if (next) next(readStream);
+        }
+    })
+
 };
 
+let renameDecryptFileName = function (filePath, key, iv, next) {
+    const encryptionManager = require("./encryptionManager");
+    encryptionManager.decryptFileName(filePath, key, iv, function(decryptedFilePath) {
+        if (!decryptedFilePath) decryptedFilePath = filePath;
+        fs.rename(filePath, decryptedFilePath, function (err) {
+            if (err) {
+                decryptedFilePath = filePath;
+                log.write(err);
+            }
+            if (next) next(decryptedFilePath);
+        });
+    });
+}
+
+
+let renameEncryptFileName = function (filePath, key, iv, next) {
+    const encryptionManager = require("./encryptionManager");
+    encryptionManager.encryptFileName(filePath, key, iv, function(encryptedFilePath) {
+        if (!encryptedFilePath) encryptedFilePath = filePath;
+        fs.rename(filePath, encryptedFilePath, function (err) {
+            if (err) {
+                encryptedFilePath = filePath;
+                log.write(err);
+            }
+            if (next) next(encryptedFilePath);
+        });
+    });
+}
 
 let writeFile = function(filePath, contentStream, key, iv, next) {
     if (key && iv) {
         const encryptionManager = require("./encryptionManager");
         encryptionManager.encryptFileName(filePath, key, iv, function(encryptedFilePath) {
             if (!encryptedFilePath) encryptedFilePath = filePath;
-            let writeStream = fs.createWriteStream(encryptedFilePath);
             encryptionManager.encryptStream(contentStream, key, iv, function(encryptedStream) {
                 if (encryptedStream) {
-                    encryptedStream.pipe(writeStream);
-                    encryptedStream.on("error", function(err) {
-                        log.write(err);
-                        if (next) next(err);
-                    });
-                    writeStream.on("close", function () {
-                        if (next) next();
-                    })
+                    fileManager.writeFile(encryptedFilePath, encryptedStream, next);
                 } else {
                     let err = "Couldn't encrypt file";
                     log.write(err);
                     if (next) next(err);
                 }
             });
-        })
-
-
-    } else {
-        let writeStream = fs.createWriteStream(filePath);
-        contentStream.pipe(writeStream)
-        contentStream.on("error", function(err) {
-            log.write(err);
-            if (next) next(err);
         });
-        writeStream.on("close", function () {
-            if (next) next();
-        })
+    } else {
+        fileManager.writeFile(filePath, contentStream, next);
     }
 };
 
-let writeFiles = function(files, saveDirectory, key, iv, next) {
-    if (!files || Object.keys(files).length === 0) {
-        if (next !== undefined) return next(false);
-    }
-
-    let returnErr;
-
-    for (let file in files) {
-        if (!files.hasOwnProperty(file)) continue;
-        file = files[file];
-        let saveLocation = path.join(saveDirectory, file.name);
-
-        let contentStream = new stream.PassThrough();
-        contentStream.end(file.data)
-
-        writeFile(saveLocation, contentStream, key, iv, function(err) {
-            if (err && returnErr === undefined) returnErr = err;
-        })
-    }
-    if (next !== undefined) return next(returnErr);
-};
-
-module.exports = {
+module.exports = Object.assign({}, fileManager, {
     createArchive: createArchive,
-    deleteFile: deleteFile,
-    readDirectory: readDirectory,
+    processUpload: processUpload,
     readFile: readFile,
-    walkDirectory: walkDirectory,
+    renameDecryptFileName: renameDecryptFileName,
+    renameEncryptFileName: renameEncryptFileName,
     writeFile: writeFile,
-    writeFiles: writeFiles,
-};
+});

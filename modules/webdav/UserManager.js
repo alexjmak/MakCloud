@@ -1,9 +1,9 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 
-let accountManager = require("../accountManager");
-let authorization = require("../authorization");
-let encryptionManager = require("../encryptionManager");
+let accountManager = require("../../accountManager");
+let authorization = require("../../authorization");
+let encryptionManager = require("../../encryptionManager");
 
 var User = require("./User");
 var Errors = require("webdav-server/lib/Errors").Errors;

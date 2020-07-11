@@ -103,11 +103,7 @@ router.post("/", function (req, res, next) {
         if (err !== null && next !== undefined) return next();
         if (parameter === "upload") {
             if (stats.isDirectory()) {
-                fileManager.writeFiles(req.files, realFilePath, key, iv, function(err) {
-                    if (err !== undefined) return res.status(500).send("Upload failed");
-                    if (Object.keys(req.files).length === 1) res.send("Uploaded photo");
-                    else res.send("Uploaded photos");
-                });
+                fileManager.processUpload(realFilePath, key, iv)(req, res, next);
             }
         }
     });

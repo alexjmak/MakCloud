@@ -17,7 +17,7 @@ var export_1 = require("webdav-server/lib/manager/v2/fileSystem/export");
 var path_1 = require("path");
 var Errors_1 = require("webdav-server/lib/Errors");
 var fs = require("fs");
-var encryptionManager = require("../encryptionManager");
+var encryptionManager = require("../../encryptionManager");
 
 var PhysicalFileSystemResource = /** @class */ (function () {
     function PhysicalFileSystemResource(data) {

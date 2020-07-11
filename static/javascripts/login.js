@@ -97,12 +97,17 @@ function showFirewall() {
     $("#submit").prop("disabled", true);
     let message = firewall.charAt(0).toUpperCase() + firewall.slice(1);
     if (firewallEnd) {
-        message += " until " + new Date(firewallEnd).toLocaleString();
-        let timeout = firewallEnd - Date.now();
-        if (timeout < 0) timeout *= -1;
-        setTimeout(function() {
-            location.reload();
-        }, timeout + 3000);
+        let expiration = new Date(firewallEnd)
+        if (!isNaN(expiration.getTime())) {
+            message += " until " + expiration.toLocaleString();
+            let timeout = firewallEnd - Date.now();
+            if (timeout < 0) timeout *= -1;
+            if (timeout + 3000 <= Math.pow(2, 31) - 1) {
+                setTimeout(function() {
+                    location.reload();
+                }, timeout + 3000);
+            }
+        }
     }
     $("#message").text(message);
 

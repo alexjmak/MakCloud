@@ -1,12 +1,9 @@
 const accountManager = require("./accountManager");
-const fileManager = require("./fileManager");
 const preferences = require("./preferences");
 const path = require("path");
 const crypto = require("crypto");
 const fs = require("fs");
-const mkdirp = require('mkdirp');
 const stream = require("stream");
-const tmp = require('tmp');
 const log = require("./core/log");
 const pbkdf2 = require("pbkdf2");
 
@@ -25,7 +22,6 @@ function checkEncryptionSession(req, next) {
 
 function decryptAccount(id, key, iv, next) {
     let accountPath = path.join(preferences.get("files"), id);
-    let tmpdir = path.resolve(path.join(preferences.get("files"), id, "tmp"));
     const fileManager = require("./fileManager");
     fileManager.readDirectory(accountPath, function(filePath, isDirectory, next) {
         if (!isDirectory || path.basename(filePath) === "tmp") {
@@ -34,32 +30,12 @@ function decryptAccount(id, key, iv, next) {
         }
         fileManager.walkDirectory(filePath, function(filePath, isDirectory, next) {
             try {
-                decryptFileName(filePath, key, iv, function(decryptedFilePath) {
-                    if (!decryptedFilePath) decryptedFilePath = filePath;
-                    fs.rename(filePath, decryptedFilePath, function(err) {
-                        if (err) {
-                            log.write(err);
-                        }
-                        if (isDirectory) {
-                            if (next) next(decryptedFilePath);
-                            return;
-                        }
-                        fileManager.readFile(decryptedFilePath, key, iv, function(readStream) {
-                            mkdirp(tmpdir).then(function() {
-                                tmp.tmpName({ tmpdir: tmpdir }, function(err, tmpPath) {
-                                    let writeStream = fs.createWriteStream(tmpPath);
-                                    readStream.pipe(writeStream);
-                                    writeStream.on("close", function() {
-                                        fs.rename(tmpPath, decryptedFilePath, function(err) {
-                                            if (err) log.write(err);
-                                            if (next) next(decryptedFilePath);
-                                        });
-                                    });
-                                });
-                            });
-                        });
-                    })
-                });
+                fileManager.renameDecryptFileName(filePath, key, iv, function(decryptedFilePath) {
+                    if (isDirectory) return next(decryptedFilePath);
+                    fileManager.readFile(decryptedFilePath, key, iv, function(readStream) {
+                        fileManager.writeFile(decryptedFilePath, readStream, null, null, next);
+                    });
+                })
             } catch (err) {
                 //todo backup key
                 log.write(err)
@@ -208,7 +184,6 @@ function decryptStream(contentStream, key, iv, next) {
 
 function encryptAccount(id, key, iv, next) {
     let accountPath = path.join(preferences.get("files"), id);
-    let tmpdir = path.resolve(path.join(preferences.get("files"), id, "tmp"));
     const fileManager = require("./fileManager");
     fileManager.readDirectory(accountPath, function(filePath, isDirectory, next) {
         if (!isDirectory || path.basename(filePath) === "tmp") {
@@ -217,36 +192,16 @@ function encryptAccount(id, key, iv, next) {
         }
         fileManager.walkDirectory(filePath, function(filePath, isDirectory, next) {
             try {
-                encryptFileName(filePath, key, iv, function(encryptedFilePath) {
-                    if (!encryptedFilePath) encryptedFilePath = filePath;
-                    fs.rename(filePath, encryptedFilePath, function(err) {
-                        if (err) {
-                            encryptedFilePath = filePath;
-                            log.write(err);
-                        }
-                        if (isDirectory) {
-                            if (next) next(encryptedFilePath);
-                            return;
-                        }
-                        let readStream = fs.createReadStream(encryptedFilePath);
-                        encryptStream(readStream, key, iv, function(encryptedStream) {
-                            if (encryptedStream) {
-                                mkdirp(tmpdir).then(function() {
-                                    tmp.tmpName({ tmpdir: tmpdir }, function(err, tmpPath) {
-                                        if (err) return log.write(err);
-                                        let writeStream = fs.createWriteStream(tmpPath)
-                                        encryptedStream.pipe(writeStream);
-                                        writeStream.on("close", function() {
-                                            fs.rename(tmpPath, encryptedFilePath, function(err) {
-                                                if (err)  log.write(err);
-                                                if (next) next(encryptedFilePath);
-                                            });
-                                        })
-                                    });
-                                });
-                            }
-                        });
-                    })
+                if (isDirectory) {
+                    fileManager.renameEncryptFileName(filePath, key, iv, next)
+                    return;
+                }
+                fileManager.readFile(filePath, null, null, function(readStream) {
+                    fileManager.writeFile(filePath, readStream, key, iv, function() {
+                        fs.unlink(filePath, function() {
+                            next();
+                        })
+                    });
                 });
             } catch (err) {
                 log.write(err)

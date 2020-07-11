@@ -4,7 +4,7 @@ const https = require("https");
 const fs = require("fs");
 const path = require("path");
 const cookieParser = require('cookie-parser');
-const fileUpload = require("express-fileupload");
+//const fileUpload = require("./modules/express-fileupload");
 const helmet = require("helmet");
 const session = require("express-session");
 const MemoryStore = require("memorystore")(session);
@@ -13,15 +13,16 @@ const serverID = require("./core/serverID");
 const authorization = require('./authorization');
 const accountManager = require('./accountManager');
 const firewall = require('./core/firewall');
-const webdav = require('./webdav/webdav');
+const webdav = require('./modules/webdav/webdav');
 const log = require("./core/log");
 const preferences = require("./preferences");
 
 const app = express();
 
 if (preferences.get("webdav")) {
+    if (preferences.get("blacklist")) app.use("/webdav", firewall.blacklist.enforce);
+    if (preferences.get("whitelist")) app.use("/webdav", firewall.whitelist.enforce);
     app.use(webdav.handler("/webdav"));
-    app.use(webdav.handler("/makdav"));
 }
 
 const accountsRouter = require('./routes/accounts');
@@ -44,7 +45,8 @@ log.write("Starting server...");
 
 app.use(helmet());
 app.use(cookieParser());
-app.use(fileUpload());
+
+//app.use(fileUpload({useTempFiles: true, tempFileDir: path.join(preferences.get("files"), "tmp")}));
 app.use(express.json());
 
 app.use(session({
@@ -58,14 +60,6 @@ app.use(session({
     cookie: { secure: true, sameSite: true, maxAge: 1 * 60 * 60 * 1000}
 }));
 
-
-app.use(function(req, res, next) {
-    if (req.path.endsWith("/") && req.path !== "/") {
-        res.redirect(req.path.substring(0, req.path.length - 1));
-    } else {
-        next();
-    }
-});
 
 const noLog = ["/accounts/list/hash", "/log/raw", "/log/size"];
 app.use(function(req, res, next) {
@@ -117,6 +111,7 @@ function start() {
         key: fs.readFileSync("./keys/https/key.key"),
         cert: fs.readFileSync("./keys/https/cert.crt")
     }, app);
+
     httpsServer.listen(443);
 
     let httpServer = httpRedirectServer();
