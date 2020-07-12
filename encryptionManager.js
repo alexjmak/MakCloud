@@ -24,7 +24,7 @@ function decryptAccount(id, key, iv, next) {
     let accountPath = path.join(preferences.get("files"), id);
     const fileManager = require("./fileManager");
     fileManager.readDirectory(accountPath, function(filePath, isDirectory, next) {
-        if (!isDirectory || path.basename(filePath) === "tmp") {
+        if (!isDirectory) {
             if (next) next();
             return;
         }
@@ -186,7 +186,7 @@ function encryptAccount(id, key, iv, next) {
     let accountPath = path.join(preferences.get("files"), id);
     const fileManager = require("./fileManager");
     fileManager.readDirectory(accountPath, function(filePath, isDirectory, next) {
-        if (!isDirectory || path.basename(filePath) === "tmp") {
+        if (!isDirectory) {
             if (next) next();
             return;
         }
@@ -325,6 +325,10 @@ function generatePbkdf2(password, derivedKeySalt, next) {
     });
 }
 
+function generateIV() {
+    return crypto.randomBytes(16);
+}
+
 function getCipher(key, iv, next) {
     key = Buffer.from(key, "hex");
     iv = Buffer.from(iv, "hex");
@@ -384,6 +388,7 @@ module.exports = {
     encryptionEnabled: encryptionEnabled,
     encryptStream: encryptStream,
     generateEncryptionKey: generateEncryptionKey,
+    generateIV: generateIV,
     generatePbkdf2: generatePbkdf2,
     getCipher: getCipher,
     getDecipher: getDecipher,

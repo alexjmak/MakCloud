@@ -104,8 +104,8 @@ let readDirectory = function(directory, callback, next) {
     });
 
 }
-let readFile = function(filePath, next) {
-    let readStream = fs.createReadStream(filePath);
+let readFile = function(filePath, next, options) {
+    let readStream = fs.createReadStream(filePath, options);
     readStream.on("error", function(err) {
         log.write(err);
     });
@@ -128,23 +128,38 @@ let walkDirectory = function(directory, callback, next) {
 };
 
 
-let writeFile = function(filePath, contentStream, next) {
+let writeFile = function(filePath, contentStream, next, prependBuffer) {
     newTmpFile(function(err, tmpFilePath) {
         if (err) {
             if (next) next(err);
             return;
         }
         let writeStream = fs.createWriteStream(tmpFilePath);
-        contentStream.pipe(writeStream)
+
+        if (prependBuffer) {
+            for (let buffer of prependBuffer) {
+                writeStream.write(buffer);
+            }
+        }
+
+        contentStream.on("data", function(data) {
+            writeStream.write(data);
+        })
+
+        contentStream.on("end", function() {
+            writeStream.close();
+        })
+
         contentStream.on("error", function(err) {
             log.write(err);
             fs.unlink(tmpFilePath, function() {
                 if (next) next(err);
             })
         });
+
         writeStream.on("close", function () {
             fs.rename(tmpFilePath, filePath, function(err) {
-                next(err);
+                if (next) next(err);
             });
         });
 

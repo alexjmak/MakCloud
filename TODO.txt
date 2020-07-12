@@ -22,3 +22,4 @@ backup encryption key
 Date picker for blacklist manager and share
 music player
 music library
+make ivs different for files, and file names, store in first bits of file, check for collisions of filename, if there are generate a new iv
