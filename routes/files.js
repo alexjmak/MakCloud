@@ -190,7 +190,7 @@ router.post("/*", function(req, res, next) {
                     break;
                 case "updateAccess":
                     sharingManager.updateLinkAccess(parent, fileName, owner, id, access, expiration, function(result) {
-                        if (result) res.status(200).send(id);
+                        if (result) res.send(id.toString());
                         else res.sendStatus(400);
                     });
                     break;

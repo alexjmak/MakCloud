@@ -5,8 +5,8 @@ const database = require("./databaseInit");
 const log = require("../core/log");
 const preferences = require("../preferences");
 
-const checkAccountsTable = ["CREATE TABLE IF NOT EXISTS accounts (id INTEGER PRIMARY KEY AUTOINCREMENT);",
-    "ALTER TABLE accounts ADD COLUMN id INTEGER PRIMARY KEY AUTOINCREMENT;",
+const checkAccountsTable = ["CREATE TABLE IF NOT EXISTS accounts (id TEXT PRIMARY KEY);",
+    "ALTER TABLE accounts ADD COLUMN id TEXT PRIMARY KEY;",
     "ALTER TABLE accounts ADD COLUMN username TEXT NOT NULL DEFAULT ' ';",
     "ALTER TABLE accounts ADD COLUMN hash TEXT NOT NULL DEFAULT ' ';",
     "ALTER TABLE accounts ADD COLUMN salt TEXT NOT NULL DEFAULT ' ';",

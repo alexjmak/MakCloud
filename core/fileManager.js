@@ -92,6 +92,10 @@ let readDirectory = function(directory, callback, next) {
                 let file = files[i];
                 let filePath = path.join(directory, file);
                 fs.stat(filePath, function(err, stats) {
+                    if (err) {
+                        log.write(err);
+                        return nextFile(i + 1);
+                    }
                     callback(filePath, stats.isDirectory(), function() {
                         nextFile(i + 1);
                     });
@@ -112,12 +116,12 @@ let readFile = function(filePath, next, options) {
     if (next) next(readStream);
 };
 
-let walkDirectory = function(directory, callback, next) {
+let walkDirectoryPreorder = function(directory, callback, next) {
     readDirectory(directory, function(filePath, isDirectory, next) {
-        callback(filePath, isDirectory, function(newFilePath) {
-            if (!newFilePath) newFilePath = filePath;
+        callback(filePath, isDirectory, function(newDirectoryName) {
             if (isDirectory) {
-                walkDirectory(newFilePath, callback, function() {
+                if (newDirectoryName) filePath = newDirectoryName;
+                walkDirectoryPreorder(filePath, callback, function() {
                     if (next) next();
                 });
             } else {
@@ -127,6 +131,21 @@ let walkDirectory = function(directory, callback, next) {
     }, next);
 };
 
+let walkDirectoryPostorder = function(directory, callback, next) {
+    readDirectory(directory, function(filePath, isDirectory, next) {
+        if (isDirectory) {
+            walkDirectoryPostorder(filePath, callback, function() {
+                callback(filePath, isDirectory, function() {
+                    if (next) next();
+                });
+            });
+        } else {
+            callback(filePath, isDirectory, function() {
+                if (next) next();
+            });
+        }
+    }, next);
+};
 
 let writeFile = function(filePath, contentStream, next, prependBuffer) {
     newTmpFile(function(err, tmpFilePath) {
@@ -158,9 +177,12 @@ let writeFile = function(filePath, contentStream, next, prependBuffer) {
         });
 
         writeStream.on("close", function () {
-            fs.rename(tmpFilePath, filePath, function(err) {
-                if (next) next(err);
-            });
+            mkdirp(path.dirname(filePath)).then(function() {
+                fs.rename(tmpFilePath, filePath, function(err) {
+                    if (next) next(err);
+                });
+            })
+
         });
 
     })
@@ -186,6 +208,7 @@ module.exports = {
     processUpload: processUpload,
     readDirectory: readDirectory,
     readFile: readFile,
-    walkDirectory: walkDirectory,
+    walkDirectoryPreorder: walkDirectoryPreorder,
+    walkDirectoryPostorder: walkDirectoryPostorder,
     writeFile: writeFile,
 };

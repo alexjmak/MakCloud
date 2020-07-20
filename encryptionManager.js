@@ -28,14 +28,16 @@ function decryptAccount(id, key, iv, next) {
             if (next) next();
             return;
         }
-        fileManager.walkDirectory(filePath, function(filePath, isDirectory, next) {
+        fileManager.walkDirectoryPreorder(filePath, function(filePath, isDirectory, next) {
             try {
-                fileManager.renameDecryptFileName(filePath, key, iv, function(decryptedFilePath) {
-                    if (isDirectory) return next(decryptedFilePath);
-                    fileManager.readFile(decryptedFilePath, key, iv, function(readStream) {
+                if (isDirectory) {
+                    fileManager.renameDecryptDirectory(filePath, key, iv, next);
+                } else {
+                    fileManager.readFile(filePath, key, iv, function(readStream, decryptedFilePath) {
+                        if (!decryptedFilePath) decryptedFilePath = filePath;
                         fileManager.writeFile(decryptedFilePath, readStream, null, null, next);
                     });
-                })
+                }
             } catch (err) {
                 //todo backup key
                 log.write(err)
@@ -105,31 +107,36 @@ function decryptEncryptionKey(id, password, next) {
     });
 }
 
-function decryptFileName(filePath, key, iv, next) {
+function decryptFileName(filePath, key, iv, next) { //remove iv
     let basename = path.basename(filePath);
     let dirname = path.dirname(filePath);
 
     basename = basename.replace(/-/g, "+").replace(/_/g, "/");
     let buffer = Buffer.from(basename, 'base64')
-    decryptBuffer(buffer, key, iv, function(decryptedBuffer) {
-        if (decryptedBuffer) {
-            let decryptedBasename = decryptedBuffer.toString("utf8");
-            let decryptedFilePath = path.join(dirname, decryptedBasename);
-            if (next) next(decryptedFilePath);
-        } else {
-            if (next) next(null);
-        }
-    });
+
+    getIVs(filePath, function(iv) {
+        decryptBuffer(buffer, key, iv, function(decryptedBuffer) {
+            if (decryptedBuffer) {
+                let decryptedBasename = decryptedBuffer.toString("utf8");
+                let decryptedFilePath = path.join(dirname, decryptedBasename);
+                if (next) next(decryptedFilePath);
+            } else {
+                if (next) next(null);
+            }
+        });
+    })
+
 }
 
-function decryptFileNames(filePaths, key, iv, next) {
+function decryptFileNames(filePaths, key, iv, next) { //todo
     let decryptedFileNames = {};
     function callback(i) {
-        if (filePaths.hasOwnProperty(i)) {
-            let filePath = filePaths[i];
+        if (filePaths.length > 0) {
+            let filePath = filePaths.join(path.sep);
+            filePaths = filePaths.pop();
             decryptFileName(filePath, key, iv, function(decryptedFilePath) {
                 if (!decryptedFilePath) decryptedFilePath = filePath;
-                decryptedFileNames[filePath] = decryptedFilePath;
+                decryptedFileNames[path.basename(filePath)] = decryptedFilePath;
                 callback(i + 1);
             });
         } else {
@@ -144,11 +151,13 @@ function decryptFilePath(filePath, key, iv, next) {
     let decryptedFilePath = [];
     function callback(i) {
 
-        if (filePath.hasOwnProperty(i)) {
-            let fileName = filePath[i];
+        if (filePath.length > 0) {
+            let fileName = filePath.join(path.sep);
+            filePath = filePath.pop();
+
             decryptFileName(fileName, key, iv, function(decryptedFileName) {
                 if (!decryptedFileName) decryptedFileName = fileName;
-                decryptedFilePath.push(decryptedFileName);
+                decryptedFilePath.push(path.basename(decryptedFileName));
                 callback(i + 1);
             });
         } else {
@@ -190,17 +199,18 @@ function encryptAccount(id, key, iv, next) {
             if (next) next();
             return;
         }
-        fileManager.walkDirectory(filePath, function(filePath, isDirectory, next) {
+        fileManager.walkDirectoryPostorder(filePath, function(filePath, isDirectory, next) {
+            console.log(filePath);
             try {
                 if (isDirectory) {
-                    fileManager.renameEncryptFileName(filePath, key, iv, next)
+                    fileManager.renameEncryptDirectory(filePath, key, iv, next)
                     return;
                 }
                 fileManager.readFile(filePath, null, null, function(readStream) {
-                    fileManager.writeFile(filePath, readStream, key, iv, function() {
-                        fs.unlink(filePath, function() {
+                    fileManager.writeFile(filePath, readStream, key, iv, function(err, encryptedFileName) {
+                        fs.unlink(filePath, function() { //todo file names that can't be encrypted wont be deleted
                             next();
-                        })
+                        });
                     });
                 });
             } catch (err) {
@@ -251,7 +261,7 @@ function encryptEncryptionKey(key, iv, pbkdf2, next) {
 function encryptFileName(filePath, key, iv, next) {
     let basename = path.basename(filePath);
     let dirname = path.dirname(filePath);
-    let buffer = Buffer.from(basename, 'utf8')
+    let buffer = Buffer.from(basename, 'utf8');
     encryptBuffer(buffer, key, iv, function(encryptedBuffer) {
         if (encryptedBuffer) {
             let encryptedBasename = encryptedBuffer.toString("base64")
@@ -263,7 +273,6 @@ function encryptFileName(filePath, key, iv, next) {
         } else {
             if (next) next(null);
         }
-
     });
 }
 
@@ -353,6 +362,45 @@ function getDecipher(key, iv, next) {
     }
 }
 
+let getIVs = function(filePath, next) {
+    fs.stat(filePath, function(err, stats) {
+        if (err) {
+            log.write(err);
+            if (next) next(null);
+            return;
+        }
+        if (stats.isDirectory()) {
+            let ivFile = path.join(filePath, "iv")
+            fs.open(ivFile, "r", function(err, fd) {
+                if (err) {
+                    log.write("IV not found for directory");
+                    if (next) next(null);
+                    return;
+                }
+                let iv1 = Buffer.alloc(16);
+                fs.read(fd, iv1, 0, 16, 0, function(err, bytesRead, iv1) {
+                    fs.close(fd, function() {
+                        if (next) next(iv1);
+                    });
+                });
+            });
+        } else {
+            fs.open(filePath, "r", function(err, fd) {
+                let iv1 = Buffer.alloc(16);
+                let iv2 = Buffer.alloc(16);
+                fs.read(fd, iv1, 0, 16, 0, function(err, bytesRead, iv1) {
+                    fs.read(fd, iv2, 0, 16, 16, function(err, bytesRead, iv2) {
+                        fs.close(fd, function() {
+                            if (next) next(iv1, iv2);
+                        });
+                    });
+                });
+            });
+        }
+    })
+
+}
+
 function isEncrypted(contentStream, key, iv, next) {
     getDecipher(key, iv, function(err, testDecipher) {
         if (err) {
@@ -387,6 +435,7 @@ module.exports = {
     encryptFileName: encryptFileName,
     encryptionEnabled: encryptionEnabled,
     encryptStream: encryptStream,
+    getIVs: getIVs,
     generateEncryptionKey: generateEncryptionKey,
     generateIV: generateIV,
     generatePbkdf2: generatePbkdf2,

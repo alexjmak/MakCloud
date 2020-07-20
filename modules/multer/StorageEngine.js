@@ -1,3 +1,4 @@
+let log = require("../../core/log")
 class StorageEngine {
     #writeFile;
 
