@@ -7,19 +7,19 @@ const log = require("./core/log");
 const fileManager = require("./core/fileManager");
 
 
-let createArchive = function(directories, key, iv, next) {
-    if (key && iv) {
+let createArchive = function(directories, key, next) {
+    if (key) {
         fileManager.initArchive(function(archive) {
             if (typeof directories === "string") directories = [directories];
             function callback(i) {
                 if (directories.hasOwnProperty(i)) {
                     fileManager.walkDirectoryPreorder(directories[i], function(filePath, isDirectory, next) {
                         if (isDirectory) return next();
-                        readFile(filePath, key, iv, function(readStream) {
+                        readFile(filePath, key, function(readStream) {
                             let name = path.relative(path.dirname(directories[i]), filePath);
                             const encryptionManager = require("./encryptionManager");
 
-                            encryptionManager.decryptFilePath(name, key, iv, function(decryptedName) {
+                            encryptionManager.decryptFilePath(name, key, function(decryptedName) {
                                 archive.append(readStream, { name: decryptedName});
                                 return next();
                             })
@@ -40,11 +40,11 @@ let createArchive = function(directories, key, iv, next) {
     }
 }
 
-let processUpload = function(saveLocation, key, iv) {
+let processUpload = function(saveLocation, key) {
     return function(req, res, next) {
         let uploadFile = function(file, next) {
             let filePath = path.join(saveLocation, file.originalname);
-            writeFile(filePath, file.stream, key, iv, next);
+            writeFile(filePath, file.stream, key, next);
         }
         return multer({storage: multerStorage(uploadFile)}).any()(req, res, function(err) {
             if (err) return res.status(500).send("Upload failed");
@@ -54,7 +54,7 @@ let processUpload = function(saveLocation, key, iv) {
     }
 }
 
-let renameDecryptDirectory = function (filePath, key, iv, next) {
+let renameDecryptDirectory = function (filePath, key, next) {
     const encryptionManager = require("./encryptionManager");
     fs.stat(filePath, function(err, stats) {
         if (!stats.isDirectory()) err = "Not a directory";
@@ -63,27 +63,19 @@ let renameDecryptDirectory = function (filePath, key, iv, next) {
             if (next) next(err);
             return;
         }
-        encryptionManager.getIVs(filePath, function(iv) {
-            if (!iv) {
-                log.write("IV not found for folder")
-                if (next) next();
-                return;
-            }
-            encryptionManager.decryptFileName(filePath, key, iv, function(decryptedFilePath) {
-                if (!decryptedFilePath) decryptedFilePath = filePath;
-                fs.rename(filePath, decryptedFilePath, function (err) {
-                    if (err) {
-                        decryptedFilePath = filePath;
-                        log.write(err);
+        encryptionManager.decryptFileName(filePath, key, function(decryptedFilePath) {
+            if (!decryptedFilePath) decryptedFilePath = filePath;
+            fs.rename(filePath, decryptedFilePath, function (err) {
+                if (err) {
+                    decryptedFilePath = filePath;
+                    log.write(err);
+                    if (next) next(decryptedFilePath);
+                } else {
+                    let ivFile = path.join(decryptedFilePath, "iv");
+                    fs.unlink(ivFile, function() {
                         if (next) next(decryptedFilePath);
-                    } else {
-                        let ivFile = path.join(filePath, "iv");
-                        fs.unlink(ivFile, function() {
-                            if (next) next(decryptedFilePath);
-                        })
-                    }
-
-                });
+                    })
+                }
             });
         });
     });
@@ -92,7 +84,7 @@ let renameDecryptDirectory = function (filePath, key, iv, next) {
 }
 
 
-let renameEncryptDirectory = function (filePath, key, iv, next) {
+let renameEncryptDirectory = function (filePath, key, next) {
     const encryptionManager = require("./encryptionManager");
     fs.stat(filePath, function(err, stats) {
         if (!stats.isDirectory()) err = "Not a directory";
@@ -111,12 +103,18 @@ let renameEncryptDirectory = function (filePath, key, iv, next) {
             }
             encryptionManager.encryptFileName(filePath, key, iv, function(encryptedFilePath) {
                 if (!encryptedFilePath) encryptedFilePath = filePath;
-                fs.rename(filePath, encryptedFilePath, function (err) {
-                    if (err) {
-                        encryptedFilePath = filePath;
-                        log.write(err);
+                fs.stat(encryptedFilePath, function(err) {
+                    if (!err && encryptedFilePath !== filePath) { //File exists and its encrypted
+                        log.write("File name collision. Trying another iv...");
+                        return renameEncryptDirectory(filePath, key, next);
                     }
-                    if (next) next(encryptedFilePath);
+                    fs.rename(filePath, encryptedFilePath, function (err) {
+                        if (err) {
+                            encryptedFilePath = filePath;
+                            log.write(err);
+                        }
+                        if (next) next(encryptedFilePath);
+                    });
                 });
             });
         })
@@ -126,53 +124,59 @@ let renameEncryptDirectory = function (filePath, key, iv, next) {
 
 }
 
-let readFile = function(filePath, key, iv, next) { //remove iv later
-        if (key) {
-            const encryptionManager = require("./encryptionManager");
-            encryptionManager.getIVs(filePath, function(nameIV, contentIV) {
-                console.log("nameIV: " + nameIV.toString("hex"))
-                console.log("contentIV: " + contentIV.toString("hex"))
-                encryptionManager.decryptFileName(filePath, key, iv, function(decryptedFilePath) {
-                    if (!decryptedFilePath) decryptedFilePath = filePath;
-                    encryptionManager.isEncrypted(fs.createReadStream(filePath, {start: 32}), key, contentIV, function(encrypted) {
-                        if (encrypted) {
-                            encryptionManager.decryptStream(fs.createReadStream(filePath, {start: 32}), key, contentIV, function(decryptedStream) {
-                                next(decryptedStream, decryptedFilePath);
-                            });
-                        } else {
-                            log.write("Sending raw file...");
-                            fileManager.readFile(filePath, next);
-                        }
-                    })
+let readFile = function(filePath, key, next) {
+    if (key) {
+        const encryptionManager = require("./encryptionManager");
+        encryptionManager.getIVs(filePath, function(nameIV, contentIV) {
+            encryptionManager.decryptFileName(filePath, key, function(decryptedFilePath) {
+                if (!decryptedFilePath) decryptedFilePath = filePath;
+                encryptionManager.isEncrypted(fs.createReadStream(filePath, {start: 32}), key, contentIV, function(encrypted) {
+                    if (encrypted) {
+                        encryptionManager.decryptStream(fs.createReadStream(filePath, {start: 32}), key, contentIV, function(decryptedStream) {
+                            next(decryptedStream, decryptedFilePath);
+                        });
+                    } else {
+                        log.write("Sending raw file...");
+                        fileManager.readFile(filePath, next);
+                    }
                 })
+            })
 
-            });
-        } else {
-            fileManager.readFile(filePath, next)
-        }
-
+        });
+    } else {
+        fileManager.readFile(filePath, next)
+    }
 };
 
-let writeFile = function(filePath, contentStream, key, iv, next) { //remove iv later
+let writeFile = function(filePath, contentStream, key, next) {
     if (key) {
         const encryptionManager = require("./encryptionManager");
         let nameIV = encryptionManager.generateIV();
         let contentIV = encryptionManager.generateIV();
         encryptionManager.encryptFileName(filePath, key, nameIV.toString("hex"), function(encryptedFilePath) {
             if (!encryptedFilePath) encryptedFilePath = filePath;
-            fs.open(encryptedFilePath, 'a', function(err, fd) {
-                if (err || !fd) encryptedFilePath = filePath;
-                else fs.closeSync(fd);
-                encryptionManager.encryptStream(contentStream, key, contentIV.toString("hex"), function(encryptedStream) {
-                    if (encryptedStream) {
-                        fileManager.writeFile(encryptedFilePath, encryptedStream, next, [nameIV, contentIV]);
-                    } else {
-                        let err = "Couldn't encrypt file";
-                        log.write(err);
-                        if (next) next(err);
-                    }
-                });
-            })
+            fs.stat(encryptedFilePath, function(err) {
+                if (!err && encryptedFilePath !== filePath) { //File exists and its encrypted
+                    log.write("File name collision. Trying another iv...");
+                    return writeFile(filePath, contentStream, key, next);
+                } else {
+                    fs.open(encryptedFilePath, 'a', function(err, fd) {
+                        if (err || !fd) encryptedFilePath = filePath;
+                        else fs.closeSync(fd);
+                        encryptionManager.encryptStream(contentStream, key, contentIV.toString("hex"), function(encryptedStream) {
+                            if (encryptedStream) {
+                                fileManager.writeFile(encryptedFilePath, encryptedStream, function(err) {
+                                    if (next) next(err, encryptedFilePath);
+                                }, [nameIV, contentIV]);
+                            } else {
+                                let err = "Couldn't encrypt file";
+                                log.write(err);
+                                if (next) next(err);
+                            }
+                        });
+                    });
+                }
+            });
 
         });
     } else {

@@ -101,7 +101,7 @@ let readDirectory = function(directory, callback, next) {
                     });
                 });
             } else {
-                next();
+                if (next) next();
             }
         }
         nextFile(0);

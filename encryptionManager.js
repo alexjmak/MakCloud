@@ -20,7 +20,7 @@ function checkEncryptionSession(req, next) {
     if (next !== undefined) next(true);
 }
 
-function decryptAccount(id, key, iv, next) {
+function decryptAccount(id, key, next) {
     let accountPath = path.join(preferences.get("files"), id);
     const fileManager = require("./fileManager");
     fileManager.readDirectory(accountPath, function(filePath, isDirectory, next) {
@@ -31,17 +31,25 @@ function decryptAccount(id, key, iv, next) {
         fileManager.walkDirectoryPreorder(filePath, function(filePath, isDirectory, next) {
             try {
                 if (isDirectory) {
-                    fileManager.renameDecryptDirectory(filePath, key, iv, next);
+                    fileManager.renameDecryptDirectory(filePath, key, next);
                 } else {
-                    fileManager.readFile(filePath, key, iv, function(readStream, decryptedFilePath) {
+                    fileManager.readFile(filePath, key, function(readStream, decryptedFilePath) {
                         if (!decryptedFilePath) decryptedFilePath = filePath;
-                        fileManager.writeFile(decryptedFilePath, readStream, null, null, next);
+                        fileManager.writeFile(decryptedFilePath, readStream, null, function() {
+                            if (decryptedFilePath !== filePath) {
+                                fs.unlink(filePath, function() {
+                                    next();
+                                })
+                            } else {
+                                next();
+                            }
+                        });
                     });
                 }
             } catch (err) {
                 //todo backup key
                 log.write(err)
-                if (next) next();
+                next();
             }
         }, next);
     }, next);
@@ -107,7 +115,7 @@ function decryptEncryptionKey(id, password, next) {
     });
 }
 
-function decryptFileName(filePath, key, iv, next) { //remove iv
+function decryptFileName(filePath, key, next) {
     let basename = path.basename(filePath);
     let dirname = path.dirname(filePath);
 
@@ -128,13 +136,13 @@ function decryptFileName(filePath, key, iv, next) { //remove iv
 
 }
 
-function decryptFileNames(filePaths, key, iv, next) { //todo
+function decryptFileNames(filePaths, key, next) { //todo
     let decryptedFileNames = {};
     function callback(i) {
         if (filePaths.length > 0) {
             let filePath = filePaths.join(path.sep);
             filePaths = filePaths.pop();
-            decryptFileName(filePath, key, iv, function(decryptedFilePath) {
+            decryptFileName(filePath, key, function(decryptedFilePath) {
                 if (!decryptedFilePath) decryptedFilePath = filePath;
                 decryptedFileNames[path.basename(filePath)] = decryptedFilePath;
                 callback(i + 1);
@@ -146,7 +154,7 @@ function decryptFileNames(filePaths, key, iv, next) { //todo
     callback(0);
 }
 
-function decryptFilePath(filePath, key, iv, next) {
+function decryptFilePath(filePath, key, next) {
     filePath = filePath.split(path.sep);
     let decryptedFilePath = [];
     function callback(i) {
@@ -155,7 +163,7 @@ function decryptFilePath(filePath, key, iv, next) {
             let fileName = filePath.join(path.sep);
             filePath = filePath.pop();
 
-            decryptFileName(fileName, key, iv, function(decryptedFileName) {
+            decryptFileName(fileName, key, function(decryptedFileName) {
                 if (!decryptedFileName) decryptedFileName = fileName;
                 decryptedFilePath.push(path.basename(decryptedFileName));
                 callback(i + 1);
@@ -191,7 +199,7 @@ function decryptStream(contentStream, key, iv, next) {
     });
 }
 
-function encryptAccount(id, key, iv, next) {
+function encryptAccount(id, key, next) {
     let accountPath = path.join(preferences.get("files"), id);
     const fileManager = require("./fileManager");
     fileManager.readDirectory(accountPath, function(filePath, isDirectory, next) {
@@ -200,17 +208,20 @@ function encryptAccount(id, key, iv, next) {
             return;
         }
         fileManager.walkDirectoryPostorder(filePath, function(filePath, isDirectory, next) {
-            console.log(filePath);
             try {
                 if (isDirectory) {
-                    fileManager.renameEncryptDirectory(filePath, key, iv, next)
+                    fileManager.renameEncryptDirectory(filePath, key, next)
                     return;
                 }
-                fileManager.readFile(filePath, null, null, function(readStream) {
-                    fileManager.writeFile(filePath, readStream, key, iv, function(err, encryptedFileName) {
-                        fs.unlink(filePath, function() { //todo file names that can't be encrypted wont be deleted
+                fileManager.readFile(filePath, null, function(readStream) {
+                    fileManager.writeFile(filePath, readStream, key, function(err, encryptedFileName) {
+                        if (encryptedFileName !== filePath) {
+                            fs.unlink(filePath, function() {
+                                next();
+                            });
+                        } else {
                             next();
-                        });
+                        }
                     });
                 });
             } catch (err) {

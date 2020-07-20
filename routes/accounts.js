@@ -102,11 +102,10 @@ router.patch('/encrypted', function(req, res) {
         authorization.checkPassword(id, password, function(result) {
             if (result !== 1) {
                 if (encrypted) {
-                    accountManager.encryptAccount(id, password,function (result, decryptedKey, iv) {
+                    accountManager.encryptAccount(id, password,function (result, decryptedKey) {
                         if (result) {
                             if (id === authorization.getID(req)) {
                                 req.session.encryptionKey = decryptedKey;
-                                req.session.encryptionIV = iv;
                             }
                             res.send("Encrypted account");
                         } else {
@@ -118,7 +117,6 @@ router.patch('/encrypted', function(req, res) {
                         if (result) {
                             if (id === authorization.getID(req)) {
                                 req.session.encryptionKey = undefined;
-                                req.session.encryptionIV = undefined;
                                 res.clearCookie("encryptionSession");
                             }
                             res.send("Decrypted account");

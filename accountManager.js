@@ -28,7 +28,7 @@ function decryptAccount(id, password, next) {
                 let iv = result["encryptIV"];
                 const encryptionManager = require("./encryptionManager");
                 encryptionManager.decryptEncryptionKey(id, password, function(decryptedKey) {
-                    encryptionManager.decryptAccount(id, decryptedKey, iv, function(err) {
+                    encryptionManager.decryptAccount(id, decryptedKey, function(err) {
                         if (err) {
                             if (next) next(false);
                             return;
@@ -170,12 +170,13 @@ function encryptAccount(id, password, next) {
             } else {
                 database.run("UPDATE accounts SET encryptKey = ?, encryptIV = ?, derivedKeySalt = ? WHERE id = ?", [key, iv, salt, id], function(result) {
                     encryptionManager.decryptEncryptionKey(id, password, function(decryptedKey) {
-                        encryptionManager.encryptAccount(id, decryptedKey, iv,function(err) {
+                        console.log(decryptedKey)
+                        encryptionManager.encryptAccount(id, decryptedKey, function(err) {
                             if (err) {
                                 if (next) next(false);
                                 return;
                             }
-                            if (next) next(true, decryptedKey, iv);
+                            if (next) next(true, decryptedKey);
                         })
                     });
                 });
