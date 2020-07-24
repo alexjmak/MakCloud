@@ -28,7 +28,6 @@ function login(req, res) {
             encryptionManager.decryptEncryptionKey(id, password, function(key, iv) {
                 if (key !== false) {
                     req.session.encryptionKey = key;
-                    req.session.encryptionIV = iv;
                 }
                 res.status(200).send();
             });

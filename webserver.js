@@ -27,12 +27,14 @@ if (preferences.get("webdav")) {
 
 const accountsRouter = require('./routes/accounts');
 const filesRouter = require('./routes/files');
+const publicRouter = require('./routes/public');
 const photosRouter = require('./routes/photos');
 const mailRouter = require('./routes/mail');
 const firewallRouter = require('./routes/firewall');
 const sharedRouter = require('./routes/shared');
 const indexRouter = require('./routes/index');
 const logRouter = require('./routes/log');
+const logsRouter = require('./routes/logs');
 const loginRouter = require('./routes/login');
 const logoutRouter = require('./routes/logout');
 const updateRouter = require('./routes/update');
@@ -60,6 +62,15 @@ app.use(session({
     cookie: { secure: true, sameSite: true, maxAge: 1 * 60 * 60 * 1000}
 }));
 
+app.use(function(req, res, next) {
+    if (req.originalUrl === "/") return next();
+    let urlCleanup = req.originalUrl.replace(/\/{2,}/g, "/")
+                                    .replace(/\/$/, "");
+    if (req.originalUrl !== urlCleanup) {
+        return res.redirect(urlCleanup);
+    }
+    next();
+})
 
 const noLog = ["/accounts/list/hash", "/log/raw", "/log/size"];
 app.use(function(req, res, next) {
@@ -78,11 +89,11 @@ app.use("/update", updateRouter);
 app.use(authorization.doAuthorization);
 app.use('/', indexRouter);
 app.use("/log", logRouter);
-app.use("/logs", filesRouter);
-app.use("/files", filesRouter);
+app.use("/logs", logsRouter);
+app.use("/files", filesRouter(undefined, true));
 app.use("/firewall", firewallRouter);
-app.use("/public", filesRouter);
-app.use("/photos", photosRouter);
+app.use("/public", publicRouter);
+app.use("/photos", photosRouter(undefined, true));
 app.use("/mail", mailRouter);
 app.use("/accounts", accountsRouter);
 app.use("/error", errorRouter);

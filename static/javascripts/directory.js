@@ -1,20 +1,18 @@
 $(document).ready(function() {
     folderContents = folderContents.filter(function(file) {
-        return !file.name.startsWith(".");
+        return !getDisplayName(file).startsWith(".");
     });
 
-    let filesPath = location.pathname.substring(1);
-    filesPath = decodeURIComponent(filesPath);
-    let filesPathSplit = filesPath.split("/");
-    let currentPath = "/" + filesPathSplit[0];
-    filesPathSplit.shift();
+    let filesPathSplit = path.split("/");
+
     let folderName;
 
-    if (filesPathSplit.length === 0) {
-        if (currentPath === "/public") folderName = "Public Files";
-        else folderName = "My Files";
-    }
-    else folderName = filesPathSplit[filesPathSplit.length - 1];
+    if (path.trim() === "") {
+        folderName = baseUrl.charAt(1).toUpperCase() + baseUrl.substring(2);
+    } else folderName = getPathDisplayName(filesPathSplit.length - 1);
+
+    let currentPath = "/" + baseUrl;
+
     $(".mdc-drawer__title").text(folderName);
 
     let selectedItem;
@@ -54,7 +52,7 @@ $(document).ready(function() {
             continue;
         }
         $("#navigation-bar").append("<td><div style='margin-top: 10px' class=\"navigation-arrow material-icons\">chevron_right</div></td>");
-        $("#navigation-bar").append(`<td><button onclick=\"window.location.href = '${currentPath.replace("'", "%27").replace("\"", "%22")}';" style='font-size: 16px; margin-top: 7px; margin-left: 5px; border: none; outline: none; background-color: transparent'><h4>${directory}</h4></button></td>`);
+        $("#navigation-bar").append(`<td><button onclick=\"window.location.href = '${currentPath.replace("'", "%27").replace("\"", "%22")}';" style='font-size: 16px; margin-top: 7px; margin-left: 5px; border: none; outline: none; background-color: transparent'><h4>${getPathDisplayName(directoryIndex)}</h4></button></td>`);
     }
 
     $("#navigation-bar").append("<td hidden id='actionButtons' style='position: absolute; right: 7px;'><button id='download' class=\"mdc-icon-button material-icons\">cloud_download</button><button id='share' class=\"mdc-icon-button material-icons\">share</button><button id='delete' class=\"mdc-icon-button material-icons\">delete</button></td>");
@@ -93,9 +91,8 @@ $(document).ready(function() {
 
             files[fileIndex.toString()] = file;
 
-            let fileDisplayName = file.name;
-            if (decryptedFileNames) fileDisplayName = decryptedFileNames[fileDisplayName];
-            $("#files").append(`<tr class='underlinedTR file' name='${fileIndex}'><td><span class='file-icons material-icons'>${icon}</span></td><td><p>${fileDisplayName}</p></td><td><p>${file.size.toUpperCase()}</p></td><td><p>${file.date}</p></td></tr>`);
+            let fileName = getDisplayName(file);
+            $("#files").append(`<tr class='underlinedTR file' name='${fileIndex}'><td><span class='file-icons material-icons'>${icon}</span></td><td><p>${fileName}</p></td><td><p>${file.size.toUpperCase()}</p></td><td><p>${file.date}</p></td></tr>`);
 
         }
     }
@@ -161,8 +158,8 @@ $(document).ready(function() {
 
     $("#download").click(function () {
         let fileId = $(selectedItem).attr("name");
-        let fileName = files[fileId].name;
-        window.open([location.pathname, fileName].join("/") + "?download", "_blank");
+        let fileLink = files[fileId].name;
+        window.open([location.pathname, fileLink].join("/") + "?download", "_blank");
     });
 
     $("#download-current-dir").click(function () {
@@ -171,9 +168,10 @@ $(document).ready(function() {
 
     $("#delete").click(function () {
         let fileId = $(selectedItem).attr("name");
-        let fileName = files[fileId].name;
+        let fileName = getDisplayName(files[fileId])
+        let fileLink = files[fileId].name;
         showDialog(yesNoDialog, "MakCloud", "Are you sure you want to delete " + fileName  + "?", {"yes": function() {
-            deleteRequest([location.pathname, fileName].join("/"), null, function(xmlHttpRequest) {
+            deleteRequest([location.pathname, fileLink].join("/"), null, function(xmlHttpRequest) {
                     if (xmlHttpRequest.status === 200)  {
                         folderContents.splice(fileId, 1);
                         reload();
@@ -188,8 +186,8 @@ $(document).ready(function() {
 
     $("#share").click(function () {
         let fileId = $(selectedItem).attr("name");
-        let fileName = files[fileId].name;
-        share({"data": {"filePath": [location.pathname, fileName].join("/")}});
+        let fileLink = files[fileId].name;
+        share({"data": {"filePath": [location.pathname, fileLink].join("/")}});
     });
 
     $("html").on("dragover", function(e) {
@@ -245,9 +243,8 @@ $(document).ready(function() {
 
                 files[fileIndex.toString()] = file;
 
-                let fileDisplayName = file.name;
-                if (decryptedFileNames) fileDisplayName = decryptedFileNames[fileDisplayName];
-                $("#files").append(`<tr class='underlinedTR file' name='${fileIndex}'><td><span class='file-icons material-icons'>${icon}</span></td><td><p>${fileDisplayName}</p></td><td><p>${file.size.toUpperCase()}</p></td><td><p>${file.date}</p></td></tr>`);
+                let fileName = getDisplayName(file);
+                $("#files").append(`<tr class='underlinedTR file' name='${fileIndex}'><td><span class='file-icons material-icons'>${icon}</span></td><td><p>${fileName}</p></td><td><p>${file.size.toUpperCase()}</p></td><td><p>${file.date}</p></td></tr>`);
 
             }
         }
@@ -263,8 +260,13 @@ $(document).ready(function() {
 });
 
 
+function getDisplayName(fileInfo) {
+    return fileInfo.decrypted_name ? fileInfo.decrypted_name : fileInfo.name
+}
 
-
+function getPathDisplayName(index) {
+    return (path_decrypted) ? path_decrypted.split("/")[index] : path.split("/")[index];
+}
 function deselectAll() {
 
 }

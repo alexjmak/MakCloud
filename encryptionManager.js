@@ -107,7 +107,7 @@ function decryptEncryptionKey(id, password, next) {
                             return;
                         }
                         decrypted = decrypted.toString();
-                        if (next !== undefined) next(decrypted, iv.toString("hex"));
+                        if (next !== undefined) next(decrypted);
                     }
                 });
             });
@@ -136,19 +136,24 @@ function decryptFileName(filePath, key, next) {
 
 }
 
-function decryptFileNames(filePaths, key, next) { //todo
-    let decryptedFileNames = {};
+function decryptReadifyNames(readifyData, key, next) { //todo
+    let data = Object.assign({}, readifyData);
+    let numberFiles = data.files.length;
+
     function callback(i) {
-        if (filePaths.length > 0) {
-            let filePath = filePaths.join(path.sep);
-            filePaths = filePaths.pop();
-            decryptFileName(filePath, key, function(decryptedFilePath) {
-                if (!decryptedFilePath) decryptedFilePath = filePath;
-                decryptedFileNames[path.basename(filePath)] = decryptedFilePath;
+        if (i < numberFiles) {
+            if (data.files[i].name === "iv") {
+                numberFiles--;
+                data.files.splice(i, 1);
+                return callback(i);
+            }
+            let filePath = path.join(data.path, data.files[i].name);
+            decryptFileName(filePath, key, function(decryptedFileName) {
+                if (decryptedFileName) data.files[i].decrypted_name = path.basename(decryptedFileName);
                 callback(i + 1);
-            });
+            })
         } else {
-            if (next) next(decryptedFileNames);
+            if (next) next(data);
         }
     }
     callback(0);
@@ -161,11 +166,11 @@ function decryptFilePath(filePath, key, next) {
 
         if (filePath.length > 0) {
             let fileName = filePath.join(path.sep);
-            filePath = filePath.pop();
+            filePath.pop();
 
             decryptFileName(fileName, key, function(decryptedFileName) {
                 if (!decryptedFileName) decryptedFileName = fileName;
-                decryptedFilePath.push(path.basename(decryptedFileName));
+                decryptedFilePath.splice(0, 0, path.basename(decryptedFileName));
                 callback(i + 1);
             });
         } else {
@@ -438,7 +443,7 @@ module.exports = {
     decryptAccount: decryptAccount,
     decryptEncryptionKey: decryptEncryptionKey,
     decryptFileName: decryptFileName,
-    decryptFileNames: decryptFileNames,
+    decryptReadifyNames: decryptReadifyNames,
     decryptFilePath: decryptFilePath,
     decryptStream: decryptStream,
     encryptAccount: encryptAccount,

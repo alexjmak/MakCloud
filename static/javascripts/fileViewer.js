@@ -1,25 +1,28 @@
 let usedPasswordMemory;
 let authorized = false;
 
-const supportedTypes = ["txt", "json", "conf", "log", "properties", "yml", "pdf", "apng", "bmp", "gif", "ico", "cur", "jpg", "jpeg", "pjpeg", "pjp", "png", "svg", "webp", "mp3", "m4a"];
-const plainText = ["txt", "json", "conf", "log", "properties", "yml"];
+const supportedTypes = ["txt", "json", "conf", "log", "properties", "yml", "pdf", "apng", "bmp", "gif", "ico", "cur", "jpg", "jpeg", "pjpeg", "pjp", "png", "svg", "webp", "mp3", "m4a", "py", "js"];
+const plainText = ["txt", "json", "conf", "log", "properties", "yml", "py", "js"];
 let oldFileContents;
 
-let requestFile = function(method, filePath, authorization, next) {
+const pathSplit = location.pathname.split("/");
+const filePath = decodeURIComponent(pathSplit[pathSplit.length - 1]);
+const displayName = name_decrypted ? name_decrypted : filePath;
 
+let requestFile = function(method, authorization, next) {
     request(method, filePath, null, function(xmlHttpRequest) {
         if (xmlHttpRequest.status === 200) {
             let content = $("#content");
             content.show();
             if (method.toUpperCase() === "HEAD") {
                 authorized = true;
-                let extension = filePath.split(".").pop().toLowerCase();
+                let extension = displayName.split(".").pop().toLowerCase();
                 let contentType = xmlHttpRequest.getResponseHeader("Content-Type");
                 if (supportedTypes.includes(extension) || contentType.startsWith("text/")) {
                     let encodedPathname = window.location.pathname.replace("'", "%27");
                     switch (extension) {
                         default:
-                            requestFile("GET", filePath);
+                            requestFile("GET");
                             break;
                         case "pdf":
                             content.append("<object data='/pdfjs/web/viewer.html?file=" + encodedPathname + "'></object>")
@@ -62,8 +65,7 @@ let requestFile = function(method, filePath, authorization, next) {
     }, authorization);
 };
 
-var save = function(event) {
-    const filePath = event.data.filePath;
+var save = function() {
     const newFileContents = $("#fileContents").text();
     let blob = new Blob([newFileContents]);
     let formData = new FormData();
@@ -81,30 +83,28 @@ var revert = function(event) {
     $("#fileContents").text(event.data.initialFileContents);
 };
 
-var deleteFile = function(event) {
+var deleteFile = function() {
     if (window.location.pathname.startsWith("/shared")) return;
-    let fileName = event.data.filePath.split("/").pop();
-    showDialog(yesNoDialog, "MakCloud", "Are you sure you want to delete " + fileName  + "?", {"yes": function() {
-            deleteRequest(event.data.filePath, null, function(xmlHttpRequest) {
+    showDialog(yesNoDialog, "MakCloud", "Are you sure you want to delete " + displayName  + "?", {"yes": function() {
+            deleteRequest(filePath, null, function(xmlHttpRequest) {
                 if (xmlHttpRequest.status === 200)  {
-                    showSnackbar(basicSnackbar, "Deleted " + fileName);
+                    showSnackbar(basicSnackbar, "Deleted " + displayName);
                     window.location.href = '.';
                 } else {
-                    showSnackbar(basicSnackbar, "Error deleting " + fileName);
+                    showSnackbar(basicSnackbar, "Error deleting " + displayName);
                 }
             });
-        }});
+    }});
 };
 
-var edit = function(event) {
-    const filePath = event.data.filePath;
+var edit = function() {
     const extension = filePath.split(".").pop().toLowerCase();
     if (!authorized || !plainText.includes(extension)) return;
     let fileContents = $("#fileContents").text();
 
     let mode = $("#edit").find("span").text();
     if (mode === "Save") {
-        if (fileContents !== oldFileContents) save(event);
+        if (fileContents !== oldFileContents) save();
         $("#fileContents").prop("contenteditable", false);
         $("#edit").find("i").text("edit");
         $("#edit").find("span").text("Edit");
@@ -118,20 +118,20 @@ var edit = function(event) {
 
 };
 
-var download = function(event) {
+var download = function() {
     if (!authorized) {
-        authorize(event, function(result) {
-            if (result) download(event);
+        authorize(function(result) {
+            if (result) download();
         });
     } else {
-        window.open(event.data.filePath + "?download", "_blank");
+        window.open(filePath + "?download", "_blank");
     }
 };
 
 var randomNumberArray = new Uint32Array(1);
 window.crypto.getRandomValues(randomNumberArray);
 
-var authorize = function(event, next) {
+var authorize = function(next) {
     let password = $("#password").val();
     if (password === "") {
         $("#password").focus()
@@ -140,7 +140,7 @@ var authorize = function(event, next) {
         if ($.md5(password, randomNumberArray[0]) === usedPasswordMemory) return;
         usedPasswordMemory = $.md5(password, randomNumberArray[0]);
         password = btoa(":"+ password);
-        requestFile("HEAD", event.data.filePath, "Basic " + password, next)
+        requestFile("HEAD", "Basic " + password, next)
     }
 
 };
@@ -159,12 +159,8 @@ var hideAuthorization = function()  {
 };
 
 $(document).ready(function() {
-    let pathSplit = location.pathname.split("/");
 
-    let filePath = pathSplit[pathSplit.length - 1];
-    filePath = decodeURIComponent(filePath);
-
-    $(".mdc-drawer__title").text(filePath);
+    $(".mdc-drawer__title").text(displayName);
 
     if (window.location.pathname.startsWith("/shared")) {
         $("#file-manager").hide();
@@ -174,23 +170,23 @@ $(document).ready(function() {
         $("#save").show();
     }
 
-    requestFile("HEAD", filePath);
+    requestFile("HEAD");
 
-    $("#edit").click({filePath: filePath}, edit);
+    $("#edit").click(edit);
 
-    $("#download").click({filePath: filePath}, download);
+    $("#download").click(download);
 
-    $("#share").click({filePath: filePath}, share);
+    $("#share").click(share);
 
-    $("#delete").click({filePath: filePath}, deleteFile);
+    $("#delete").click(deleteFile);
 
-    $("#submit").click({filePath: filePath}, authorize);
+    $("#submit").click(authorize);
 });
 
 $(document).keydown(function(event) {
     var key = event.which;
     if (key === 13) {
-        authorize({data: {filePath: location.pathname}})
+        authorize()
     }
 
     if ((event.ctrlKey || event.metaKey) && key === 83) {

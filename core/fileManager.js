@@ -13,7 +13,7 @@ let createArchive = function(directories, next) {
         if (typeof directories === "string") directories = [directories];
         function callback(i) {
             if (directories.hasOwnProperty(i)) {
-                walkDirectory(directories[i], function(filePath, isDirectory, next) {
+                walkDirectoryPreorder(directories[i], function(filePath, isDirectory, next) {
                     if (isDirectory) return next();
                     readFile(filePath, function(readStream) {
                         let name = path.relative(path.dirname(directories[i]), filePath);
@@ -32,15 +32,14 @@ let createArchive = function(directories, next) {
     });
 }
 
-let deleteFile = function(directory, filePath, owner, next) {
-    let realFilePath = path.join(preferences.get("files"), owner.toString(), directory, filePath);
-    let deleteFilePath = path.join(preferences.get("files"), owner.toString(), directory, ".recycle", filePath);
-    let deleteFilePathParent = path.parse(deleteFilePath).dir;
+let deleteFile = function(filePath, relativeDirectory, next) {
+    let recycleDirectory = path.join(relativeDirectory, ".recycle");
+    let deletedPath = path.join(recycleDirectory, path.relative(relativeDirectory, filePath))
 
-    if (fs.existsSync(realFilePath)) {
-        fs.mkdir(deleteFilePathParent, {recursive: true }, function(err) {
-            if (!err) {
-                fs.rename(realFilePath, deleteFilePath, function (err) {
+    fs.stat(filePath, function(err, stats) {
+        if (!err) {
+            mkdirp(path.dirname(deletedPath)).then(function() {
+                fs.rename(filePath, deletedPath, function (err) {
                     if (err) {
                         log.write(err);
                         if (next !== undefined) next(false);
@@ -48,14 +47,15 @@ let deleteFile = function(directory, filePath, owner, next) {
                         if (next !== undefined) next(true);
                     }
                 });
-            } else {
+            }).catch(function(err) {
                 log.write(err);
-                if (next !== undefined) next(false);
-            }
-        });
-    } else {
-        if (next !== undefined) next(false);
-    }
+                if (next) next(false);
+            });
+        } else {
+            log.write(err);
+            if (next) next(false);
+        }
+    });
 };
 
 let initArchive = function(next) {

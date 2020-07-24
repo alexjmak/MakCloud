@@ -90,9 +90,7 @@ function deleteAccount(id, next) {
 
             });
         }
-
-
-    })
+    });
 }
 
 function deleteDeletedAccount(id, next) {
@@ -170,7 +168,6 @@ function encryptAccount(id, password, next) {
             } else {
                 database.run("UPDATE accounts SET encryptKey = ?, encryptIV = ?, derivedKeySalt = ? WHERE id = ?", [key, iv, salt, id], function(result) {
                     encryptionManager.decryptEncryptionKey(id, password, function(decryptedKey) {
-                        console.log(decryptedKey)
                         encryptionManager.encryptAccount(id, decryptedKey, function(err) {
                             if (err) {
                                 if (next) next(false);

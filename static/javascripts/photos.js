@@ -3,8 +3,11 @@ $(document).ready(function() {
         if (!photos.hasOwnProperty(photo)) continue;
         photo = photos[photo];
         if (photo === "") continue;
-        $("#content").append("<a href='/photos/" + photo + "?view'><img class='mdc-elevation--z3 lazyload' loading='lazy' data-src='/photos/" + photo + "'></a>")
+        let photoLink = window.location.pathname + "/" + photo;
+        $("#content").append(`<a href='${photoLink}?view'><img class='mdc-elevation--z3 lazyload' loading='lazy' data-src='${photoLink}'></a>`)
     }
-    //$("#content").justifiedGallery();
 
+    $("#download-current-dir").click(function () {
+        window.open(location.pathname + "?download", "_blank");
+    });
 });

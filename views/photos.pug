@@ -4,7 +4,7 @@ block header
     link(rel='stylesheet', type='text/css', href='/stylesheets/justifiedGallery.min.css')
     link(rel='stylesheet', type='text/css', href='/stylesheets/photos.css')
     script.
-        let photos = "#{photos}".split(",");
+        let photos = !{JSON.stringify(photos)};
     script(type='text/javascript', src= "/javascripts/jquery.justifiedGallery.min.js")
     script(type='text/javascript', src= "/javascripts/lazysizes.min.js")
     script(type='text/javascript', src= "/javascripts/photos.js")
@@ -12,7 +12,7 @@ block drawer
     aside.mdc-drawer.mdc-top-app-bar--fixed-adjust
         .mdc-drawer__content
             .mdc-drawer__header
-                h3.mdc-drawer__title My Photos
+                h3.mdc-drawer__title Photos
             nav.mdc-list
                 a.mdc-list-item(href='/files')#file-manager
                     i.material-icons.mdc-list-item__graphic(aria-hidden='true') folder
@@ -23,6 +23,9 @@ block drawer
                 a.mdc-list-item#upload
                     i.material-icons.mdc-list-item__graphic(aria-hidden='true') cloud_upload
                     span.mdc-list-item__text Upload
+                a.mdc-list-item#download-current-dir
+                    i.material-icons.mdc-list-item__graphic(aria-hidden='true') cloud_download
+                    span.mdc-list-item__text Download
                 input#uploadButton(hidden type="file" multiple)
                 a.mdc-list-item(href='/shared?me')
                     i.material-icons.mdc-list-item__graphic(aria-hidden='true') person

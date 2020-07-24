@@ -255,6 +255,70 @@ function getSharingInformation(select, whereKey, whereValue, next) {
     });
 }
 
+function handle(req, res, next) {
+    let action = (req.body.action !== undefined) ? req.body.action : null;
+    let expiration = (req.body.expiration !== undefined) ? req.body.expiration : null;
+    let password = (req.body.password !== undefined) ? req.body.password : null;
+    let access = (req.body.access !== undefined) ? req.body.access : null;
+    let id = (req.body.id !== undefined) ? req.body.id : undefined;
+    let username = (req.body.username !== undefined) ? req.body.username : undefined;
+
+    switch (action) {
+        case "create":
+            createLink(parent, fileName, owner, {expiration: expiration, password: password}, function(link) {
+                if (link !== false) res.status(201).send(link);
+                else res.sendStatus(409);
+            });
+            break;
+        case "delete":
+            deleteLink(parent, fileName, owner, function(result) {
+                res.sendStatus(200)
+            });
+            break;
+        case "addAccess":
+            let addLinkAccess = function(id) {
+                addLinkAccess(parent, fileName, owner, id, access, expiration,function(result) {
+                    if (result) res.status(200).send(id);
+                    else res.sendStatus(400);
+                });
+            };
+            if (id === undefined && username !== undefined) {
+                accountManager.getInformation("id", "username", username, function(id) {
+                    if (id === undefined) res.sendStatus(404);
+                    else addLinkAccess(id);
+                });
+            } else addLinkAccess(id);
+            break;
+        case "updateAccess":
+            updateLinkAccess(parent, fileName, owner, id, access, expiration, function(result) {
+                if (result) res.send(id.toString());
+                else res.sendStatus(400);
+            });
+            break;
+        case "removeAccess":
+            removeLinkAccess(parent, fileName, owner, id, function(result) {
+                if (result) res.sendStatus(200);
+                else res.sendStatus(400);
+            });
+            break;
+        case "setPassword":
+            if (!password) break;
+            updateLinkPassword(parent, fileName, owner, password, function(result) {
+                if (result) res.sendStatus(200);
+                else res.sendStatus(400);
+            });
+            break;
+        case "deletePassword":
+            deleteLinkPassword(parent, fileName, owner, function(result) {
+                if (result) res.sendStatus(200);
+                else res.sendStatus(400);
+            });
+            break;
+        default:
+            res.sendStatus(404);
+            break;
+    }
+}
 function linkAccessExists(key, id, next) {
     if (id === undefined) id = -1;
     else id = Number(id);
@@ -363,6 +427,7 @@ module.exports = {
     doAuthorization: doAuthorization,
     getLinkSummary: getLinkSummary,
     getRealFilePathLink: getRealFilePathLink,
+    handle: handle,
     linkCheck: linkCheck,
     removeLinkAccess: removeLinkAccess,
     updateLinkAccess: updateLinkAccess,

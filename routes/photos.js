@@ -1,114 +1,72 @@
+const createError = require('http-errors');
 const express = require('express');
 const fs = require("fs");
-const mime = require('mime');
-const createError = require('http-errors');
-const os = require('os');
-const path = require('path');
+const path = require("path");
 const readify = require('readify');
-const url = require('url');
 
-const accountManager = require('../accountManager');
 const authorization = require('../authorization');
-const fileManager = require("../fileManager");
-const log = require('../core/log');
-const preferences = require('../preferences');
+const encryptionManager = require('../encryptionManager');
+const log = require("../core/log");
+const preferences = require("../preferences");
+const render = require("../core/render");
+const filesRouter = require('./files');
 
-const router = express.Router();
+let photos = function(getRelativeDirectory, encryption) {
+    if (!getRelativeDirectory) getRelativeDirectory = (req) => path.join(preferences.get("files"), authorization.getID(req), "photos");
 
-router.delete("/*", function(req, res, next) {
-    let filePath = decodeURIComponent(url.parse(req.url).pathname).substring(1);
-    fileManager.deleteFile("photos", filePath, authorization.getID(req), function(result) {
-        if (result) res.sendStatus(200);
-        else res.sendStatus(404);
-    });
-});
+    const router = express.Router();
 
-router.get("/", function(req, res, next) {
-    let filePath = decodeURIComponent(url.parse(req.url).pathname).substring(1);
-    let realFilePath = path.join(preferences.get("files"), authorization.getID(req), "photos", filePath);
-    fs.readdir(realFilePath, function (err, files) {
-        if (err !== null) return next();
-        readify(realFilePath, {sort: 'date', order: 'desc'}).then(function (files) {
-            let fileNames = [];
-            for (let fileData in files.files) {
-                if (!files.files.hasOwnProperty(fileData)) continue;
-                fileData = files.files[fileData];
-                fileNames.push(fileData.name)
+    router.get('/*', function(req, res, next) {
+        const urlPath = getUrlPath(req);
+        const relativeDirectory = getRelativeDirectory(req);
+        const filePath = path.join(relativeDirectory, urlPath);
+        const key = encryption ? req.session.encryptionKey : null;
+        const parameter = Object.keys(req.query)[0];
+
+        fs.stat(filePath, function(err, stats) {
+            if (stats && stats.isDirectory()) {
+                switch(parameter) {
+                    case "download":
+                        next();
+                        break;
+                    default:
+                        readify(filePath, {sort: 'date', order: 'desc'}).then(function (data) {
+                            let fileNames = [];
+
+                            encryptionManager.decryptReadifyNames(data, key, function(data) {
+                                let supportedTypes = ["apng", "bmp", "gif", "ico", "cur", "jpg", "jpeg", "pjpeg", "pjp", "png", "svg", "webp"];
+                                for (let fileData of data.files) { // todo replace for loop
+                                    let name = fileData.name;
+                                    let decrypted_name = fileData.decrypted_name;
+                                    let displayName = decrypted_name ? decrypted_name : name;
+                                    let extension = displayName.split(".").pop().toLowerCase();
+                                    if (!displayName.startsWith(".") && supportedTypes.includes(extension)) {
+                                        fileNames.push(name)
+                                    }
+                                }
+                                render("photos", {photos: fileNames}, req, res, next);
+                            });
+                        }).catch(function (err) {
+                            log.write(err);
+                            next(createError(500))
+                        });
+                        break;
+                }
+            } else {
+                next();
             }
-            let supportedTypes = ["apng", "bmp", "gif", "ico", "cur", "jpg", "jpeg", "pjpeg", "pjp", "png", "svg", "webp"];
-            let photos = fileNames.filter(function(file) {
-                let extension = file.split(".").pop().toLowerCase();
-                return !file.startsWith(".") && supportedTypes.includes(extension);
-            });
-            accountManager.getInformation("username", "id", authorization.getID(req), function (username) {
-                res.render('photos', {username: username, photos: photos});
-            });
         });
 
-    })
-
-});
-
-router.get("/*", function(req, res, next) {
-    let filePath = decodeURIComponent(url.parse(req.url).pathname).substring(1);
-    let realFilePath = path.join(preferences.get("files"), authorization.getID(req), "photos", filePath);
-    let urlFilePath = path.join(req.baseUrl, filePath);
-
-    const parameter = Object.keys(req.query)[0];
-
-    const key = req.session.encryptionKey;
-    const iv = req.session.encryptionIV;
-
-    fs.stat(realFilePath, function(err, stats) {
-        if (err !== null) return next();
-        if (stats.isDirectory()) {
-            next(createError(404));
-        } else {
-            switch(parameter) {
-                case "download":
-                    fileManager.readFile(realFilePath, key, iv, function(contentStream) {
-                        res.writeHead(200, {"Content-Type": "application/octet-stream", "Content-Disposition" : "attachment"});
-                        contentStream.pipe(res);
-                    });
-                    break;
-                case "view":
-                    accountManager.getInformation("username", "id", authorization.getID(req), function (username) {
-                        res.render('fileViewer', {
-                            username: username,
-                            hostname: os.hostname()
-                        });
-                    });
-                    break;
-                default:
-                    fileManager.readFile(realFilePath, key, iv, function(contentStream) {
-                        res.writeHead(200, {"Content-Disposition" : "inline", "Content-Type": mime.getType(realFilePath)});
-                        contentStream.pipe(res);
-                    });
-                    break;
-            }
-        }
-    });
-});
-
-router.post("/", function (req, res, next) {
-    let filePath = decodeURIComponent(url.parse(req.url).pathname).substring(1);
-    let realFilePath = path.join(preferences.get("files"), authorization.getID(req), "photos", filePath);
-
-    const parameter = Object.keys(req.query)[0];
-
-    const key = req.session.encryptionKey;
-    const iv = req.session.encryptionIV;
-
-    fs.stat(realFilePath, function(err, stats) {
-        if (err !== null && next !== undefined) return next();
-        if (parameter === "upload") {
-            if (stats.isDirectory()) {
-                fileManager.processUpload(realFilePath, key, iv)(req, res, next);
-            }
-        }
     });
 
+    router.use(filesRouter(getRelativeDirectory, encryption));
 
-});
+    function getUrlPath(req) {
+        return decodeURIComponent(req.path).substring(1);
+    }
 
-module.exports = router;
+    return router;
+}
+
+
+module.exports = photos;

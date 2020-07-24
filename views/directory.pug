@@ -3,18 +3,10 @@ extends layout
 block header
     link(rel='stylesheet', type='text/css', href='/stylesheets/directory.css')
     script.
-        function b64DecodeUnicode(str) {
-            // Going backwards: from bytestream, to percent-encoding, to original string.
-            return decodeURIComponent(atob(str).split('').map(function (c) {
-                return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
-            }).join(''));
-        }
-        let folderContents = JSON.parse(b64DecodeUnicode("#{directory.files}"));
-        let decryptedFileNames;
-        if ("#{directory.decryptedFileNames}" !== "") {
-            decryptedFileNames = JSON.parse(b64DecodeUnicode("#{directory.decryptedFileNames}"));
-        }
-
+        let folderContents = !{JSON.stringify(files)};
+        let path = "#{path}";
+        let path_decrypted = "#{path_decrypted}";
+        let baseUrl = "#{baseUrl}";
     script(type='text/javascript', src= "/javascripts/directory.js")
 
 

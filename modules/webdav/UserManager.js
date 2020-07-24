@@ -49,13 +49,11 @@ var UserManager = /** @class */ (function () {
                 switch (result) {
                     case authorization.LOGIN.SUCCESS:
                         if (user.key === undefined || user.iv === undefined)  {
-                            encryptionManager.decryptEncryptionKey(user.uid, password, function(key, iv) {
+                            encryptionManager.decryptEncryptionKey(user.uid, password, function(key) {
                                 if (key !== false) {
                                     user.key = key;
-                                    user.iv = iv;
                                 } else {
                                     user.key = null;
-                                    user.iv = null;
                                     callback(null, user);
                                 }
 
