@@ -184,7 +184,9 @@ function verifyToken(rawToken, req){
         return jwt.verify(rawToken, secretKey);
     } catch (err) {
         if (req) {
-            firewall.blacklist.add(req.ip, 10 * 60 * 1000)
+            if (!(err instanceof jwt.TokenExpiredError || err instanceof jwt.NotBeforeError)) {
+                firewall.blacklist.add(req.ip, 10 * 60 * 1000)
+            }
             log.writeServer(req, err);
         }
         else log.write(err);

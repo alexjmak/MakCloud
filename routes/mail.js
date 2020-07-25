@@ -13,18 +13,19 @@ const authorization = require('../authorization');
 const fileManager = require("../fileManager");
 const log = require('../core/log');
 const preferences = require('../preferences');
+const render = require('../core/render');
 
 const router = express.Router();
 
 router.get("/", function(req, res, next) {
     accountManager.getInformation("username", "id", authorization.getID(req), function (username) {
-        res.render('mail', {hostname: os.hostname(), username: username});
+        render('mail', null, req, res, next);
     });
 });
 
 router.get("/trash", function(req, res, next) {
     accountManager.getInformation("username", "id", authorization.getID(req), function (username) {
-        res.render('mail', {hostname: os.hostname(), username: username});
+        render('mail', null, req, res, next);
     });
 });
 

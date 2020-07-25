@@ -11,7 +11,7 @@ $(document).ready(function() {
         folderName = baseUrl.charAt(1).toUpperCase() + baseUrl.substring(2);
     } else folderName = getPathDisplayName(filesPathSplit.length - 1);
 
-    let currentPath = "/" + baseUrl;
+    let currentPath = baseUrl;
 
     $(".mdc-drawer__title").text(folderName);
 
@@ -21,12 +21,12 @@ $(document).ready(function() {
         $("#back").hide();
     }
 
-
     if (filesPathSplit.length > 3) {
         $("#navigation-bar").append("<td><div style='margin-top: 10px' class=\"navigation-arrow material-icons\">chevron_right</div></td>");
         $("#navigation-bar").append("<td><button class='mdc-menu-surface--anchor' id='path-overflow-button' style='font-size: 15px; margin-top: 7px; margin-left: 5px; border: none; outline: none; background-color: transparent'><h4>...</h4><div id='path-overflow-menu' class=\"mdc-menu mdc-menu-surface\"> <ul id='path-overflow-list' class=\"mdc-list\" role=\"menu\" aria-hidden=\"true\" aria-orientation=\"vertical\" tabindex=\"-1\"> </ul> </div></button></td>");
         const pathOverflowMenu = new mdc.menu.MDCMenu(document.querySelector('#path-overflow-menu'));
         let currentPathOriginal = currentPath;
+
         pathOverflowMenu.listen("MDCMenu:selected", function() {
             let currentPathCopy = currentPathOriginal;
             for (let i = 0; i <= event.detail.index; i++) {
@@ -159,11 +159,11 @@ $(document).ready(function() {
     $("#download").click(function () {
         let fileId = $(selectedItem).attr("name");
         let fileLink = files[fileId].name;
-        window.open([location.pathname, fileLink].join("/") + "?download", "_blank");
+        window.location.href = [location.pathname, fileLink].join("/") + "?download";
     });
 
     $("#download-current-dir").click(function () {
-        window.open(location.pathname + "?download", "_blank");
+        window.location.href = location.pathname + "?download";
     });
 
     $("#delete").click(function () {

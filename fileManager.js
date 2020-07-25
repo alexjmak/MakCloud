@@ -52,12 +52,16 @@ let downloadFile = function(filePath, key, req, res, next) {
     });
 }
 
-let downloadFolder = function(directory, name, key, req, res, next) {
+let downloadFolder = function(directory, key, req, res, next) {
     createArchive(directory, key, function(contentStream) {
-        if (!name) name = "download-" + (Date.now() / 1000);
-        let fileName = path.basename(name + ".zip");
-        res.writeHead(200, {"Content-Type": "application/octet-stream", "Content-Disposition" : "attachment; filename=" + fileName});
-        contentStream.pipe(res);
+        const encryptionManager = require("./encryptionManager");
+        encryptionManager.decryptFileName(directory, key, function(decryptedFilePath) {
+            if (!decryptedFilePath) decryptedFilePath = directory;
+            let fileName = `${path.basename(decryptedFilePath)}-${Math.floor(Date.now() / 1000)}.zip`;
+            res.writeHead(200, {"Content-Type": "application/octet-stream", "Content-Disposition" : `attachment; filename="${encodeURIComponent(path.basename(fileName))}"`});
+            contentStream.pipe(res);
+        });
+
     });
 }
 
@@ -167,11 +171,13 @@ let readFile = function(filePath, key, next) {
                 encryptionManager.isEncrypted(fs.createReadStream(filePath, {start: 32}), key, contentIV, function(encrypted) {
                     if (encrypted) {
                         encryptionManager.decryptStream(fs.createReadStream(filePath, {start: 32}), key, contentIV, function(decryptedStream) {
-                            next(decryptedStream, decryptedFilePath);
+                            if (next) next(decryptedStream, decryptedFilePath, encrypted);
                         });
                     } else {
                         log.write("Sending raw file...");
-                        fileManager.readFile(filePath, next);
+                        fileManager.readFile(filePath, function(decryptedStream) {
+                            if (next) next(decryptedStream, decryptedFilePath, encrypted);
+                        });
                     }
                 })
             })
@@ -229,7 +235,10 @@ let writeFile = function(filePath, contentStream, key, next) {
                 } else {
                     fs.open(encryptedFilePath, 'a', function(err, fd) {
                         if (err || !fd) encryptedFilePath = filePath;
-                        else fs.closeSync(fd);
+                        else {
+                            fs.closeSync(fd);
+                            fs.unlinkSync(encryptedFilePath);
+                        }
                         encryptionManager.encryptStream(contentStream, key, contentIV.toString("hex"), function(encryptedStream) {
                             if (encryptedStream) {
                                 fileManager.writeFile(encryptedFilePath, encryptedStream, function(err) {

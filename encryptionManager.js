@@ -33,8 +33,16 @@ function decryptAccount(id, key, next) {
                 if (isDirectory) {
                     fileManager.renameDecryptDirectory(filePath, key, next);
                 } else {
-                    fileManager.readFile(filePath, key, function(readStream, decryptedFilePath) {
+                    fileManager.readFile(filePath, key, function(readStream, decryptedFilePath, encrypted) {
                         if (!decryptedFilePath) decryptedFilePath = filePath;
+                        if (!encrypted) {
+                            if (decryptedFilePath !== filePath) {
+                                fs.rename(filePath, decryptedFilePath, function() {
+                                    next();
+                                })
+                            } else next();
+                            return;
+                        }
                         fileManager.writeFile(decryptedFilePath, readStream, null, function() {
                             if (decryptedFilePath !== filePath) {
                                 fs.unlink(filePath, function() {

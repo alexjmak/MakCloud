@@ -5,11 +5,90 @@ const os = require('os');
 
 const accountManager = require('../accountManager');
 const authorization = require('../authorization');
-const render = require('../core/render');
-const accounts = require("../core/routes/accounts");
+const render = require('../render');
 
 const router = express.Router();
 
+router.delete('/delete', function(req, res, next) {
+    let id = req.body.id;
+
+    if (!hasFields(res, id)) return;
+
+    accountManager.getInformation("username", "id", id, function(username) {
+        if (username === "admin") return res.status(403).send("Cannot delete the admin account");
+        checkPrivilege(req, res, id, function(result) {
+            if (!result) return;
+            accountManager.deleteAccount(id, function(result) {
+                if (result) {
+                    res.send("Deleted account");
+                } else {
+                    res.status(404).send("Account not found");
+                }
+            });
+        });
+    });
+});
+
+router.get('/', function(req, res, next) {
+    render('accounts', {recover: false}, req, res, next);
+
+});
+
+router.get('/list', function(req, res, next) {
+    accountManager.getAccountsSummary(authorization.getID(req), function (result) {
+        res.json(result);
+    });
+});
+
+router.get('/list/hash', function(req, res, next) {
+    accountManager.getAccountsSummary(authorization.getID(req), function (result) {
+        res.send(crypto.createHash('md5').update(JSON.stringify(result)).digest('hex'));
+    })
+});
+
+router.get('/search', function(req, res, next) {
+    let query = req.query.q;
+    if (query === undefined || query === "") {
+        next(createError(400));
+    } else {
+        accountManager.searchAccounts(query, function (result) {
+            res.json(result);
+        });
+    }
+});
+
+router.patch('/enabled', function(req, res, next) {
+    let id = req.body.id;
+    let enabled = req.body.enabled;
+
+    if (!hasFields(res, id, enabled)) return;
+
+    checkPrivilege(req, res, id, function(result) {
+        if (!result) return;
+        if (enabled) {
+            accountManager.enableAccount(id, function (result) {
+                if (result) {
+                    res.send("Enabled account");
+                } else {
+                    res.status(404).send("Account not found");
+                }
+            });
+        } else {
+            if (Number(authorization.getID(req)) === id) {
+                res.status(404).send("Cannot disable your own account");
+                return;
+            }
+            accountManager.disableAccount(id, function (result) {
+                if (result) {
+                    res.send("Disabled account");
+                } else {
+                    res.status(404).send("Account not found");
+                }
+            });
+        }
+
+    });
+});
 
 router.patch('/encrypted', function(req, res, next) {
     let id = req.body.id;
@@ -93,7 +172,44 @@ router.patch('/password', function(req, res, next) {
 
 });
 
+router.patch('/privilege', function(req, res) {
+    let id = req.body.id;
+    let new_privilege = req.body.privilege;
 
+    if (!hasFields(res, id, new_privilege)) return;
+    checkPrivilege(req, res, id, function(result) {
+        if (!result) return;
+        if (new_privilege > 100 || new_privilege.toString().toUpperCase() === "ADMIN") new_privilege = 100;
+        checkChangePrivilege(req, res, new_privilege, function(result) {
+            if (!result) return;
+            accountManager.updatePrivilege(id, new_privilege, function (result) {
+                if (result) {
+                    res.send("Updated account information")
+                } else {
+                    res.status(401).send("Failed to update privilege level");
+                }
+            });
+        });
+
+    });
+});
+
+router.patch('/username', function(req, res) {
+    let id = req.body.id;
+    let new_username = req.body.username;
+
+    if (!hasFields(res, id, new_username)) return;
+    checkPrivilege(req, res, id, function(result) {
+        if (!result) return;
+        accountManager.updateUsername(id, new_username, function (result) {
+            if (result) {
+                res.send("Updated account information")
+            } else {
+                res.status(401).send("Account already exists");
+            }
+        });
+    });
+});
 
 router.put('/new', function(req, res) {
     let username = req.body.username;
@@ -123,7 +239,39 @@ router.put('/new', function(req, res) {
     });
 });
 
-router.use(accounts)
+router.use(function(req, res, next) {
+    let id = authorization.getID(req);
+    accountManager.getInformation("privilege", "id", id, function(privilege) {
+        if (privilege === 100) next();
+        else next(createError(403));
+    });
+});
+
+router.delete('/deleted/delete', function(req, res, next) {
+    let id = req.body.id;
+
+    if (!hasFields(res, id)) return;
+
+    accountManager.deleteDeletedAccount(id, function(result) {
+        if (result) {
+            res.send("Deleted account");
+        } else {
+            res.status(404).send("Account not found");
+        }
+    });
+
+});
+
+router.get('/deleted', function(req, res, next) {
+    render('accounts', {deleted: true}, req, res, next);
+});
+
+router.get('/deleted/list', function(req, res, next) {
+    accountManager.getDeletedAccountsSummary(authorization.getID(req), function (result) {
+        res.json(result);
+    });
+});
+
 
 function checkChangePrivilege(req, res, new_privilege, next) {
     if (isNaN(new_privilege) || new_privilege < 0) {

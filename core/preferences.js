@@ -1,5 +1,6 @@
 const fs = require('fs');
 const log = require('./log');
+const localeManager = require("./localeManager");
 
 const configurationFile = "preferences.json";
 let defaultConfiguration = {"blacklist": true, "whitelist": false};
@@ -33,26 +34,25 @@ function get(property) {
     }
 }
 
-function reload(next) {
-    fs.readFile(configurationFile, function (err, data) {
-        if (err) {
-            fs.writeFileSync(configurationFile, JSON.stringify(defaultConfiguration));
-            return reload();
-        }
-        data = data.toString().trim();
-        log.write(`Reading ${configurationFile}...`);
-        log.write(data)
-        try {
-            configuration = JSON.parse(data);
-            cleanup();
-        } catch(err) {
-            log.write("Read error: " + err);
-            configuration = defaultConfiguration;
-            save();
-        }
-
-        if (next) next();
-    });
+function init() {
+    let data;
+    try {
+        data = fs.readFileSync(configurationFile);
+    } catch {
+        fs.writeFileSync(configurationFile, JSON.stringify(defaultConfiguration));
+        return init();
+    }
+    data = data.toString().trim();
+    log.write(`Reading ${configurationFile}...`);
+    log.write(data)
+    try {
+        configuration = JSON.parse(data);
+        cleanup();
+    } catch(err) {
+        log.write("Read error: " + err);
+        configuration = defaultConfiguration;
+        save();
+    }
 }
 
 function save() {
@@ -65,6 +65,6 @@ function setDefaultConfiguration(configuration) {
 
 module.exports = {
     get: get,
-    reload: reload,
+    init: init,
     setDefaultConfiguration: setDefaultConfiguration
 };

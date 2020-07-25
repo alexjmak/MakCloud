@@ -1,0 +1,86 @@
+body {
+    background-color: #f0f0f0;
+}
+
+#login {
+    width: 725px;
+    position: absolute;
+    left: -37.5%;
+    top: -90px;
+}
+
+.box {
+    background: none;
+    width: 400px;
+    position: fixed;
+    left: 0;
+    right: 0;
+    top: 30%;
+    margin: auto;
+    padding: 15px;
+    display: flex;
+    flex-direction: column;
+    box-sizing: border-box;
+    border-radius: 10px;
+}
+
+#mobile-background {
+    background: white;
+    height: 350px;
+    margin-top: -10px;
+    display: none;
+}
+
+#title {
+    text-align: center;
+    font-size: 2.8rem;
+    z-index: 1;
+    margin-top: 5px;
+    margin-bottom: 5px;
+}
+
+#computername {
+    text-align: center;
+    z-index: 1;
+    margin-top: 7px;
+}
+
+#message {
+    text-align: center;
+    color: red;
+    margin-top: 5px;
+    margin-bottom: 0;
+    z-index: 1;
+}
+
+@media (max-width: 650px) {
+    .box {
+        width: 90%;
+        top: 25%;
+    }
+    #login {
+        display: none;
+    }
+    #mobile-background {
+        width: 92.5%;
+        display: inline;
+    }
+    #title {
+        font-size: 2.125rem;
+        margin-bottom: 0;
+        text-align: left;
+    }
+    #computername {
+        text-align: left;
+    }
+    #message {
+        text-align: left;
+    }
+
+}
+
+@media (max-height: 480px) {
+    .box {
+        top: 20%;
+    }
+}

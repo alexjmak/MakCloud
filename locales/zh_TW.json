@@ -1,0 +1,14 @@
+{
+  "app_name": "麥雲端",
+  "confirm_delete": "您確定要删除{0}嗎?",
+  "confirm_password": "輸入{0}的密碼",
+  "encrypted": "加密",
+  "password_required": "輸入檔案的密碼",
+  "photos": "相片",
+  "public": "共用",
+  "set_public_password": "設定共用密碼",
+  "share": "分享",
+  "share_with": "分享給",
+  "shared_with_me": "與我分享",
+  "shared_with_others": "與其他人分享"
+}

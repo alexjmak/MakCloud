@@ -1,0 +1,14 @@
+{
+  "app_name": "麦云端",
+  "confirm_delete": "您确定要删除{0}吗?",
+  "confirm_password": "输入{0}的密码",
+  "encrypted": "加密",
+  "password_required": "输入档案的密码",
+  "photos": "照片",
+  "public": "共用",
+  "set_public_password": "设定共用密码",
+  "share": "分享",
+  "share_with": "分享给",
+  "shared_with_me": "与我分享",
+  "shared_with_others": "与其他人分享"
+}

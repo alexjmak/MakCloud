@@ -1,6 +1,7 @@
 const database = require("./databaseInit");
 const log = require("./log");
 const os = require('os');
+const render = require('../core/render');
 
 const checkFirewallTable = ["CREATE TABLE IF NOT EXISTS firewall (ip TEXT NOT NULL);",
     "ALTER TABLE firewall ADD COLUMN ip TEXT NOT NULL DEFAULT -1;",
@@ -169,7 +170,7 @@ class blacklist {
                 if (req.url !== "/login" && !req.url.startsWith("/login?redirect=")) {
                     return res.redirect("/logout" + getRedirectUrl(req));
                 }
-                res.render('login', {hostname: os.hostname(), firewall: "blacklisted", firewallEnd: end});
+                render('login', {firewall: "blacklisted", firewallEnd: end}, req, res, next);
             } else {
                 next();
             }
@@ -204,7 +205,7 @@ class whitelist {
                 if (req.url !== "/login" && !req.url.startsWith("/login?redirect=")) {
                     return res.redirect("/logout" + getRedirectUrl(req));
                 }
-                res.render('login', {hostname: os.hostname(), firewall: "not whitelisted"});
+                render('login', {firewall: "not whitelisted"}, req, res, next);
             } else {
                 next();
             }

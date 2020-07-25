@@ -12,34 +12,34 @@ block drawer
     aside.mdc-drawer.mdc-top-app-bar--fixed-adjust
         .mdc-drawer__content
             .mdc-drawer__header
-                h3.mdc-drawer__title Photos
+                h3.mdc-drawer__title= locale.photos
             nav.mdc-list
                 a.mdc-list-item(href='/files')#file-manager
                     i.material-icons.mdc-list-item__graphic(aria-hidden='true') folder
-                    span.mdc-list-item__text File Manager
+                    span.mdc-list-item__text= locale.files
                 a.mdc-list-item.mdc-list-item.mdc-list-item--activated(href='/photos')#photos
                     i.material-icons.mdc-list-item__graphic(aria-hidden='true') perm_media
-                    span.mdc-list-item__text Photos
+                    span.mdc-list-item__text= locale.photos
                 a.mdc-list-item#upload
                     i.material-icons.mdc-list-item__graphic(aria-hidden='true') cloud_upload
-                    span.mdc-list-item__text Upload
+                    span.mdc-list-item__text= locale.upload
                 a.mdc-list-item#download-current-dir
                     i.material-icons.mdc-list-item__graphic(aria-hidden='true') cloud_download
-                    span.mdc-list-item__text Download
+                    span.mdc-list-item__text= locale.download
                 input#uploadButton(hidden type="file" multiple)
                 a.mdc-list-item(href='/shared?me')
                     i.material-icons.mdc-list-item__graphic(aria-hidden='true') person
-                    span.mdc-list-item__text Shared with me
+                    span.mdc-list-item__text= locale.shared_with_me
                 a.mdc-list-item(href='/shared?others')
                     i.material-icons.mdc-list-item__graphic(aria-hidden='true') people
-                    span.mdc-list-item__text Shared with others
-                a.mdc-list-item(href='/files/.recycle')
+                    span.mdc-list-item__text= locale.shared_with_others
+                a.mdc-list-item(href='/photos/.recycle')
                     i.material-icons.mdc-list-item__graphic(aria-hidden='true') delete
-                    span.mdc-list-item__text Trash
+                    span.mdc-list-item__text= locale.trash
                 .mdc-list-divider
                 a.mdc-list-item(href='/logout')#logout
                     i.material-icons.mdc-list-item__graphic(aria-hidden='true') launch
-                    span.mdc-list-item__text Logout
+                    span.mdc-list-item__text= locale.logout
 
 block content
     #content

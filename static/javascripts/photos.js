@@ -8,6 +8,6 @@ $(document).ready(function() {
     }
 
     $("#download-current-dir").click(function () {
-        window.open(location.pathname + "?download", "_blank");
+        window.location.href = location.pathname + "?download";
     });
 });

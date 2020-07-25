@@ -1,0 +1,15 @@
+{
+  "app_name": "MakCloud",
+  "confirm_delete": "Are you sure you want to delete {0}?",
+  "confirm_password": "Confirm current password for {0}",
+  "encrypted": "Encrypted",
+  "password_required": "Password required",
+  "photos": "Photos",
+  "public": "Public",
+  "save_to_my_makcloud": "Save to my MakCloud",
+  "set_public_password": "Set public password",
+  "share": "Share",
+  "share_with": "Share with",
+  "shared_with_me": "Shared with me",
+  "shared_with_others": "Shared with others"
+}

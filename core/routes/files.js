@@ -9,7 +9,6 @@ const url = require('url');
 const authorization = require('../authorization');
 const fileManager = require('../fileManager');
 const preferences = require("../preferences");
-const sharingManager = require('../sharingManager');
 
 let files = function(getRelativeDirectory, encryption) {
     if (!getRelativeDirectory) getRelativeDirectory = (req) => path.join(preferences.get("files"), authorization.getID(req), "files");
@@ -39,7 +38,6 @@ let files = function(getRelativeDirectory, encryption) {
         const urlPath = getUrlPath(req);
         const relativeDirectory = getRelativeDirectory(req);
         const filePath = path.join(relativeDirectory, urlPath);
-        const key = encryption ? req.session.encryptionKey : null;
         const parameter = Object.keys(req.query)[0];
 
         fs.stat(filePath, function(err, stats) {
@@ -47,35 +45,22 @@ let files = function(getRelativeDirectory, encryption) {
             if (stats.isDirectory()) {
                 switch(parameter) {
                     case "download":
-                        fileManager.downloadFolder(filePath, key, req, res, next)
+                        fileManager.downloadFolder(filePath, req, res, next)
                         break;
-                    case "sharing":
-                    //TODO folder sharing
                     default:
-                        fileManager.renderDirectory(filePath, relativeDirectory, key, req, res, next);
+                        fileManager.renderDirectory(filePath, relativeDirectory, req, res, next);
                         break;
                 }
             } else {
                 switch(parameter) {
                     case "download":
-                        fileManager.downloadFile(filePath, key, req, res, next);
-                        break;
-                    case "sharing":
-                        let filePathSplit = filePath.split("/");
-                        let fileName = filePathSplit.pop();
-                        let parent = filePathSplit.join("/");
-                        if (!parent.startsWith("/")) parent = "/" + parent;
-                        let owner = authorization.getID(req);
-
-                        sharingManager.getLinkSummary(parent, fileName, owner, function(result) {
-                            res.json(result);
-                        });
+                        fileManager.downloadFile(filePath, req, res, next);
                         break;
                     case "view":
-                        fileManager.renderFile(filePath, key, req, res, next);
+                        fileManager.renderFile(filePath, req, res, next);
                         break;
                     default:
-                        fileManager.inlineFile(filePath, key, req, res, next);
+                        fileManager.inlineFile(filePath, req, res, next);
                         break;
                 }
             }
@@ -86,19 +71,14 @@ let files = function(getRelativeDirectory, encryption) {
         const urlPath = getUrlPath(req);
         const relativeDirectory = getRelativeDirectory(req);
         const filePath = path.join(relativeDirectory, urlPath);
-        const key = encryption ? req.session.encryptionKey : null;
         const parameter = Object.keys(req.query)[0];
 
         fs.stat(filePath, function(err, stats) {
             if (err !== null && next !== undefined) return res.status(404);
             if (parameter === "upload") {
                 if (stats.isDirectory()) {
-                    fileManager.processUpload(filePath, key)(req, res, next);
+                    fileManager.processUpload(filePath)(req, res, next);
                 }
-            }
-
-            if (parameter === "sharing") {
-                sharingManager.handle(req, res, next);
             }
         });
     });
@@ -110,12 +90,10 @@ let files = function(getRelativeDirectory, encryption) {
         let realFilePath = path.join(preferences.get("files"), owner, "files", filePath);
         let fileContents = req.files.data.data;
 
-        const key = owner !== "public" ? req.session.encryptionKey : undefined;
-
         if (fileContents) {
             let contents = new stream.PassThrough();
             contents.end(fileContents);
-            fileManager.writeFile(realFilePath, contents, key, function(err) {
+            fileManager.writeFile(realFilePath, contents, function(err) {
                 if (err) res.status(500).send("Save failed");
                 else res.send("Saved file");
             })

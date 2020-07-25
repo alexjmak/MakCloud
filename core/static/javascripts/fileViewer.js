@@ -124,7 +124,7 @@ var download = function() {
             if (result) download();
         });
     } else {
-        window.open(filePath + "?download", "_blank");
+        window.location.href = filePath + "?download";
     }
 };
 

@@ -11,9 +11,9 @@ const unzipper = require('unzipper');
 
 const accountManager = require("../accountManager");
 const authorization = require("../authorization");
-const log = require('../core/log');
-const terminal = require('../core/terminal');
-const render = require('../core/render');
+const log = require('../log');
+const terminal = require('../terminal');
+const render = require('../render');
 
 const router = express.Router();
 

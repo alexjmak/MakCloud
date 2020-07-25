@@ -13,9 +13,11 @@ const serverID = require("./core/serverID");
 const authorization = require('./authorization');
 const accountManager = require('./accountManager');
 const firewall = require('./core/firewall');
+const localeManager = require('./core/localeManager');
 const webdav = require('./modules/webdav/webdav');
 const log = require("./core/log");
 const preferences = require("./preferences");
+const render = require('./core/render');
 
 const app = express();
 
@@ -30,15 +32,15 @@ const filesRouter = require('./routes/files');
 const publicRouter = require('./routes/public');
 const photosRouter = require('./routes/photos');
 const mailRouter = require('./routes/mail');
-const firewallRouter = require('./routes/firewall');
+const firewallRouter = require('./core/routes/firewall');
 const sharedRouter = require('./routes/shared');
 const indexRouter = require('./routes/index');
-const logRouter = require('./routes/log');
+const logRouter = require('./core/routes/log');
 const logsRouter = require('./routes/logs');
 const loginRouter = require('./routes/login');
 const logoutRouter = require('./routes/logout');
 const updateRouter = require('./routes/update');
-const errorRouter = require('./routes/error');
+const errorRouter = require('./core/routes/error');
 
 let serverInstances = [];
 
@@ -78,8 +80,10 @@ app.use(function(req, res, next) {
     next();
 });
 
-app.use(express.static(path.join(__dirname, "static")));
+app.use(express.static("./static"));
+app.use(express.static("./core/static"));
 
+app.use(localeManager.getHandler());
 app.use('/logout', logoutRouter);
 if (preferences.get("blacklist")) app.use(firewall.blacklist.enforce);
 if (preferences.get("whitelist")) app.use(firewall.whitelist.enforce);
@@ -108,12 +112,10 @@ app.use(function(err, req, res, next) {
     log.writeServer(req, req.method, req.url + " (" + (err.status || 500) + " " + err.message + ")");
     res.status(err.status || 500);
     if (res.headersSent) return;
-    accountManager.getInformation("username", "id", authorization.getID(req), function(username) {
-        res.render('error', {message: err.message, status: err.status, username: username});
-    });
+    render('error', {message: err.message, status: err.status}, req, res, next);
 });
 
-app.set('views', path.join(__dirname, 'views'));
+app.set('views', ".");
 app.set('view engine', 'pug');
 
 

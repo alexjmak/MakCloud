@@ -3,9 +3,10 @@ const crypto = require('crypto');
 const express = require('express');
 const os = require('os');
 
-const firewall = require('../core/firewall');
-const accountManager = require('../accountManager');
-const authorization = require('../authorization');
+const firewall = require('../firewall');
+const accountManager = require('../../accountManager');
+const authorization = require('../../authorization');
+const render = require('../render');
 
 const router = express.Router();
 
@@ -31,10 +32,8 @@ router.delete('/delete', function(req, res, next) {
     }
 });
 
-router.get('/blacklist', function(req, res) {
-    accountManager.getInformation("username", "id", authorization.getID(req), function(username) {
-        res.render('firewall', {username: username, list: 0});
-    });
+router.get('/blacklist', function(req, res, next) {
+    render('firewall', {list: 0}, req, res, next);
 });
 
 router.get('/blacklist/list', function(req, res) {
@@ -47,10 +46,8 @@ router.get('/blacklist/list', function(req, res) {
     });
 });
 
-router.get('/whitelist', function(req, res) {
-    accountManager.getInformation("username", "id", authorization.getID(req), function(username) {
-        res.render('firewall', {username: username, list: 1});
-    });
+router.get('/whitelist', function(req, res, next) {
+    render('firewall', {list: 1}, req, res, next);
 });
 
 

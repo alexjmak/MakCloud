@@ -3,7 +3,7 @@ const os = require("os");
 
 const authorization = require('../authorization');
 const accountManager = require('../accountManager');
-const render = require('../core/render');
+const render = require('../render');
 
 const router = express.Router();
 

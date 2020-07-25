@@ -38,19 +38,30 @@ let deleteFile = function(filePath, relativeDirectory, next) {
 
     fs.stat(filePath, function(err, stats) {
         if (!err) {
-            mkdirp(path.dirname(deletedPath)).then(function() {
-                fs.rename(filePath, deletedPath, function (err) {
+            if (filePath.startsWith(recycleDirectory)) {
+                fs.unlink(filePath, function(err) {
                     if (err) {
                         log.write(err);
                         if (next !== undefined) next(false);
                     } else {
                         if (next !== undefined) next(true);
                     }
+                })
+            } else {
+                mkdirp(path.dirname(deletedPath)).then(function() {
+                    fs.rename(filePath, deletedPath, function (err) {
+                        if (err) {
+                            log.write(err);
+                            if (next !== undefined) next(false);
+                        } else {
+                            if (next !== undefined) next(true);
+                        }
+                    });
+                }).catch(function(err) {
+                    log.write(err);
+                    if (next) next(false);
                 });
-            }).catch(function(err) {
-                log.write(err);
-                if (next) next(false);
-            });
+            }
         } else {
             log.write(err);
             if (next) next(false);
@@ -177,10 +188,23 @@ let writeFile = function(filePath, contentStream, next, prependBuffer) {
         });
 
         writeStream.on("close", function () {
+            console.log(err);
             mkdirp(path.dirname(filePath)).then(function() {
-                fs.rename(tmpFilePath, filePath, function(err) {
-                    if (next) next(err);
-                });
+                fs.stat(filePath, function(err, stat) {
+
+                    if (err) {
+                        fs.rename(tmpFilePath, filePath, function(err) {
+                            if (next) next(err);
+                        });
+                    } else {
+                        findSimilarName(filePath).then(function(newFilePath) {
+                            fs.rename(tmpFilePath, newFilePath, function(err) {
+                                if (next) next(err);
+                            });
+                        })
+                    }
+                })
+
             })
 
         });
@@ -188,6 +212,26 @@ let writeFile = function(filePath, contentStream, next, prependBuffer) {
     })
 
 };
+
+let findSimilarName = function(filePath) {
+    return new Promise((resolve, reject) => {
+        let findSimilarNameUtil = function(counter) {
+            let parent = path.dirname(filePath);
+            let fileNameSplit = path.basename(filePath).split(".");
+            let extension = fileNameSplit.pop();
+            let fileName = fileNameSplit.join(".");
+            let newFilePath = path.join(parent, `${fileName}-${counter}.${extension}`);
+            fs.stat(newFilePath, function(err, stats) {
+                if (err) {
+                    resolve(newFilePath);
+                } else {
+                    findSimilarNameUtil(counter + 1)
+                }
+            })
+        }
+        findSimilarNameUtil(2);
+    })
+}
 
 let newTmpFile = function(next) {
     let tmpdir = path.join(preferences.get("files"), "tmp")

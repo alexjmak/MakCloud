@@ -8,6 +8,7 @@ const accountManager = require('../accountManager');
 const authorization = require('../authorization');
 const fileManager = require('../fileManager');
 const sharingManager = require('../sharingManager');
+const render = require("../core/render");
 
 const router = express.Router();
 
@@ -45,7 +46,7 @@ router.get('/*', function(req, res, next) {
                                 });
                                 break;
                             case "view":
-                                res.render('fileViewer', {username: username, file: {path: fileName}})
+                                render('fileViewer', {file: {path: fileName}}, req, res, next)
                                 break;
                             default:
                                 sharingManager.doAuthorization(key, fileName, req, res, function (token) {

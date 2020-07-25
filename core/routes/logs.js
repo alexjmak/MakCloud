@@ -1,6 +1,6 @@
 const filesRouter = require("./files");
-const accountManager = require("../core/accountManager");
-const authorization = require("../core/authorization");
+const accountManager = require("../accountManager");
+const authorization = require("../authorization");
 const express = require("express");
 
 const router = express.Router();

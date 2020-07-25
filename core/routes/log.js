@@ -4,7 +4,8 @@ const os = require("os");
 
 const accountManager = require("../accountManager");
 const authorization = require("../authorization");
-const log = require("../core/log");
+const log = require("../log");
+const render = require('../render');
 
 const router = express.Router();
 
@@ -17,10 +18,7 @@ router.use(function(req, res, next) {
 });
 
 router.get('/', function(req, res, next) {
-    accountManager.getInformation("username", "id", authorization.getID(req), function(username) {
-        res.render('log', {username: username, hostname: os.hostname()});
-    });
-
+    render('log', null, req, res, next);
 });
 
 router.get('/raw', function(req, res, next) {
