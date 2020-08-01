@@ -12,12 +12,16 @@ function checkEncryptionSession(req, next) {
         let cookieSession = req.cookies.encryptionSession;
         cookieSession = cookieSession.substring(cookieSession.indexOf(":") + 1, cookieSession.indexOf("."));
         if (cookieSession !== req.sessionID) {
-            if (next !== undefined) next(false);
-            return;
+            if (next) next(false);
+        } else {
+            if (next) next(true);
         }
+    } else {
+        const authorization = require("./authorization");
+        accountManager.getInformation("encryptKey", "id", authorization.getID(req), function(encryptedKey) {
+            if (next) next(!encryptedKey);
+        });
     }
-
-    if (next !== undefined) next(true);
 }
 
 function decryptAccount(id, key, next) {

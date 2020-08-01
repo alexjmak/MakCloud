@@ -56,7 +56,7 @@ function checkPayload(token, payload) {
 }
 
 function createJwtToken(payload, next, maxAge) {
-    if (!maxAge) maxAge = 7 * 24 * 60 * 60 * 1000;
+    if (!maxAge) maxAge = 3 * 24 * 60 * 60 * 1000;
     if (payload.hasOwnProperty("iss")) delete payload.iss;
 
     payload = Object.assign({}, payload, {iss: serverID});
@@ -64,7 +64,7 @@ function createJwtToken(payload, next, maxAge) {
 }
 
 function createLoginTokenCookie(res, id, next, maxAge) {
-    if (!maxAge) maxAge = 7 * 24 * 60 * 60 * 1000;
+    if (!maxAge) maxAge = 3 * 24 * 60 * 60 * 1000;
     createJwtToken({sub: "loginToken", aud: id}, function(err, token) {
         if (err) {
             if (next) next(false);
@@ -73,16 +73,16 @@ function createLoginTokenCookie(res, id, next, maxAge) {
         res.cookie("loginToken", token, {maxAge: maxAge, path: "/", secure: true, sameSite: "strict"});
         next(true);
     }, maxAge);
-
 }
 
 function doAuthorization(req, res, next) {
     let redirect = getRedirectUrl(req);
-
-    function checkAccount() {
+    function callback(loginToken, next) {
         accountManager.idExists(getID(req), true, function(exists) {
             if (exists) {
-                if (next) next(true);
+                renewLoginToken(loginToken, req, res, function() {
+                    if (next) next(true);
+                });
             } else {
                 res.redirect("/logout" + redirect);
                 if (next) next(false);
@@ -93,7 +93,7 @@ function doAuthorization(req, res, next) {
         if (req.headers.authorization.startsWith("Bearer ")) {
             let loginToken = verifyToken(req.headers.authorization.substring("Bearer ".length), req);
             if (loginToken !== false && checkPayload(loginToken, {sub: "loginToken"})) {
-                checkAccount();
+                callback(loginToken, next);
                 return;
             }
         }
@@ -102,7 +102,7 @@ function doAuthorization(req, res, next) {
     } else if (req.cookies.loginToken !== undefined) {
         let loginToken = verifyToken(req.cookies.loginToken, req);
         if (loginToken !== false && checkPayload(loginToken, {sub: "loginToken"})) {
-            checkAccount();
+            callback(loginToken, next);
             return;
         }
         res.redirect("/logout" + redirect);
@@ -138,8 +138,8 @@ function login(req, res, next) {
         const b64auth = (req.headers.authorization || '').split(' ')[1] || '';
         const strauth = new Buffer.from(b64auth, 'base64').toString();
         const splitIndex = strauth.indexOf(':');
-        const username = strauth.substring(0, splitIndex);
-        const password = strauth.substring(splitIndex + 1);
+        const username = decodeURIComponent(strauth.substring(0, splitIndex));
+        const password = decodeURIComponent(strauth.substring(splitIndex + 1));
 
         checkCredentials(username, password, function(result, id) {
             switch(result) {
@@ -175,6 +175,14 @@ function login(req, res, next) {
     } else {
         res.redirect("/login");
         if (next) next(false);
+    }
+}
+
+function renewLoginToken(loginToken, req, res, next) {
+    if ((loginToken.exp * 1000 - Date.now()) < 1 * 24 * 60 * 60 * 1000) {
+        createLoginTokenCookie(res, getID(req), next);
+    } else {
+        next();
     }
 }
 

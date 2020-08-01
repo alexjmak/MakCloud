@@ -73,7 +73,7 @@ $(document).ready(function() {
 
 
 
-        getRequest("/login/token", login, "Basic " + btoa(usernameValue + ":" + passwordValue));
+        getRequest("/login/token", login, "Basic " + btoa(encodeURIComponent(usernameValue) + ":" + encodeURIComponent(passwordValue)));
     };
 
 
