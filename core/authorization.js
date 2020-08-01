@@ -7,10 +7,10 @@ const path = require("path");
 
 const accountManager = require("./accountManager")
 const serverID = require("./serverID");
+const keys = require("./keys");
 const log = require("./log");
 
-const secretKeyFilePath = path.join(__dirname, "..", "keys", "jwt", "secret.key");
-const secretKey = fs.readFileSync(secretKeyFilePath, 'utf8');
+const secretKey = keys.jwt.secret;
 
 const LOGIN = {"SUCCESS": 0, "FAIL": 1, "DISABLED": 2};
 

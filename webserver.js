@@ -15,6 +15,7 @@ const accountManager = require('./accountManager');
 const firewall = require('./core/firewall');
 const localeManager = require('./core/localeManager');
 const webdav = require('./modules/webdav/webdav');
+const keys = require("./core/keys");
 const log = require("./core/log");
 const preferences = require("./preferences");
 const render = require('./core/render');
@@ -120,10 +121,7 @@ app.set('view engine', 'pug');
 
 
 function start() {
-    let httpsServer = https.createServer({
-        key: fs.readFileSync("./keys/https/key.key"),
-        cert: fs.readFileSync("./keys/https/cert.crt")
-    }, app);
+    let httpsServer = https.createServer(keys.https, app);
 
     httpsServer.listen(443);
 
