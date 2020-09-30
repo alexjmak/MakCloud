@@ -1,81 +1,94 @@
-const express = require('express');
-const fs = require('fs');
-const mime = require('mime');
 const createError = require('http-errors');
-const url = require('url');
+const express = require('express');
+const fs = require("fs");
+const path = require("path");
+const readify = require('readify');
 
-const accountManager = require('../accountManager');
 const authorization = require('../authorization');
-const fileManager = require('../fileManager');
 const sharingManager = require('../sharingManager');
+const log = require("../core/log");
+const preferences = require("../preferences");
 const render = require("../core/render");
+const filesRouter = require('./files');
 
-const router = express.Router();
+let shared = function() {
+    let getRelativeDirectory = (req) => {
+        return new Promise((resolve, reject) => {
+            const key = getKey(req);
+            sharingManager.getLinkInformation("filePath", "key", key, function(filePath) {
+                if (filePath) {
+                    resolve(filePath);
+                } else {
+                    reject(null);
+                }
+            })
+        })
+    }
+    let getFilePath = (req, relativeDirectory) => {
+        let urlPathSplit = req.path.split("/");
+        urlPathSplit.splice(0, 2)
+        return path.join(relativeDirectory, urlPathSplit.join("/"));
+    }
+    let encryption = false
 
-router.get('/*', function(req, res, next) {
-    let link = decodeURIComponent(url.parse(req.url).pathname).substring(1);
-    let key = link.substring(0, link.indexOf("/"));
-    let fileName = link.substring(link.indexOf("/") + 1, link.length);
+    function getKey(req) {
+        return req.path.split("/")[1];
+    }
 
-    const parameter = Object.keys(req.query)[0];
+    const router = express.Router();
 
-    sharingManager.linkCheck(key, fileName, authorization.getID(req),function(exists) {
-        if (exists === true) {
-            sharingManager.getRealFilePathLink(key, fileName, function (realFilePath) {
-                accountManager.getInformation("username", "id", authorization.getID(req), function (username) {
-                    fs.stat(realFilePath, function (err, stats) {
-                        if (err || !stats) return next(createError(404));
-                        switch (parameter) {
-                            case "download":
-                                sharingManager.doAuthorization(key, fileName, req, res, function (token) {
-                                    if (!token) {
-                                        if (req.method === "HEAD") next(createError(403));
-                                        else res.redirect(req.originalUrl + "?view");
-                                    } else {
-                                        if (req.method === "HEAD") return res.sendStatus(200);
-                                        else {
-                                            fileManager.readFile(realFilePath, null, null, function (contentStream) {
-                                                res.writeHead(200, {
-                                                    "Content-Type": "application/octet-stream",
-                                                    "Content-Disposition": "attachment"
-                                                });
-                                                contentStream.pipe(res);
-                                            });
-                                        }
-                                    }
-                                });
-                                break;
-                            case "view":
-                                render('fileViewer', {file: {path: fileName}}, req, res, next)
-                                break;
-                            default:
-                                sharingManager.doAuthorization(key, fileName, req, res, function (token) {
-                                    if (!token) {
-                                        if (req.method === "HEAD") next(createError(403));
-                                        else res.redirect(fileName + "?view");
-                                    } else {
-                                        if (req.method === "HEAD") return res.sendStatus(200);
-                                        else {
-                                            fileManager.readFile(realFilePath, null, null, function(contentStream) {
-                                                res.writeHead(200, {
-                                                    "Content-Disposition": "inline",
-                                                    "Content-Type": mime.getType(realFilePath)
-                                                });
-                                                contentStream.pipe(res);
-                                            });
-                                        }
-                                    }
-                                });
-                                break;
-                        }
-                    });
-                });
-            });
-        } else {
-            if (exists === false) res.redirect("/login?redirect=shared/" + key + "/" + fileName);
-            else next(createError(exists));
-        }
+    router.delete("/*", function(req, res, next) {
+        res.sendStatus(401);
     });
-});
 
-module.exports = router;
+    router.use(function(req, res, next) {
+        const key = getKey(req);
+        const parameter = Object.keys(req.query)[0];
+
+        sharingManager.linkCheck(key, authorization.getID(req), function(exists) {
+            if (exists === true) {
+                switch (parameter) {
+                    case "view":
+                        next();
+                        break;
+                    case "download":
+                    default:
+                        sharingManager.doAuthorization(key, req, res, function (token) {
+                            if (!token) {
+                                if (req.method === "HEAD") next(createError(403));
+                                else res.redirect(req.baseUrl + req.path + "?view");
+                            } else {
+                                if (req.method === "HEAD") return res.sendStatus(200);
+                                else {
+                                    next();
+                                }
+                            }
+                        });
+                        break;
+                }
+            } else if (exists === false) {
+                res.redirect("/login" + authorization.getRedirectUrl(req));
+            } else {
+                next(createError(exists));
+            }
+        });
+
+    })
+
+
+    router.use(function(req, res, next) {
+        getRelativeDirectory(req)
+            .then((relativeDirectory) => {
+                const filePath = getFilePath(req, relativeDirectory);
+                filesRouter(() => relativeDirectory, () => filePath, encryption)(req, res, next)
+            })
+            .catch(() => {
+                next(createError(404));
+            });
+    });
+
+    return router;
+}
+
+
+module.exports = shared;

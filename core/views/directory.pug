@@ -4,7 +4,7 @@ block header
     link(rel='stylesheet', type='text/css', href='/stylesheets/directory.css')
     script.
         let folderContents = !{JSON.stringify(files)};
-        let path = "#{path}";
+        let path = !{JSON.stringify(path)};
         let path_decrypted = "#{path_decrypted}";
         let baseUrl = "#{baseUrl}";
     script(type='text/javascript', src= "/javascripts/directory.js")
@@ -19,9 +19,6 @@ block drawer
                 a.mdc-list-item.mdc-list-item--activated(href='/files')#file-manager
                     i.material-icons.mdc-list-item__graphic(aria-hidden='true') folder
                     span.mdc-list-item__text= locale.files
-                a.mdc-list-item.mdc-list-item(href='/photos')#photos
-                    i.material-icons.mdc-list-item__graphic(aria-hidden='true') perm_media
-                    span.mdc-list-item__text= locale.photos
                 a.mdc-list-item#upload
                     i.material-icons.mdc-list-item__graphic(aria-hidden='true') cloud_upload
                     span.mdc-list-item__text= locale.upload
@@ -29,12 +26,6 @@ block drawer
                 a.mdc-list-item#download-current-dir
                     i.material-icons.mdc-list-item__graphic(aria-hidden='true') cloud_download
                     span.mdc-list-item__text= locale.download
-                a.mdc-list-item(href='/shared?me')
-                    i.material-icons.mdc-list-item__graphic(aria-hidden='true') person
-                    span.mdc-list-item__text= locale.shared_with_me
-                a.mdc-list-item(href='/shared?others')
-                    i.material-icons.mdc-list-item__graphic(aria-hidden='true') people
-                    span.mdc-list-item__text= locale.shared_with_others
                 a.mdc-list-item(href='/files/.recycle')
                     i.material-icons.mdc-list-item__graphic(aria-hidden='true') delete
                     span.mdc-list-item__text= locale.trash

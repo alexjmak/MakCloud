@@ -3,7 +3,7 @@ const log = require('./log');
 const localeManager = require("./localeManager");
 
 const configurationFile = "preferences.json";
-let defaultConfiguration = {"blacklist": true, "whitelist": false};
+let defaultConfiguration = {"blacklist": true, "whitelist": false, "serviceName": null};
 let configuration;
 
 function cleanup() {
@@ -48,7 +48,7 @@ function init() {
     try {
         configuration = JSON.parse(data);
         cleanup();
-    } catch(err) {
+    } catch (err) {
         log.write("Read error: " + err);
         configuration = defaultConfiguration;
         save();

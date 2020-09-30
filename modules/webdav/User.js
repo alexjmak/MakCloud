@@ -7,7 +7,6 @@ var User = /** @class */ (function () {
         this.username = username;
         this.privilege = privilege;
         this.key = key;
-        this.iv = iv;
     }
     return User;
 }());

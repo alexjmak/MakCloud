@@ -1,7 +1,19 @@
-extends layout
+extends ../core/views/layout
 
 block header
     link(rel='stylesheet', type='text/css', href='/stylesheets/accounts.css')
+    script.
+        Object.assign(locale, {
+            cant_retrieve_accounts: "#{locale.cant_retrieve_accounts}",
+            confirm_delete: "#{locale.confirm_delete}",
+            invalid_privilege: "#{locale.invalid_privilege}",
+            new_account_password: "#{locale.new_account_password}",
+            new_account_username: "#{locale.new_account_username}",
+            new_account_privilege: "#{locale.new_account_privilege}",
+            new_username: "#{locale.new_username}",
+            new_privilege: "#{locale.new_privilege}",
+            session_expired: "#{locale.session_expired}",
+        });
     script(type='text/javascript', src="/javascripts/accounts.js")
 
 block drawer

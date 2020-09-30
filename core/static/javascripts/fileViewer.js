@@ -1,4 +1,3 @@
-let usedPasswordMemory;
 let authorized = false;
 
 const supportedTypes = ["txt", "json", "conf", "log", "properties", "yml", "pdf", "apng", "bmp", "gif", "ico", "cur", "jpg", "jpeg", "pjpeg", "pjp", "png", "svg", "webp", "mp3", "m4a", "py", "js"];
@@ -6,11 +5,11 @@ const plainText = ["txt", "json", "conf", "log", "properties", "yml", "py", "js"
 let oldFileContents;
 
 const pathSplit = location.pathname.split("/");
-const filePath = decodeURIComponent(pathSplit[pathSplit.length - 1]);
-const displayName = name_decrypted ? name_decrypted : filePath;
+const filePath = pathSplit[pathSplit.length - 1];
+const displayName = name_decrypted ? name_decrypted : decodeURIComponent(filePath);
 
-let requestFile = function(method, authorization, next) {
-    request(method, filePath, null, function(xmlHttpRequest) {
+let requestFile = function (method, authorization, next) {
+    request(method, filePath, null, function (xmlHttpRequest) {
         if (xmlHttpRequest.status === 200) {
             let content = $("#content");
             content.show();
@@ -19,20 +18,22 @@ let requestFile = function(method, authorization, next) {
                 let extension = displayName.split(".").pop().toLowerCase();
                 let contentType = xmlHttpRequest.getResponseHeader("Content-Type");
                 if (supportedTypes.includes(extension) || contentType.startsWith("text/")) {
-                    let encodedPathname = window.location.pathname.replace("'", "%27");
+                    const encodedFileName = window.location.pathname.replace(/'/g, "%27");
                     switch (extension) {
                         default:
                             requestFile("GET");
                             break;
                         case "pdf":
-                            content.append("<object data='/pdfjs/web/viewer.html?file=" + encodedPathname + "'></object>")
+                            console.log("<object data='/pdfjs/web/viewer.html?file=" + encodeURI(encodedFileName) + "'></object>")
+
+                            content.append("<object data='/pdfjs/web/viewer.html?file=" + encodeURI(encodedFileName) + "'></object>")
                             break;
                         case "apng": case "bmp": case "gif": case "ico": case "cur": case "jpg":
                         case "jpeg": case "pjpeg": case "pjp": case "png": case ".svg": case "webp":
-                            content.append("<img class='mdc-elevation--z10' src='" + encodedPathname + "'>");
+                            content.append("<img class='mdc-elevation--z10' src='" + encodedFileName + "'>");
                             break;
                         case "mp3": case "m4a":
-                            let audio = new Audio(encodedPathname);
+                            let audio = new Audio(encodedFileName);
                             audio.play();
                             break;
                     }
@@ -59,20 +60,19 @@ let requestFile = function(method, authorization, next) {
             }
         } else if (xmlHttpRequest.status === 0) {
             $("#message").text("Connection lost");
-            usedPasswordMemory = "";
         }
         if (next) next(true);
     }, authorization);
 };
 
-var save = function() {
+var save = function () {
     const newFileContents = $("#fileContents").text();
-    let blob = new Blob([newFileContents]);
-    let formData = new FormData();
-    formData.append('fileContents', filePath);
-    formData.append('data', blob);
+    const blob = new Blob([newFileContents]);
+    const file = new File([blob], filePath)
+    const formData = new FormData();
+    formData.append('data', file);
 
-    request("PUT", filePath, formData, function(xmlHttpRequest) {
+    request("PUT", filePath, formData, function (xmlHttpRequest) {
         if (xmlHttpRequest.status === 200) {
             showSnackbar(basicSnackbar, xmlHttpRequest.responseText);
         }
@@ -83,21 +83,24 @@ var revert = function(event) {
     $("#fileContents").text(event.data.initialFileContents);
 };
 
-var deleteFile = function() {
+var deleteFile = function () {
     if (window.location.pathname.startsWith("/shared")) return;
-    showDialog(yesNoDialog, "MakCloud", "Are you sure you want to delete " + displayName  + "?", {"yes": function() {
-            deleteRequest(filePath, null, function(xmlHttpRequest) {
-                if (xmlHttpRequest.status === 200)  {
+    showDialog(yesNoDialog, locale.app_name, "Are you sure you want to delete " + displayName + "?", {
+        "yes": function () {
+
+            deleteRequest(filePath, null, function (xmlHttpRequest) {
+                if (xmlHttpRequest.status === 200) {
                     showSnackbar(basicSnackbar, "Deleted " + displayName);
                     window.location.href = '.';
                 } else {
                     showSnackbar(basicSnackbar, "Error deleting " + displayName);
                 }
             });
-    }});
+        }
+    });
 };
 
-var edit = function() {
+var edit = function () {
     const extension = filePath.split(".").pop().toLowerCase();
     if (!authorized || !plainText.includes(extension)) return;
     let fileContents = $("#fileContents").text();
@@ -118,9 +121,9 @@ var edit = function() {
 
 };
 
-var download = function() {
+var download = function () {
     if (!authorized) {
-        authorize(function(result) {
+        authorize(function (result) {
             if (result) download();
         });
     } else {
@@ -131,15 +134,13 @@ var download = function() {
 var randomNumberArray = new Uint32Array(1);
 window.crypto.getRandomValues(randomNumberArray);
 
-var authorize = function(next) {
+var authorize = function (next) {
     let password = $("#password").val();
     if (password === "") {
         $("#password").focus()
         if (next) next(false);
     } else {
-        if ($.md5(password, randomNumberArray[0]) === usedPasswordMemory) return;
-        usedPasswordMemory = $.md5(password, randomNumberArray[0]);
-        password = btoa(":"+ password);
+        password = btoa(":" + encodeURIComponent(password));
         requestFile("HEAD", "Basic " + password, next)
     }
 
@@ -176,11 +177,11 @@ $(document).ready(function() {
 
     $("#download").click(download);
 
-    $("#share").click(share);
-
     $("#delete").click(deleteFile);
 
     $("#submit").click(authorize);
+
+    $("#share").click(share);
 });
 
 $(document).keydown(function(event) {

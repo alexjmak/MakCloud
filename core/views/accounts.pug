@@ -2,15 +2,24 @@ extends layout
 
 block header
     link(rel='stylesheet', type='text/css', href='/stylesheets/accounts.css')
+    script.
+        Object.assign(locale, {
+            cant_retrieve_accounts: "#{locale.cant_retrieve_accounts}",
+            confirm_delete: "#{locale.confirm_delete}",
+            invalid_privilege: "#{locale.invalid_privilege}",
+            new_account_password: "#{locale.new_account_password}",
+            new_account_username: "#{locale.new_account_username}",
+            new_account_privilege: "#{locale.new_account_privilege}",
+            new_username: "#{locale.new_username}",
+            new_privilege: "#{locale.new_privilege}",
+            session_expired: "#{locale.session_expired}",
+        });
     script(type='text/javascript', src="/javascripts/accounts.js")
 
 block drawer
     aside.mdc-drawer.mdc-top-app-bar--fixed-adjust
         .mdc-drawer__content
             nav.mdc-list
-                a.mdc-list-item(href='/files')
-                    i.material-icons.mdc-list-item__graphic(aria-hidden='true') folder
-                    span.mdc-list-item__text= locale.files
                 a.mdc-list-item.mdc-list-item--activated(href='/accounts')
                     i.material-icons.mdc-list-item__graphic(aria-hidden='true') account_circle
                     span.mdc-list-item__text= locale.account_manager
@@ -30,8 +39,6 @@ block content
                     h4= locale.password
                 td
                     h4= locale.privilege_level
-                td
-                    h4= locale.encrypted
                 td
                     h4= locale.enabled
                 td

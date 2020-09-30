@@ -9,17 +9,16 @@ const encryptionManager = require('../encryptionManager');
 const log = require("../core/log");
 const preferences = require("../preferences");
 const render = require("../core/render");
-const filesRouter = require('./files');
+const filesRouter = require('../core/routes/files');
 
-let photos = function(getRelativeDirectory, encryption) {
-    if (!getRelativeDirectory) getRelativeDirectory = (req) => path.join(preferences.get("files"), authorization.getID(req), "photos");
+let photos = function(getRelativeDirectory, getFilePath, encryption) {
+    if (!getRelativeDirectory) getRelativeDirectory = req => path.join(preferences.get("files"), authorization.getID(req), "photos");
+    if (!getFilePath) getFilePath = req => path.join(getRelativeDirectory(req), decodeURIComponent(req.path));
 
     const router = express.Router();
 
     router.get('/*', function(req, res, next) {
-        const urlPath = getUrlPath(req);
-        const relativeDirectory = getRelativeDirectory(req);
-        const filePath = path.join(relativeDirectory, urlPath);
+        const filePath = getFilePath(req);
         const key = encryption ? req.session.encryptionKey : null;
         const parameter = Object.keys(req.query)[0];
 
@@ -59,11 +58,8 @@ let photos = function(getRelativeDirectory, encryption) {
 
     });
 
-    router.use(filesRouter(getRelativeDirectory, encryption));
+    router.use(filesRouter(getRelativeDirectory, getFilePath, encryption));
 
-    function getUrlPath(req) {
-        return decodeURIComponent(req.path).substring(1);
-    }
 
     return router;
 }

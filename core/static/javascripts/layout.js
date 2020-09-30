@@ -52,14 +52,14 @@ $(document).ready(function() {
     */
 
     let accountCard = $("#accountCard");
-    if ($.cookie("loginToken") !== undefined) {
-        accountCard.first().find("h3").text("ID: " + parseJwt($.cookie("loginToken")).aud);
+    if (currentID) {
+        accountCard.first().find("h3").text("ID: " + currentID);
     }
 
     $(document).mouseup(function (e) {
         if (accountCard.is(":visible")) {
             if (!accountCard.is(e.target) && accountCard.has(e.target).length === 0) {
-                setTimeout(function() {
+                setTimeout(function () {
                     accountCard.hide();
                 }, 0)
 
@@ -97,19 +97,26 @@ $(document).ready(function() {
     });
 
     $("#uploadButton").change(function() {
-        let formData = new FormData();
         let files = $(this)[0].files;
-        for (let i = 0; i < files.length; i++) {
-            formData.append("file" + i, files[i]);
-        }
-
-        request("POST", location.pathname + "?upload", formData, function(xmlHttpRequest) {
-            console.log(xmlHttpRequest.status)
-            showSnackbar(basicSnackbar, xmlHttpRequest.responseText);
-        }, undefined, null);
+        uploadFiles(files);
     });
 
 });
+function uploadFiles(files) {
+    let formData = new FormData();
+    for (let i = 0; i < files.length; i++) {
+        const file = new File([files[i]], encodeURIComponent(files[i].name), {
+            type: files[i].type,
+            lastModified: files[i].lastModified,
+        });
+        formData.append("file" + i, file);
+    }
+
+    console.log(files)
+    request("POST", location.pathname, formData, function(xmlHttpRequest) {
+        showSnackbar(basicSnackbar, xmlHttpRequest.responseText);
+    }, undefined, null);
+}
 
 function checkMobileResize() {
     let width = $(window).width();

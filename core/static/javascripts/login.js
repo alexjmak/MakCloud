@@ -16,14 +16,14 @@ $(document).ready(function() {
                     window.location = "/";
                 }
             } else if (new URL(xmlHttpRequest.responseURL).pathname !== "/login") {
-                $("#message").text("Please enable cookies");
+                $("#message").text(locale.enable_cookies);
             } else {
                 location.reload();
             }
 
 
         } else if (xmlHttpRequest.status === 0) {
-            $("#message").text("Connection lost");
+            $("#message").text(locale.no_connection);
         } else {
             if (xmlHttpRequest.status === 429) {
                 firewall = true;
@@ -48,19 +48,18 @@ $(document).ready(function() {
         let passwordValue = password.val();
 
         if (usernameValue === "") {
-            let message = "Enter your username";
+            let message = locale.enter_your_username;
             if (!username.is(":focus")) {
                 if ($("#message").text() !== message) $("#message").text("");
                 username.focus();
-            }
-            else {
+            } else {
                 $("#message").text(message);
             }
             return;
         }
 
         if (passwordValue === "") {
-            let message = "Enter your password";
+            let message = locale.enter_your_password;
             if (!password.is(":focus")) {
                 if ($("#message").text() !== message) $("#message").text("");
                 password.focus();

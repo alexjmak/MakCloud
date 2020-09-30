@@ -1,12 +1,10 @@
 const archiver = require('archiver');
-const child_process = require('child_process');
 const crypto = require('crypto');
 const express = require('express');
 const fs = require('fs');
 const createError = require('http-errors');
-const os = require("os");
 const path = require('path');
-const request = require('request');
+const request = require('request-promise');
 const unzipper = require('unzipper');
 
 const accountManager = require("../accountManager");
@@ -14,27 +12,26 @@ const authorization = require("../authorization");
 const log = require('../log');
 const terminal = require('../terminal');
 const render = require('../render');
-
+const preferences = require('../preferences');
 const router = express.Router();
 
 router.get('/files', function(req, res, next) {
-    let token = req.headers.authorization;
-    let isValidToken = authorization.verifyToken(token, req).sub === "updateToken";
+    const token = req.headers.authorization;
+    const isValidToken = authorization.verifyToken(token, req).sub === "updateToken";
     if (!isValidToken) return next(createError(403));
 
-    let updateArchiveName = "tmp-" + crypto.randomBytes(4).toString("hex") + ".zip";
-    let fileOutput = fs.createWriteStream(updateArchiveName);
-    fileOutput.on('close', function () {
-        res.sendFile(path.join(__dirname, "..", updateArchiveName), function() {
+    const updateArchiveName = "tmp-" + crypto.randomBytes(4).toString("hex") + ".zip";
+    const fileOutput = fs.createWriteStream(updateArchiveName);
+    fileOutput.on('close', function() {
+        res.sendFile(path.join(__dirname, "..", updateArchiveName), async function () {
             try {
-                fs.unlinkSync(path.join(__dirname, "..", updateArchiveName));
-            }
-            catch {}
+                await fs.promises.unlink(path.join(__dirname, "..", updateArchiveName));
+            } catch {}
         });
     });
 
     let archive = archiver('zip');
-    archive.on('error', function(err){
+    archive.on('error', function(err) {
         throw err;
     });
     archive.pipe(fileOutput);
@@ -54,57 +51,65 @@ router.get('/files', function(req, res, next) {
 
 router.use(authorization.doAuthorization);
 
-router.use(function(req, res, next) {
-    let id = authorization.getID(req);
-    accountManager.getInformation("privilege", "id", id, function(privilege) {
-        if (privilege === 100) next();
-        else next(createError(403));
-    });
+router.use(async function(req, res, next) {
+    const id = authorization.getID(req);
+    const privilege = await accountManager.getInformation("privilege", "id", id);
+    if (privilege === 100) next();
+    else next(createError(403));
 });
 
 router.get('/', function(req, res, next) {
     render('update', null, req, res, next);
 });
 
-router.post('/', function(req, res) {
-    authorization.createJwtToken({sub: "updateToken"}, function(err, authorizationToken) {
-        if (err) {
-            return res.sendStatus(500);
-        }
-        request(req.protocol + "://" + req.body.server + "/update/files", {encoding: "binary", headers: {authorization: authorizationToken}}, function(err, response, body) {
-            if (response !== undefined && response.statusCode === 200) {
-                log.writeServer(req, "Updating server...");
-                fs.writeFile("update.zip", body, "binary", function(err) {
-                    let readSteam = fs.createReadStream('update.zip');
-                    let pipeSteam = readSteam.pipe(unzipper.Extract({ path: path.join(__dirname, "..") }));
-                    pipeSteam.on("finish", function() {
-                        fs.unlink("update.zip", function() {
-                            terminal("npm install", null, function() {
-                                terminal("npm audit fix", null, function() {
-                                    log.writeServer(req, "Update complete");
-                                    if (!res.headersSent) res.sendStatus(200);
-                                    terminal("sudo service MakCloud restart");
-                                });
-                            });
-                        });
-                    });
-                    let error = function(e) {
-                        log.writeServer(req, "Update failed. " + e);
-                        fs.unlink("update.zip", function() {
-                            if (!res.headersSent) res.sendStatus(500);
-                        });
-                    };
-                    readSteam.on("error", error);
-                    pipeSteam.on("error", error);
-                });
-            } else {
-                if (response !== undefined) log.writeServer(req, "Update failed. Update server responded with error " + response.statusCode);
-                else log.writeServer(req, "Update failed. No response from server.");
-                res.sendStatus(400);
+router.post('/', async function(req, res) {
+    let authorizationToken;
+    try {
+        authorizationToken = await authorization.createJwtToken({sub: "updateToken"});
+    } catch {
+        res.sendStatus(500);
+        return;
+    }
+
+    const response = await request(req.protocol + "://" + req.body.server + "/update/files", {
+        resolveWithFullResponse: true,
+        timeout: 10 * 1000,
+        encoding: "binary",
+        headers: {authorization: authorizationToken}
+    });
+
+    if (response && response.statusCode === 200) {
+        log.writeServer(req, "Updating server...");
+        await fs.promises.writeFile("update.zip", response.body, "binary");
+        const readSteam = fs.createReadStream('update.zip');
+        const pipeSteam = readSteam.pipe(unzipper.Extract({path: path.join(__dirname, "..")}));
+        const error = async function (e) {
+            log.writeServer(req, "Update failed. " + e);
+            try {
+                await fs.promises.unlink("update.zip");
+            } catch {}
+            if (!res.headersSent) res.sendStatus(500);
+        };
+        readSteam.on("error", error);
+        pipeSteam.on("error", error);
+        pipeSteam.on("finish", async function () {
+            try {
+                await fs.promises.unlink("update.zip");
+            } catch {}
+            await terminal("npm install", null);
+            await terminal("npm audit fix", null);
+            log.writeServer(req, "Update complete");
+            if (!res.headersSent) res.sendStatus(200);
+            const serviceName = preferences.get("serviceName");
+            if (serviceName) {
+                await terminal(`sudo service ${serviceName} restart`);
             }
         });
-    }, 10 * 1000);
-
+    } else {
+        if (response) log.writeServer(req, "Update failed. Update server responded with error " + response.statusCode);
+        else log.writeServer(req, "Update failed. No response from server.");
+        res.sendStatus(400);
+    }
 });
 
 module.exports = router;

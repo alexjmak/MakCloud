@@ -2,6 +2,7 @@ const filesRouter = require("./files");
 const accountManager = require("../core/accountManager");
 const authorization = require("../core/authorization");
 const express = require("express");
+const path = require("path");
 
 const router = express.Router();
 
@@ -13,6 +14,6 @@ router.use(function(req, res, next) {
     });
 });
 
-router.use(filesRouter(req => "./logs", false))
+router.use(filesRouter(req => path.join("./logs"), undefined,false))
 
 module.exports = router;

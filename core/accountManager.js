@@ -21,260 +21,180 @@ const checkDeletedAccountsTable = ["CREATE TABLE IF NOT EXISTS deleted_accounts 
     "ALTER TABLE deleted_accounts ADD COLUMN enabled INTEGER NOT NULL DEFAULT 1;",
     "ALTER TABLE deleted_accounts ADD COLUMN dateDeleted INTEGER NOT NULL DEFAULT 0;"];
 
-database.runList(checkAccountsTable, [], function() {
-    newAccount("admin", "password", 100);
-    getInformation("id", "username", "admin", function(id) {
-        updatePrivilege(id, 100);
-    });
-}, false);
-
-database.runList(checkDeletedAccountsTable, [], function() {}, false);
-
-function deleteAccount(id, next) {
-    idExists(id, false, function(result) {
-        getInformation("username", "id", id, function(username) {
-            if (!result) {
-                if (next !== undefined) next(false);
-                return
-            }
-            let dateDeleted = Math.floor(Date.now() / 1000);
-            database.run("INSERT INTO deleted_accounts (id, username, hash, salt, privilege, dateDeleted) SELECT id, username, hash, salt, privilege, " + dateDeleted + " as dateDeleted FROM accounts WHERE id = ?;", id, function() {
-                database.get("SELECT * FROM accounts WHERE id = ?", id, function(result) {
-                    database.run("DELETE FROM accounts WHERE id = ?", id, function() {
-                        next(result);
-                    });
-                })
-            });
-        })
-    });
-}
-
-function deleteDeletedAccount(id, next) {
-    database.run("DELETE FROM deleted_accounts WHERE id = ?", id, function (result) {
-        if (next !== undefined) next(result);
-    });
-}
-
-function disableAccount(id, next) {
-    idExists(id, false, function(result) {
-        if (!result) {
-            if (next !== undefined) next(false);
-            return;
-        }
-
-        database.run("UPDATE accounts SET enabled = 0 WHERE id = ?", id, function(result) {
-            if (next !== undefined) next(result);
-        });
-
-    });
-}
-
-function enableAccount(id, next) {
-    idExists(id, false, function(result) {
-        if (!result) {
-            if (next !== undefined) next(false);
-            return;
-        }
-
-        database.run("UPDATE accounts SET enabled = 1 WHERE id = ?", id, function(result) {
-            if (next !== undefined) next(result);
-        });
-
-    });
-}
-
-function getAccountInfoHash(id, next) {
-    database.get("SELECT * FROM accounts WHERE id = ?", id, function(result) {
-        let hash = crypto.createHash("md5").update(JSON.stringify(result))
-        hash = hash.digest("hex");
-        if (next) next(hash);
-    });
-}
-
-function getAccountsSummary(id, next) {
-    getInformation("privilege", "id", id, function(privilege) {
-        getInformation("username", "id", id, function(username) {
-            database.all("SELECT id, username, privilege, encryptKey NOT NULL AS encrypted, enabled FROM accounts WHERE ? OR id = ? OR privilege < ? ORDER BY username COLLATE NOCASE", [username === "admin", id, privilege], function (results) {
-                let resultsById = {};
-                for (let result in results) {
-                    if (results.hasOwnProperty(result)) {
-                        result = results[result];
-                        let accountID = result.id;
-                        delete result[accountID];
-                        resultsById[accountID] = result;
-                    }
-                }
-                if (next !== undefined) next(resultsById);
-            });
-        });
-    });
-}
-
-function getDeletedAccountsSummary(id, next) {
-    getInformation("privilege", "id", id, function(privilege) {
-        getInformation("username", "id", id, function(username) {
-            database.all("SELECT id, username, privilege, encryptKey NOT NULL AS encrypted FROM deleted_accounts WHERE ? OR id = ? OR privilege < ? ORDER BY username COLLATE NOCASE", [username === "admin", id, privilege], function (results) {
-                let resultsById = {};
-                for (let result in results) {
-                    if (results.hasOwnProperty(result)) {
-                        result = results[result];
-                        let accountID = result.id;
-                        delete result[accountID];
-                        resultsById[accountID] = result;
-                    }
-                }
-                if (next !== undefined) next(resultsById);
-            });
-        });
-    });
-}
-
-function getInformation(select, whereKey, whereValue, next) {
-    database.get("SELECT " + select + " FROM accounts WHERE " + whereKey + " = ?", whereValue, function(result) {
-        if (next !== undefined) next(result[select]);
-    });
-}
-
-function idExists(id, enabledCheck, next) {
-    let query;
-    if (id === undefined) {
-        if (next !== undefined) next(false);
-        return;
+(async () => {
+    try {
+        await database.runList(checkAccountsTable, [], false);
+    } catch {
     }
+    try {
+        await newAccount("admin", "password", 100);
+    } catch {
+    }
+})();
+
+
+async function deleteAccount(id) {
+    const dateDeleted = Math.floor(Date.now() / 1000);
+    await database.run("INSERT INTO deleted_accounts (id, username, hash, salt, privilege, enabled, dateDeleted) SELECT id, username, hash, salt, privilege, enabled, " + dateDeleted + " as dateDeleted FROM accounts WHERE id = ?;", id)
+    const result = await database.get("SELECT * FROM accounts WHERE id = ?", id);
+    await database.run("DELETE FROM accounts WHERE id = ?", id);
+    return result;
+}
+
+function deleteDeletedAccount(id) {
+    return database.run("DELETE FROM deleted_accounts WHERE id = ?", id);
+}
+
+function disableAccount(id) {
+    return database.run("UPDATE accounts SET enabled = 0 WHERE id = ?", id);
+}
+
+function enableAccount(id) {
+    return database.run("UPDATE accounts SET enabled = 1 WHERE id = ?", id);
+}
+
+async function getAccountInfoHash(id) {
+    const result = await database.get("SELECT * FROM accounts WHERE id = ?", id);
+    let hash = crypto.createHash("md5").update(JSON.stringify(result))
+    hash = hash.digest("hex");
+    return hash;
+}
+
+async function getAccountsSummary(id) {
+    const privilege = await getInformation("privilege", "id", id);
+    const username = await getInformation("username", "id", id);
+    const results = await database.all("SELECT id, username, privilege, enabled FROM accounts WHERE ? OR id = ? OR privilege < ? ORDER BY username COLLATE NOCASE", [username === "admin", id, privilege]);
+    const resultsById = {};
+    for (let result in results) {
+        if (results.hasOwnProperty(result)) {
+            result = results[result];
+            const accountID = result.id;
+            delete result[accountID];
+            resultsById[accountID] = result;
+        }
+    }
+    return resultsById;
+}
+
+async function getDeletedAccountsSummary(id) {
+    const privilege = await getInformation("privilege", "id", id);
+    const username = await getInformation("username", "id", id);
+    const results = await database.all("SELECT id, username, privilege, enabled FROM deleted_accounts WHERE ? OR id = ? OR privilege < ? ORDER BY username COLLATE NOCASE", [username === "admin", id, privilege]);
+    const resultsById = {};
+    for (let result in results) {
+        if (results.hasOwnProperty(result)) {
+            result = results[result];
+            const accountID = result.id;
+            delete result[accountID];
+            resultsById[accountID] = result;
+        }
+    }
+    return resultsById;
+}
+
+async function getInformation(select, whereKey, whereValue) {
+    const result = await database.get("SELECT " + select + " FROM accounts WHERE " + whereKey + " = ?", whereValue);
+    if (result && result.hasOwnProperty(select)) return result[select];
+}
+
+async function idExists(id, enabledCheck, next) {
+    let query;
+    if (!id) return false;
     query = "SELECT * FROM accounts WHERE id = ?";
     if (enabledCheck) query += " AND enabled = 1";
-    database.all(query, id, function(result) {
-        if (result.length === 1) {
-            if (next !== undefined) next(true);
-        } else {
-            if (next !== undefined) next(false);
-        }
-    });
+
+    try {
+        const result = await database.all(query, id);
+        if (result.length === 1) return true;
+    } catch {
+    }
+    return false;
 }
 
-function newAccount(username, password, privilege, next) {
-    usernameExists(username, false, function(result) {
-        if (result) {
-            if (next !== undefined) next(false);
-            return
+async function newAccount(username, password, privilege) {
+    const exists = await usernameExists(username, false);
+    if (exists) return Promise.reject("Account exists already");
+
+    const authorization = require("./authorization");
+    const salt = authorization.generateSalt();
+    const hash = authorization.getHash(password, salt);
+
+    const id = newID();
+    try {
+        await database.run("INSERT INTO accounts (id, username, hash, salt, privilege) VALUES (?, ?, ?, ?, ?)",
+            [id, username, hash, salt, privilege]);
+        return id;
+    } catch {
+        if (username !== undefined && password !== undefined && privilege !== undefined) {
+            log.write("Error creating new account. Trying again...");
+            return await newAccount(username, password, privilege);
+        } else {
+            return Promise.reject("Username, password, or privilege undefined");
         }
-
-        const authorization = require("./authorization");
-        let salt = authorization.generateSalt();
-        let hash = authorization.getHash(password, salt);
-
-        let id = newID();
-        database.run("INSERT INTO accounts (id, username, hash, salt, privilege) VALUES (?, ?, ?, ?, ?)", [id, username, hash, salt, privilege], function(result) {
-            if (!result && username !== undefined && password !== undefined && privilege !== undefined) {
-                log.write("Error creating new account. Trying again...");
-                newAccount(username, password, privilege, next);
-            } else {
-                let filePath = path.join(preferences.get("files"), id).toString();
-                mkdirp(path.join(filePath, "files")).then(function() {
-                    mkdirp(path.join(filePath, "photos")).then(function() {
-                        mkdirp(path.join(filePath, "mail")).then(function() {
-                            if (next) next(result);
-                        });
-                    });
-                });
-
-            }
-        });
-
-
-
-    });
+    }
 }
 
 function newID() {
     return parseInt("" + Date.now() + Math.floor(Math.random() * (100 - 10) + 10)).toString(36).toUpperCase();
 }
 
-function searchAccounts(query, next) {
-    database.all("SELECT id, username FROM accounts WHERE username LIKE ?", "%" + query + "%", function (results) {
-        let resultsById = {};
-        for (let result in results) {
-            if (results.hasOwnProperty(result)) {
-                result = results[result];
-                let id = result.id;
-                delete result[id];
-                resultsById[id] = result;
-            }
-        }
-        if (next !== undefined) next(results);
-    });
+function searchAccounts(query) {
+    return database.all("SELECT id, username FROM accounts WHERE username LIKE ?", "%" + query + "%");
 }
 
-function updatePassword(id, newPassword, next) {
-    idExists(id, false, function(result) {
-        if (!result) {
-            if (next !== undefined) next(false);
-            return;
+async function updatePassword(id, newPassword, old_password) {
+    const authorization = require("./authorization");
+
+    if (old_password) {
+        const loginResult = await authorization.checkPassword(id, old_password)
+        if (loginResult === authorization.LOGIN.FAIL) {
+            return Promise.reject("Incorrect password")
         }
+    }
 
-        const authorization = require("./authorization");
+    const newSalt = authorization.generateSalt();
+    const newHash = authorization.getHash(newPassword, newSalt);
 
-        let newSalt = authorization.generateSalt();
-        let newHash = authorization.getHash(newPassword, newSalt);
-
-        database.run("UPDATE accounts SET hash = ?, salt = ? WHERE id = ?", [newHash, newSalt, id], function(result) {
-            if (next !== undefined) next(result);
-        });
-    });
+    return await database.run("UPDATE accounts SET hash = ?, salt = ? WHERE id = ?", [newHash, newSalt, id]);
 }
 
-function updatePrivilege(id, newPrivilege, next) {
+function updatePrivilege(id, newPrivilege) {
     if (newPrivilege >= 100) newPrivilege = 100;
-    idExists(id, false, function(result) {
-        if (!result) {
-            if (next !== undefined) next(false);
-            return;
-        }
-
-        database.run("UPDATE accounts SET privilege = ? WHERE id = ?", [newPrivilege, id], function(result) {
-            if (next !== undefined) next(result);
-        });
-
-    });
+    return database.run("UPDATE accounts SET privilege = ? WHERE id = ?", [newPrivilege, id]);
 }
 
-function updateUsername(id, newUsername, next) {
-    getInformation("username", "id", id, function(username) {
-        if (username === "admin" || newUsername === "admin") {
-            if (next !== undefined) next(false);
-            return;
-        }
+async function updateUsername(id, newUsername) {
+    const username = await getInformation("username", "id", id);
+    if (username === "admin" || newUsername === "admin") {
+        return Promise.reject("Cannot change the admin username");
+    }
 
-        usernameExists(newUsername, false, function(result) {
-            if (result) {
-                if (next !== undefined) next(false);
-                return;
-            }
+    const exists = await usernameExists(newUsername, false);
 
-            database.run("UPDATE accounts SET username = ? WHERE id = ?", [newUsername, id], function(result) {
-                if (next !== undefined) next(result, username);
-            });
-        });
-    });
+    if (exists) {
+        return Promise.reject("Account exists already");
+    }
+
+    await database.run("UPDATE accounts SET username = ? WHERE id = ?", [newUsername, id]);
+    return username;
 
 }
 
-function usernameExists(username, enabledCheck, next) {
+async function usernameExists(username, enabledCheck) {
     let query;
-    if (username === undefined) {
-        if (next !== undefined) next(false);
-        return;
+    if (!username) {
+        return Promise.reject("Username is undefined");
     }
     query = "SELECT * FROM accounts WHERE lower(username) = ?";
     if (enabledCheck) query += " AND enabled = 1";
-    database.all(query, username, function(result) {
+    try {
+        const result = await database.all(query, username);
         if (result.length === 1) {
-            if (next !== undefined) next(true);
-        } else {
-            if (next !== undefined) next(false);
+            return true;
         }
-
-    });
+    } catch {
+    }
+    return false;
 }
 
 module.exports = {

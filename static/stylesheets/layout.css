@@ -1,7 +1,7 @@
 @import url("../Roboto/roboto.css");
 
 :root {
-    --mdc-theme-primary: #000000;
+    --mdc-theme-primary: #15438c;
 }
 
 * :not(pre) {

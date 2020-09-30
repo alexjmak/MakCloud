@@ -1,25 +1,24 @@
 const database = require("./core/databaseInit");
+const accountManager = require("./accountManager");
 const authorization = require("./authorization");
 const path = require("path");
 const crypto = require("crypto");
 const preferences = require("./preferences");
 
 database.run("CREATE TABLE IF NOT EXISTS sharing (key TEXT NOT NULL, id INTEGER NOT NULL, access INTEGER NOT NULL DEFAULT 0, expiration INTEGER DEFAULT NULL, UNIQUE(key, id));", [], function () {
-    database.run("CREATE TABLE IF NOT EXISTS links (parent TEXT NOT NULL, fileName TEXT NOT NULL, owner INTEGER NOT NULL, key TEXT NOT NULL UNIQUE, hash TEXT DEFAULT NULL, salt TEXT DEFAULT NULL, UNIQUE(parent, fileName, owner));", [], function() {
+    database.run("CREATE TABLE IF NOT EXISTS links (path TEXT NOT NULL, owner INTEGER NOT NULL, key TEXT NOT NULL UNIQUE, hash TEXT DEFAULT NULL, salt TEXT DEFAULT NULL, UNIQUE(path, owner));", [], function() {
         database.run("DELETE FROM sharing WHERE key NOT IN (SELECT key FROM links);");
     });
 });
 
-function addLinkAccess(parent, fileName, owner, id, access, expiration, next) {
-    parent = decodeURIComponent(parent);
-    fileName = decodeURIComponent(fileName);
-    if (parent === "") parent = "/";
-    if (owner === "public") owner = -2;
-    getLinkKey(parent, fileName, owner, function(key) {
+function addLinkAccess(filePath, owner, id, access, expiration, next) {
+    filePath = decodeURIComponent(filePath);
+    if (filePath === "") filePath = "/";
+
+    getLinkKey(filePath, owner, function(key) {
         linkAccessExists(key, id, function (exists) {
             if (!exists) {
-                if (id === undefined) id = -1;
-                else id = Number(id);
+                if (id === undefined) id = "public";
 
                 database.run("INSERT INTO sharing (key, id, access, expiration) VALUES (?, ?, ?, ?)", [key, id, access, expiration], function (result) {
                     if (next !== undefined) next(result);
@@ -31,8 +30,7 @@ function addLinkAccess(parent, fileName, owner, id, access, expiration, next) {
     });
 }
 
-function checkPassword(req, res, key, fileName, hash, salt, next) {
-    fileName = decodeURIComponent(fileName);
+function checkPassword(req, res, key, hash, salt, next) {
     const b64auth = (req.headers.authorization || '').split(' ')[1] || '';
     const strauth = new Buffer.from(b64auth, 'base64').toString();
     const splitIndex = strauth.indexOf(':');
@@ -42,16 +40,16 @@ function checkPassword(req, res, key, fileName, hash, salt, next) {
     } else {
         password = strauth.substring(splitIndex + 1);
     }
+    password = decodeURIComponent(password);
 
     if ((hash === null && salt === null) || hash === authorization.getHash(password, salt)) {
-        authorization.createJwtToken({sub: "fileToken", path: [key, fileName].join("/")}, function(err, token) {
+        authorization.createJwtToken({sub: "fileToken", path: key}, function(err, token) {
             if (err) {
                 if (next) next(null);
                 return;
             }
-            fileName = encodeURIComponent(fileName);
             res.cookie("fileToken", token, {
-                path: path.join("/", "shared", key, fileName),
+                path: path.join("/", "shared", key),
                 secure: true,
                 sameSite: "strict"
             });
@@ -61,15 +59,12 @@ function checkPassword(req, res, key, fileName, hash, salt, next) {
     } else res.status(403).send("Invalid password");
 }
 
-function createLink(parent, fileName, owner, options, next) {
-    parent = decodeURIComponent(parent);
-    fileName = decodeURIComponent(fileName);
-    if (parent === "") parent = "/";
-    if (owner === "public") owner = -2;
-    generateKey(function(key) {
-        owner = Number(owner);
+function createLink(filePath, owner, options, next) {
+    filePath = decodeURIComponent(filePath);
+    if (filePath === "") filePath = "/";
 
-        linkExists(parent, fileName, owner, function(exists) {
+    generateKey(function(key) {
+        linkExists(filePath, owner, function(exists) {
             if (!exists) {
                 if (options.password === undefined || options.password === null) {
                     options.hash = null;
@@ -79,11 +74,11 @@ function createLink(parent, fileName, owner, options, next) {
                     options.hash = authorization.getHash(options.password, options.salt);
                 }
 
-                database.run("INSERT INTO links (parent, fileName, owner, key, hash, salt) VALUES (?, ?, ?, ?, ?, ?)", [parent, fileName, owner, key, options.hash, options.salt], function(result) {
+                database.run("INSERT INTO links (filePath, owner, key, hash, salt) VALUES (?, ?, ?, ?, ?)", [filePath, owner, key, options.hash, options.salt], function(result) {
                     if (next !== undefined) {
                         if (next !== false) {
-                            addLinkAccess(parent, fileName, owner, -1, 0, null);
-                            let link = "/" + ["shared", key, encodeURIComponent(fileName)].join("/") + "?view";
+                            addLinkAccess(filePath, owner, "public", 0, null);
+                            let link = "/" + ["shared", key].join("/") + "?view";
                             next(link);
                         } else {
                             next(false);
@@ -95,41 +90,36 @@ function createLink(parent, fileName, owner, options, next) {
     });
 }
 
-function deleteLink(parent, fileName, owner, next) {
-    parent = decodeURIComponent(parent);
-    fileName = decodeURIComponent(fileName);
-    if (parent === "") parent = "/";
-    if (owner === "public") owner = -2;
-    database.run("DELETE FROM links WHERE parent = ? AND fileName = ? AND owner = ?", [parent, fileName, owner], function (result) {
+function deleteLink(filePath, owner, next) {
+    filePath = decodeURIComponent(filePath);
+    if (filePath === "") filePath = "/";
+
+    database.run("DELETE FROM links WHERE filePath = ? AND owner = ?", [filePath, owner], function (result) {
         database.run("DELETE FROM sharing WHERE key NOT IN (SELECT key FROM links);");
         if (next !== undefined) next(result);
     });
 }
 
-function deleteLinkPassword(parent, fileName, owner, next) {
-    parent = decodeURIComponent(parent);
-    fileName = decodeURIComponent(fileName);
-    if (parent === "") parent = "/";
-    if (owner === "public") owner = -2;
-    database.run("UPDATE links SET hash = ?, salt = ? WHERE parent = ? AND fileName = ? AND owner = ?", [null, null, parent, fileName, owner], function (result) {
+function deleteLinkPassword(filePath, owner, next) {
+    filePath = decodeURIComponent(filePath);
+    if (filePath === "") filePath = "/";
+
+    database.run("UPDATE links SET hash = ?, salt = ? WHERE filePath = ? AND owner = ?", [null, null, filePath, owner], function (result) {
         if (next !== undefined) next(result);
     });
 }
 
-function doAuthorization(key, fileName, req, res, next) {
-    fileName = decodeURIComponent(fileName);
-    if (fileName.indexOf("/") !== -1) fileName = fileName.substring(0, fileName.indexOf("/"));
-
+function doAuthorization(key, req, res, next) {
     let currentID = authorization.getID(req);
-    if (currentID === undefined) currentID = -1;
+    if (currentID === undefined) currentID = "public";
 
     database.get("SELECT sharing.key, id, owner FROM sharing JOIN links ON sharing.key = links.key WHERE sharing.key = ? AND ((id >= 0 AND id = ?) OR (owner = ?)) AND access > 0 AND (expiration > ? OR expiration IS NULL)", [key, currentID, currentID, Date.now()/1000], function(result) {
 
         if (result !== false) next(true);
         else {
-            database.get("SELECT owner, hash, salt FROM links WHERE key = ? AND fileName = ?", [key, fileName], function(result) {
+            database.get("SELECT owner, hash, salt FROM links WHERE key = ?", key, function(result) {
                 if (result !== false) {
-                    if (currentID >= 0 && (result.owner === currentID || result.owner === -2)) {
+                    if (currentID >= 0 && result.owner === currentID) {
                         if (next) return next(true);
                     }
                     let hash = result.hash;
@@ -141,17 +131,17 @@ function doAuthorization(key, fileName, req, res, next) {
 
                     if (req.cookies.fileToken !== undefined) {
                         let fileToken = authorization.verifyToken(req.cookies.fileToken, req);
-                        if (authorization.checkPayload(fileToken, {sub: "fileToken", path: [key, fileName].join("/")})) {
+                        if (authorization.checkPayload(fileToken, {sub: "fileToken", path: key})) {
                             if (next !== undefined) next(true);
                         } else {
-                            res.clearCookie("fileToken", {path: [key, fileName].join("/")});
+                            res.clearCookie("fileToken", {path: key});
                             res.status(403).send("Invalid token");
                         }
                         return;
                     } else if (req.headers.authorization !== undefined) {
                         if (req.headers.authorization.startsWith("Bearer ")) {
                             let fileToken = authorization.verifyToken(req.headers.authorization.substring(7), req);
-                            if (authorization.checkPayload(fileToken, {sub: "fileToken", path: [key, fileName].join("/")})) {
+                            if (authorization.checkPayload(fileToken, {sub: "fileToken", path: key})) {
                                 if (next !== undefined) next(true);
                                 return;
                             } else {
@@ -159,7 +149,7 @@ function doAuthorization(key, fileName, req, res, next) {
                                 return;
                             }
                         } else {
-                            checkPassword(req, res, key, fileName, hash, salt, next);
+                            checkPassword(req, res, key, hash, salt, next);
                         }
                         return;
                     }
@@ -186,12 +176,11 @@ function getLinkInformation(select, whereKey, whereValue, next) {
     });
 }
 
-function getLinkKey(parent, fileName, owner, next) {
-    parent = decodeURIComponent(parent);
-    fileName = decodeURIComponent(fileName);
-    if (parent === "") parent = "/";
-    if (owner === "public") owner = -2;
-    database.get("SELECT key FROM links WHERE parent = ? AND fileName = ? AND owner = ?;", [parent, fileName, owner], function(result) {
+function getLinkKey(filePath, owner, next) {
+    filePath = decodeURIComponent(filePath);
+    if (filePath === "") filePath = "/";
+
+    database.get("SELECT key FROM links WHERE filePath = ? AND owner = ?;", [filePath, owner], function(result) {
         if (result !== false) {
             if (next !== undefined) next(result.key);
         } else {
@@ -201,21 +190,19 @@ function getLinkKey(parent, fileName, owner, next) {
     });
 }
 
-function getLinkSummary(parent, fileName, owner, next) {
-    parent = decodeURIComponent(parent);
-    fileName = decodeURIComponent(fileName);
-    if (parent === "") parent = "/";
-    if (owner === "public") owner = -2;
+function getLinkSummary(filePath, owner, next) {
+    filePath = decodeURIComponent(filePath);
+    if (filePath === "") filePath = "/";
     let linkSummary = {};
-    getLinkKey(parent, fileName, owner, function(key)  {
+    getLinkKey(filePath, owner, function(key)  {
         if (key !== false){
-            linkSummary["link"] = "/" + ["shared", key, encodeURIComponent(fileName)].join("/") + "?view";
+            linkSummary["link"] = "/" + ["shared", key].join("/") + "?view";
             getLinkInformation("hash", "key", key, function(hash) {
                 linkSummary["passwordEnabled"] = (hash !== null && hash !== undefined);
-                database.all("SELECT username, id, access, expiration FROM (SELECT username, sharing.id, access, expiration FROM sharing JOIN accounts ON (sharing.id = accounts.id) WHERE key = ? UNION SELECT username, sharing.id, access, expiration FROM sharing JOIN deleted_accounts ON (sharing.id = deleted_accounts.id) WHERE key = ? UNION SELECT null, id, access, expiration FROM sharing WHERE key = ? AND id = -1);", [key, key, key], function(sharing) {
+                database.all("SELECT username, id, access, expiration FROM (SELECT username, sharing.id, access, expiration FROM sharing JOIN accounts ON (sharing.id = accounts.id) WHERE key = ? UNION SELECT username, sharing.id, access, expiration FROM sharing JOIN deleted_accounts ON (sharing.id = deleted_accounts.id) WHERE key = ? UNION SELECT null, id, access, expiration FROM sharing WHERE key = ? AND id = 'public');", [key, key, key], function(sharing) {
                     for (let sharingUser in sharing) {
                         sharingUser = sharing[sharingUser];
-                        if (sharingUser.id === -1) {
+                        if (sharingUser.id === "public") {
                             sharingUser.username = "Public";
                             break;
                         }
@@ -231,20 +218,16 @@ function getLinkSummary(parent, fileName, owner, next) {
     })
 }
 
-function getRealFilePath(parent, fileName, owner) {
-    parent = decodeURIComponent(parent);
-    fileName = decodeURIComponent(fileName);
-    if (parent === "") parent = "/";
-    if (owner === -2) owner = "public";
-    return path.join(preferences.get("files"), owner.toString(), "files", parent, fileName);
+function getRealFilePath(filePath, owner) {
+    filePath = decodeURIComponent(filePath);
+    if (filePath === "") filePath = "/";
+    return path.join(preferences.get("files"), owner.toString(), "files", filePath);
 }
 
-function getRealFilePathLink(key, fileName, next) {
-    fileName = decodeURIComponent(fileName);
-    let searchFileName = (fileName.indexOf("/") === -1) ? fileName : fileName.substring(0, fileName.indexOf("/"));
-    database.get("SELECT parent, owner FROM links WHERE key = ? AND fileName = ?", [key, searchFileName], function(result) {
+function getRealFilePathLink(key, next) {
+    database.get("SELECT filePath, owner FROM links WHERE key = ?", key, function(result) {
         if (next !== undefined) {
-            next(getRealFilePath(result.parent, fileName, result.owner));
+            next(getRealFilePath(result.filePath, result.owner));
         }
     });
 }
@@ -255,7 +238,8 @@ function getSharingInformation(select, whereKey, whereValue, next) {
     });
 }
 
-function handle(req, res, next) {
+function handle(filePath, req, res, next) {
+    let owner = authorization.getID(req);
     let action = (req.body.action !== undefined) ? req.body.action : null;
     let expiration = (req.body.expiration !== undefined) ? req.body.expiration : null;
     let password = (req.body.password !== undefined) ? req.body.password : null;
@@ -265,19 +249,19 @@ function handle(req, res, next) {
 
     switch (action) {
         case "create":
-            createLink(parent, fileName, owner, {expiration: expiration, password: password}, function(link) {
+            createLink(filePath, owner, {expiration: expiration, password: password}, function(link) {
                 if (link !== false) res.status(201).send(link);
                 else res.sendStatus(409);
             });
             break;
         case "delete":
-            deleteLink(parent, fileName, owner, function(result) {
+            deleteLink(filePath, owner, function(result) {
                 res.sendStatus(200)
             });
             break;
         case "addAccess":
-            let addLinkAccess = function(id) {
-                addLinkAccess(parent, fileName, owner, id, access, expiration,function(result) {
+            let callback = function(id) {
+                addLinkAccess(filePath, owner, id, access, expiration, function(result) {
                     if (result) res.status(200).send(id);
                     else res.sendStatus(400);
                 });
@@ -285,31 +269,31 @@ function handle(req, res, next) {
             if (id === undefined && username !== undefined) {
                 accountManager.getInformation("id", "username", username, function(id) {
                     if (id === undefined) res.sendStatus(404);
-                    else addLinkAccess(id);
+                    else callback(id);
                 });
-            } else addLinkAccess(id);
+            } else callback(id);
             break;
         case "updateAccess":
-            updateLinkAccess(parent, fileName, owner, id, access, expiration, function(result) {
+            updateLinkAccess(filePath, owner, id, access, expiration, function(result) {
                 if (result) res.send(id.toString());
                 else res.sendStatus(400);
             });
             break;
         case "removeAccess":
-            removeLinkAccess(parent, fileName, owner, id, function(result) {
+            removeLinkAccess(filePath, owner, id, function(result) {
                 if (result) res.sendStatus(200);
                 else res.sendStatus(400);
             });
             break;
         case "setPassword":
             if (!password) break;
-            updateLinkPassword(parent, fileName, owner, password, function(result) {
+            updateLinkPassword(filePath, owner, password, function(result) {
                 if (result) res.sendStatus(200);
                 else res.sendStatus(400);
             });
             break;
         case "deletePassword":
-            deleteLinkPassword(parent, fileName, owner, function(result) {
+            deleteLinkPassword(filePath, owner, function(result) {
                 if (result) res.sendStatus(200);
                 else res.sendStatus(400);
             });
@@ -320,8 +304,7 @@ function handle(req, res, next) {
     }
 }
 function linkAccessExists(key, id, next) {
-    if (id === undefined) id = -1;
-    else id = Number(id);
+    if (id === undefined) id = "public";
 
     database.get("SELECT * FROM sharing WHERE key = ? AND id = ?", [key, id], function(result) {
         if (next !== undefined) {
@@ -331,22 +314,19 @@ function linkAccessExists(key, id, next) {
     })
 }
 
-function linkCheck(key, filePath, currentID, next) {
-    if (currentID === undefined) currentID = -1;
-    filePath = decodeURIComponent(filePath);
-    if (filePath.indexOf("/") !== -1) filePath = filePath.substring(0, filePath.indexOf("/"));
+function linkCheck(key, currentID, next) {
 
-    database.get("SELECT * FROM links WHERE key = ? AND fileName = ?", [key, filePath], function(result) {
+    database.get("SELECT * FROM links WHERE key = ?", key, function(result) {
         if (result !== false) {
-            if (currentID >= 0 && (result.owner === currentID || result.owner === -2)) {
+            if (currentID && result.owner === currentID) {
                 if (next !== undefined) next(true);
             } else {
 
-                database.get("SELECT * FROM sharing WHERE key = ? AND (id = ? or id = -1) AND access > 0 AND (expiration > ? OR expiration IS NULL)", [key, currentID, Date.now()/1000], function(result) {
+                database.get("SELECT * FROM sharing WHERE key = ? AND (id = ? or id = 'public') AND access > 0 AND (expiration > ? OR expiration IS NULL)", [key, currentID, Date.now()/1000], function(result) {
                     if (result !== false) {
                         if (next !== undefined) next(true);
                     } else {
-                        if(currentID === -1) next(false);
+                        if(!currentID) next(false);
                         else if (next !== undefined) next(403);
                     }
                 });
@@ -357,11 +337,10 @@ function linkCheck(key, filePath, currentID, next) {
     });
 }
 
-function linkExists(parent, fileName, owner, next) {
-    parent = decodeURIComponent(parent);
-    fileName = decodeURIComponent(fileName);
-    if (owner === "public") owner = -2;
-    database.get("SELECT * FROM links WHERE parent = ? AND fileName = ? AND owner = ?", [parent, fileName, owner], function(result) {
+function linkExists(filePath, owner, next) {
+    filePath = decodeURIComponent(filePath);
+
+    database.get("SELECT * FROM links WHERE filePath = ? AND owner = ?", [filePath, owner], function(result) {
         if (result !== false) {
             if (next !== undefined) next(true);
         } else {
@@ -370,24 +349,22 @@ function linkExists(parent, fileName, owner, next) {
     });
 }
 
-function removeLinkAccess(parent, fileName, owner, id, next) {
-    parent = decodeURIComponent(parent);
-    fileName = decodeURIComponent(fileName);
-    if (parent === "") parent = "/";
-    if (owner === "public") owner = -2;
-    getLinkKey(parent, fileName, owner, function(key) {
+function removeLinkAccess(filePath, owner, id, next) {
+    filePath = decodeURIComponent(filePath);
+    if (filePath === "") filePath = "/";
+
+    getLinkKey(filePath, owner, function(key) {
         database.run("DELETE FROM sharing WHERE key = ? AND id = ?", [key, id], function (accessResult) {
             if (next !== undefined) next(accessResult);
         });
     });
 }
 
-function updateLinkAccess(parent, fileName, owner, id, newAccess, newExpiration, next) {
-    parent = decodeURIComponent(parent);
-    fileName = decodeURIComponent(fileName);
-    if (parent === "") parent = "/";
-    if (owner === "public") owner = -2;
-    getLinkKey(parent, fileName, owner, function(key) {
+function updateLinkAccess(filePath, owner, id, newAccess, newExpiration, next) {
+    filePath = decodeURIComponent(filePath);
+    if (filePath === "") filePath = "/";
+
+    getLinkKey(filePath, owner, function(key) {
         if (newAccess !== null) {
             database.run("UPDATE sharing SET access = ? WHERE key = ? AND id = ?", [newAccess, key, id], function (accessResult) {
                 if (newExpiration !== null) {
@@ -406,15 +383,14 @@ function updateLinkAccess(parent, fileName, owner, id, newAccess, newExpiration,
     });
 }
 
-function updateLinkPassword(parent, fileName, owner, newPassword, next) {
-    parent = decodeURIComponent(parent);
-    fileName = decodeURIComponent(fileName);
-    if (parent === "") parent = "/";
-    if (owner === "public") owner = -2;
+function updateLinkPassword(filePath, owner, newPassword, next) {
+    filePath = decodeURIComponent(filePath);
+    if (filePath === "") filePath = "/";
+
     let salt = authorization.generateSalt();
     let hash = authorization.getHash(newPassword, salt);
 
-    database.run("UPDATE links SET hash = ?, salt = ? WHERE parent = ? AND fileName = ? AND owner = ?", [hash, salt, parent, fileName, owner], function (result) {
+    database.run("UPDATE links SET hash = ?, salt = ? WHERE filePath = ? AND owner = ?", [hash, salt, filePath, owner], function (result) {
         if (next !== undefined) next(result);
     });
 }
@@ -425,6 +401,7 @@ module.exports = {
     deleteLink: deleteLink,
     deleteLinkPassword: deleteLinkPassword,
     doAuthorization: doAuthorization,
+    getLinkInformation: getLinkInformation,
     getLinkSummary: getLinkSummary,
     getRealFilePathLink: getRealFilePathLink,
     handle: handle,

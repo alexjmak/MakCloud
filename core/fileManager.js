@@ -2,256 +2,277 @@ const archiver = require('archiver');
 const fs = require("fs");
 const mkdirp = require("mkdirp")
 const multer = require("multer")
-const multerStorage = require('../modules/multer/StorageEngine');
+const multerStorage = require('./modules/multer/StorageEngine');
 const path = require("path");
-const tmp = require('tmp');
-const preferences = require("../preferences");
+const mime = require("mime")
+const tmp = require('tmp-promise');
+const createError = require("http-errors");
+const localeManager = require("./localeManager");
 const log = require("./log");
+const render = require("./render");
+const readify = require("readify");
 
-let createArchive = function(directories, next) {
-    initArchive(function(archive) {
-        if (typeof directories === "string") directories = [directories];
-        function callback(i) {
-            if (directories.hasOwnProperty(i)) {
-                walkDirectoryPreorder(directories[i], function(filePath, isDirectory, next) {
-                    if (isDirectory) return next();
-                    readFile(filePath, function(readStream) {
-                        let name = path.relative(path.dirname(directories[i]), filePath);
-                        archive.append(readStream, { name: name});
-                        return next();
-                    })
-                }, function() {
-                    callback(i + 1);
-                });
-            } else {
-                archive.finalize();
-                next(archive);
-            }
-        }
-        callback(0);
-    });
-}
+async function createArchive(directories) {
+    const archive = initArchive();
+    if (typeof directories === "string") directories = [directories];
 
-let deleteFile = function(filePath, relativeDirectory, next) {
-    let recycleDirectory = path.join(relativeDirectory, ".recycle");
-    let deletedPath = path.join(recycleDirectory, path.relative(relativeDirectory, filePath))
-
-    fs.stat(filePath, function(err, stats) {
-        if (!err) {
-            if (filePath.startsWith(recycleDirectory)) {
-                fs.unlink(filePath, function(err) {
-                    if (err) {
-                        log.write(err);
-                        if (next !== undefined) next(false);
-                    } else {
-                        if (next !== undefined) next(true);
-                    }
-                })
-            } else {
-                mkdirp(path.dirname(deletedPath)).then(function() {
-                    fs.rename(filePath, deletedPath, function (err) {
-                        if (err) {
-                            log.write(err);
-                            if (next !== undefined) next(false);
-                        } else {
-                            if (next !== undefined) next(true);
-                        }
-                    });
-                }).catch(function(err) {
-                    log.write(err);
-                    if (next) next(false);
-                });
-            }
+    async function callback(i) {
+        if (directories.hasOwnProperty(i)) {
+            await walkDirectoryPreorder(directories[i], async function (filePath, isDirectory) {
+                if (isDirectory) return;
+                const readStream = await readFile(filePath);
+                const name = path.relative(path.dirname(directories[i]), filePath);
+                archive.append(readStream, {name: name});
+            });
+            return await callback(i + 1);
         } else {
-            log.write(err);
-            if (next) next(false);
+            archive.finalize();
+            return archive;
         }
-    });
-};
+    }
 
-let initArchive = function(next) {
-    let archive = archiver('zip');
-    archive.on('error', function(err) {
-        log.write(err);
-    });
-    if (next) next(archive);
+    return await callback(0);
 }
 
-let processUpload = function(saveLocation) {
-    return function(req, res, next) {
-        let uploadFile = function(file, next) {
-            let filePath = path.join(saveLocation, file.originalname);
-            writeFile(filePath, file.stream, next);
-        }
-        return multer({storage: multerStorage(uploadFile)}).any()(req, res, function(err) {
-            if (err) return res.status(500).send("Upload failed");
-            if (Object.keys(req.files).length === 1) res.send("Uploaded file");
-            else res.send("Uploaded files");
+function downloadFile(fileStream, fileName, req, res, next) {
+    let header = {
+        "Content-Type": "application/octet-stream",
+        "Content-Disposition": "attachment"
+    };
+    if (fileName) {
+        header["Content-Disposition"] += `; filename="${encodeURIComponent(path.basename(fileName))}"`;
+    }
+    res.writeHead(200, header);
+    fileStream.pipe(res);
+}
+
+function downloadFolder(archiveStream, fileName, req, res, next) {
+    if (!fileName) fileName = localeManager.get(req).app_name;
+    fileName = `${path.basename(fileName)}-${Math.floor(Date.now() / 1000)}.zip`;
+    res.writeHead(200,
+        {
+            "Content-Disposition": `attachment; filename="${encodeURIComponent(path.basename(fileName))}"`,
+            "Content-Type": "application/octet-stream"
         });
+    archiveStream.pipe(res);
+}
+
+async function deleteFile(filePath, relativeDirectory) {
+    let recycleDirectory = path.join(relativeDirectory, ".recycle");
+    let deletedPath = path.join(recycleDirectory, path.relative(relativeDirectory, filePath));
+
+    if (filePath.startsWith(recycleDirectory)) {
+        try {
+            await fs.promises.unlink(filePath);
+        } catch (err) {
+            log.write(err);
+            return Promise.reject(err);
+        }
+    } else {
+        try {
+            await mkdirp(path.dirname(deletedPath));
+            await fs.promises.rename(filePath, deletedPath);
+        } catch (err) {
+            log.write(err);
+            return Promise.reject(err);
+        }
     }
 }
 
-let readDirectory = function(directory, callback, next) {
-    fs.readdir(directory, function(err, files) {
-        if (err) {
-            log.write(err);
-            if (next) next(err);
-            return;
+function initArchive() {
+    let archive = archiver('zip');
+    archive.on('error', function (err) {
+        log.write(err);
+    });
+    return archive;
+}
+
+function inlineFile(fileStream, fileName, req, res, next) {
+    let header = {
+        "Content-Disposition": "inline",
+        "Content-Type": mime.getType(fileName)
+    };
+    if (fileName) {
+        header["Content-Disposition"] += `; filename="${encodeURIComponent(path.basename(fileName))}"`;
+    }
+    res.writeHead(200, header);
+    fileStream.pipe(res);
+}
+
+
+function processUpload(saveLocation, overwrite, req, res, next) {
+    return new Promise((resolve, reject) => {
+        const uploadFile = async function (file) {
+            let filePath = path.join(saveLocation, file.originalname);
+            await writeFile(filePath, file.stream, null, overwrite);
         }
-        function nextFile(i) {
+        return multer({storage: multerStorage(uploadFile)}).any()(req, res, function (err) {
+            if (err) res.status(500).send("Upload failed");
+            else if (Object.keys(req.files).length === 1) res.send("Uploaded file");
+            else res.send("Uploaded files");
+            resolve();
+        });
+    })
+}
+
+async function readDirectory(directory, eachFile) {
+    try {
+        const files = await fs.promises.readdir(directory);
+
+        async function nextFile(i) {
             if (files.hasOwnProperty(i)) {
                 let file = files[i];
                 let filePath = path.join(directory, file);
-                fs.stat(filePath, function(err, stats) {
-                    if (err) {
-                        log.write(err);
-                        return nextFile(i + 1);
-                    }
-                    callback(filePath, stats.isDirectory(), function() {
-                        nextFile(i + 1);
-                    });
-                });
-            } else {
-                if (next) next();
+                try {
+                    const stats = await fs.promises.stat(filePath);
+                    await eachFile(filePath, stats.isDirectory());
+                    await nextFile(i + 1);
+                } catch (err) {
+                    log.write(err);
+                    await nextFile(i + 1);
+                }
             }
         }
-        nextFile(0);
-    });
 
+        await nextFile(0);
+    } catch (err) {
+        log.write(err);
+        return Promise.reject(err);
+    }
 }
-let readFile = function(filePath, next, options) {
-    let readStream = fs.createReadStream(filePath, options);
-    readStream.on("error", function(err) {
+
+async function readFile(filePath, options) {
+    const readStream = fs.createReadStream(filePath, options);
+    readStream.on("error", function (err) {
         log.write(err);
     });
-    if (next) next(readStream);
-};
-
-let walkDirectoryPreorder = function(directory, callback, next) {
-    readDirectory(directory, function(filePath, isDirectory, next) {
-        callback(filePath, isDirectory, function(newDirectoryName) {
-            if (isDirectory) {
-                if (newDirectoryName) filePath = newDirectoryName;
-                walkDirectoryPreorder(filePath, callback, function() {
-                    if (next) next();
-                });
-            } else {
-                if (next) next();
-            }
-        });
-    }, next);
-};
-
-let walkDirectoryPostorder = function(directory, callback, next) {
-    readDirectory(directory, function(filePath, isDirectory, next) {
-        if (isDirectory) {
-            walkDirectoryPostorder(filePath, callback, function() {
-                callback(filePath, isDirectory, function() {
-                    if (next) next();
-                });
-            });
-        } else {
-            callback(filePath, isDirectory, function() {
-                if (next) next();
-            });
-        }
-    }, next);
-};
-
-let writeFile = function(filePath, contentStream, next, prependBuffer) {
-    newTmpFile(function(err, tmpFilePath) {
-        if (err) {
-            if (next) next(err);
-            return;
-        }
-        let writeStream = fs.createWriteStream(tmpFilePath);
-
-        if (prependBuffer) {
-            for (let buffer of prependBuffer) {
-                writeStream.write(buffer);
-            }
-        }
-
-        contentStream.on("data", function(data) {
-            writeStream.write(data);
-        })
-
-        contentStream.on("end", function() {
-            writeStream.close();
-        })
-
-        contentStream.on("error", function(err) {
-            log.write(err);
-            fs.unlink(tmpFilePath, function() {
-                if (next) next(err);
-            })
-        });
-
-        writeStream.on("close", function () {
-            console.log(err);
-            mkdirp(path.dirname(filePath)).then(function() {
-                fs.stat(filePath, function(err, stat) {
-
-                    if (err) {
-                        fs.rename(tmpFilePath, filePath, function(err) {
-                            if (next) next(err);
-                        });
-                    } else {
-                        findSimilarName(filePath).then(function(newFilePath) {
-                            fs.rename(tmpFilePath, newFilePath, function(err) {
-                                if (next) next(err);
-                            });
-                        })
-                    }
-                })
-
-            })
-
-        });
-
-    })
-
-};
-
-let findSimilarName = function(filePath) {
-    return new Promise((resolve, reject) => {
-        let findSimilarNameUtil = function(counter) {
-            let parent = path.dirname(filePath);
-            let fileNameSplit = path.basename(filePath).split(".");
-            let extension = fileNameSplit.pop();
-            let fileName = fileNameSplit.join(".");
-            let newFilePath = path.join(parent, `${fileName}-${counter}.${extension}`);
-            fs.stat(newFilePath, function(err, stats) {
-                if (err) {
-                    resolve(newFilePath);
-                } else {
-                    findSimilarNameUtil(counter + 1)
-                }
-            })
-        }
-        findSimilarNameUtil(2);
-    })
+    return readStream;
 }
 
-let newTmpFile = function(next) {
-    let tmpdir = path.join(preferences.get("files"), "tmp")
-    mkdirp(tmpdir).then(function() {
-        tmp.tmpName({ tmpdir: tmpdir }, function(err, tmpPath) {
-            if (err) {
-                log.write(err);
-            }
-            if (next) next(err, tmpPath);
-        });
+async function renderDirectory(directory, relativeDirectory, req, res, next) {
+    try {
+        const data = await readify(directory, {sort: 'type'});
+        directory = path.relative(relativeDirectory, directory)
+        const re = new RegExp("\\" + path.sep, "g");
+        directory = directory.replace(re, "/");
+        await render("directory", {files: data.files, path: directory, baseUrl: req.baseUrl}, req, res, next);
+    } catch (err) {
+        log.write(err);
+        next(createError(404))
+    }
+}
+
+async function renderFile(req, res, next) {
+    return await render("fileViewer", null, req, res, next);
+}
+
+async function walkDirectoryPreorder(directory, eachFile) {
+    await readDirectory(directory, async function (filePath, isDirectory) {
+        const newDirectoryName = await eachFile(filePath, isDirectory);
+        if (isDirectory) {
+            if (newDirectoryName) filePath = newDirectoryName;
+            await walkDirectoryPreorder(filePath, eachFile);
+        }
+    });
+}
+
+async function walkDirectoryPostorder(directory, eachFile) {
+    await readDirectory(directory, async function (filePath, isDirectory) {
+        if (isDirectory) {
+            await walkDirectoryPostorder(filePath, eachFile);
+        }
+        await eachFile(filePath, isDirectory);
+    });
+}
+
+async function writeFile(filePath, contentStream, prependBuffer, overwrite) {
+    const tmpFilePath = await newTmpFile();
+
+    const writeStream = fs.createWriteStream(tmpFilePath);
+
+    if (prependBuffer) {
+        for (const buffer of prependBuffer) {
+            writeStream.write(buffer);
+        }
+    }
+
+    contentStream.on("data", function (data) {
+        writeStream.write(data);
     })
+
+    contentStream.on("end", function () {
+        writeStream.close();
+    })
+
+    contentStream.on("error", async function (err) {
+        log.write(err);
+        try {
+            await fs.promises.unlink(tmpFilePath)
+        } catch {
+        }
+    });
+
+    writeStream.on("close", async function () {
+        await mkdirp(path.dirname(filePath));
+        try {
+            await fs.promises.stat(filePath);
+        } catch {
+            await fs.promises.rename(tmpFilePath, filePath);
+            return;
+        }
+        const newFilePath = overwrite ? filePath : await findSimilarName(filePath);
+        await fs.promises.rename(tmpFilePath, newFilePath);
+    });
+
+
+}
+
+async function findSimilarName(filePath, counter) {
+    if (!counter) counter = 2;
+    const parent = path.dirname(filePath);
+    const fileBasename = path.basename(filePath);
+    let newFileBaseName;
+    if (filePath.includes(".")) {
+        const fileNameSplit = fileBasename.split(".");
+        const extension = fileNameSplit.pop();
+        const fileName = fileNameSplit.join(".");
+        newFileBaseName = `${fileName}-${counter}.${extension}`;
+    } else {
+        newFileBaseName = `${fileBasename}-${counter}`;
+    }
+
+    const newFilePath = path.join(parent, newFileBaseName)
+    try {
+        await fs.promises.stat(newFilePath);
+    } catch {
+        return newFilePath;
+    }
+    return await findSimilarName(filePath, counter + 1)
+}
+
+async function newTmpFile(directory) {
+    if (!directory) directory = "./tmp";
+    await mkdirp(directory);
+    try {
+        return tmp.tmpName({tmpdir: directory});
+    } catch (err) {
+        log.write(err);
+        return Promise.reject(err);
+    }
 }
 
 module.exports = {
     createArchive: createArchive,
     deleteFile: deleteFile,
+    downloadFile: downloadFile,
+    downloadFolder: downloadFolder,
     initArchive: initArchive,
+    inlineFile: inlineFile,
     processUpload: processUpload,
     readDirectory: readDirectory,
     readFile: readFile,
+    renderDirectory: renderDirectory,
+    renderFile: renderFile,
     walkDirectoryPreorder: walkDirectoryPreorder,
     walkDirectoryPostorder: walkDirectoryPostorder,
     writeFile: writeFile,

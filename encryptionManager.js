@@ -7,249 +7,192 @@ const stream = require("stream");
 const log = require("./core/log");
 const pbkdf2 = require("pbkdf2");
 
-function checkEncryptionSession(req, next) {
+async function checkEncryptionSession(req) {
     if (req.cookies.encryptionSession && req.sessionID) {
         let cookieSession = req.cookies.encryptionSession;
         cookieSession = cookieSession.substring(cookieSession.indexOf(":") + 1, cookieSession.indexOf("."));
-        if (cookieSession !== req.sessionID) {
-            if (next) next(false);
-        } else {
-            if (next) next(true);
-        }
+        return cookieSession === req.sessionID;
     } else {
         const authorization = require("./authorization");
-        accountManager.getInformation("encryptKey", "id", authorization.getID(req), function(encryptedKey) {
-            if (next) next(!encryptedKey);
-        });
+        const encryptedKey = await accountManager.getInformation("encryptKey", "id", authorization.getID(req));
+        return !encryptedKey;
     }
 }
 
-function decryptAccount(id, key, next) {
-    let accountPath = path.join(preferences.get("files"), id);
+async function decryptAccount(id, key) {
+    const accountPath = path.join(preferences.get("files"), id);
     const fileManager = require("./fileManager");
-    fileManager.readDirectory(accountPath, function(filePath, isDirectory, next) {
-        if (!isDirectory) {
-            if (next) next();
-            return;
-        }
-        fileManager.walkDirectoryPreorder(filePath, function(filePath, isDirectory, next) {
+    await fileManager.readDirectory(accountPath, async function(filePath, isDirectory) {
+        if (!isDirectory) return;
+        await fileManager.walkDirectoryPreorder(filePath, async function(filePath, isDirectory) {
             try {
                 if (isDirectory) {
-                    fileManager.renameDecryptDirectory(filePath, key, next);
-                } else {
-                    fileManager.readFile(filePath, key, function(readStream, decryptedFilePath, encrypted) {
-                        if (!decryptedFilePath) decryptedFilePath = filePath;
-                        if (!encrypted) {
-                            if (decryptedFilePath !== filePath) {
-                                fs.rename(filePath, decryptedFilePath, function() {
-                                    next();
-                                })
-                            } else next();
-                            return;
-                        }
-                        fileManager.writeFile(decryptedFilePath, readStream, null, function() {
-                            if (decryptedFilePath !== filePath) {
-                                fs.unlink(filePath, function() {
-                                    next();
-                                })
-                            } else {
-                                next();
-                            }
-                        });
-                    });
+                    await fileManager.renameDecryptDirectory(filePath, key);
+                    return;
                 }
+                const readData = await fileManager.readFile(filePath, key);
+                const readStream = readData.readStream;
+                let decryptedFilePath = readData.decryptedFilePath;
+                const encrypted = readData.encrypted;
+                if (!decryptedFilePath) decryptedFilePath = filePath;
+                    if (encrypted) {
+                        await fileManager.writeFile(decryptedFilePath, readStream, null);
+                        if (decryptedFilePath !== filePath) {
+                            await fs.promises.unlink(filePath);
+                        }
+                    } else {
+                        if (decryptedFilePath !== filePath) {
+                            await fs.promises.rename(filePath, decryptedFilePath)
+                        }
+                    }
             } catch (err) {
                 //todo backup key
                 log.write(err)
-                next();
             }
-        }, next);
-    }, next);
+        });
+    });
 }
 
-function decryptBuffer(buffer, key, iv, next) {
-    let contentStream = new stream.PassThrough();
+async function decryptBuffer(buffer, key, iv) {
+    const contentStream = new stream.PassThrough();
     contentStream.end(buffer);
-    decryptStream(contentStream, key, iv, function(decryptedStream) {
-        if (!decryptedStream) {
-            if (next) next(null);
-            return;
-        }
-        let bufferArray = [];
-        let error = false;
+    const decryptedStream = await decryptStream(contentStream, key, iv);
+    if (!decryptedStream) return null;
+    let bufferArray = [];
+    let error = false;
+
+    return new Promise((resolve, reject) => {
         decryptedStream.on("error", function(err) {
             error = true;
         });
-
         decryptedStream.on("data", function(data) {
             bufferArray.push(data);
         });
-
         decryptedStream.on("finish", function() {
-            if (error) {
-                if (next) next(null);
-                return;
-            }
-            let decryptedBuffer = Buffer.concat(bufferArray);
-            if (next) next(decryptedBuffer);
+            if (error) return resolve(null);
+            const decryptedBuffer = Buffer.concat(bufferArray);
+            resolve(decryptedBuffer);
         });
     });
+
 }
 
-function decryptEncryptionKey(id, password, next) {
-    generateAccountPbkdf2(id, password, function(pbkdf2) {
-        if (pbkdf2 === false) {
-            if (next !== undefined) next(false);
-        } else {
-            accountManager.getInformation("encryptKey", "id", id, function(key) {
-                accountManager.getInformation("encryptIV", "id", id, function(iv) {
-                    if (key === null || iv === null) {
-                        if (next !== undefined) next(false);
-                    } else {
-                        iv = Buffer.from(iv, "hex");
-                        key = Buffer.from(key, "hex");
-                        pbkdf2 = Buffer.from(pbkdf2);
-                        let decipher = crypto.createDecipheriv('aes-256-cbc', pbkdf2, iv);
-                        let decrypted;
-                        try {
-                            decrypted = Buffer.concat([decipher.update(key), decipher.final()]).toString("hex");
-                        } catch {
-                            log.write("Decryption error for id: " + id);
-                            if (next !== undefined) next(false);
-                            return;
-                        }
-                        decrypted = decrypted.toString();
-                        if (next !== undefined) next(decrypted);
-                    }
-                });
-            });
+async function decryptEncryptionKey(id, password) {
+    let [pbkdf2, derivedKeySalt] = await generateAccountPbkdf2(id, password);
+    let key = await accountManager.getInformation("encryptKey", "id", id);
+    let iv = await accountManager.getInformation("encryptIV", "id", id);
+    if (key === null || iv === null) {
+        return Promise.reject("Account is not encrypted");
+    } else {
+        iv = Buffer.from(iv, "hex");
+        key = Buffer.from(key, "hex");
+        pbkdf2 = Buffer.from(pbkdf2);
+        const decipher = crypto.createDecipheriv('aes-256-cbc', pbkdf2, iv);
+        try {
+            let decrypted = Buffer.concat([decipher.update(key), decipher.final()]).toString("hex");
+            decrypted = decrypted.toString();
+            return decrypted;
+        } catch {
+            return Promise.reject("Decryption error for id: " + id)
         }
-    });
+    }
 }
 
-function decryptFileName(filePath, key, next) {
-    let basename = path.basename(filePath);
-    let dirname = path.dirname(filePath);
-
-    basename = basename.replace(/-/g, "+").replace(/_/g, "/");
-    let buffer = Buffer.from(basename, 'base64')
-
-    getIVs(filePath, function(iv) {
-        decryptBuffer(buffer, key, iv, function(decryptedBuffer) {
-            if (decryptedBuffer) {
-                let decryptedBasename = decryptedBuffer.toString("utf8");
-                let decryptedFilePath = path.join(dirname, decryptedBasename);
-                if (next) next(decryptedFilePath);
-            } else {
-                if (next) next(null);
-            }
-        });
-    })
-
+async function decryptFileName(filePath, key) {
+    const basename = path.basename(filePath)
+        .replace(/-/g, "+")
+        .replace(/_/g, "/");
+    const dirname = path.dirname(filePath);
+    const buffer = Buffer.from(basename, 'base64')
+    const ivs = await getIVs(filePath)
+    if (!ivs) return null;
+    const nameIV = ivs.iv1;
+    const decryptedBuffer = await decryptBuffer(buffer, key, nameIV);
+    if (decryptedBuffer) {
+        const decryptedBasename = decryptedBuffer.toString("utf8");
+        return path.join(dirname, decryptedBasename);
+    } else {
+        return null;
+    }
 }
 
-function decryptReadifyNames(readifyData, key, next) { //todo
-    let data = Object.assign({}, readifyData);
+async function decryptReadifyNames(readifyData, key) { //todo
+    const data = Object.assign({}, readifyData);
     let numberFiles = data.files.length;
-
-    function callback(i) {
+    async function callback(i) {
         if (i < numberFiles) {
             if (data.files[i].name === "iv") {
                 numberFiles--;
                 data.files.splice(i, 1);
-                return callback(i);
+                return await callback(i);
             }
-            let filePath = path.join(data.path, data.files[i].name);
-            decryptFileName(filePath, key, function(decryptedFileName) {
-                if (decryptedFileName) data.files[i].decrypted_name = path.basename(decryptedFileName);
-                callback(i + 1);
-            })
-        } else {
-            if (next) next(data);
-        }
+            const filePath = path.join(data.path, data.files[i].name);
+            const decryptedFileName = await decryptFileName(filePath, key);
+            if (decryptedFileName) data.files[i].decrypted_name = path.basename(decryptedFileName);
+            return await callback(i + 1);
+        } else return data;
     }
-    callback(0);
+    return await callback(0);
 }
 
-function decryptFilePath(filePath, key, next) {
+async function decryptFilePath(filePath, key) {
+    filePath = path.normalize(filePath);
     filePath = filePath.split(path.sep);
-    let decryptedFilePath = [];
-    function callback(i) {
-
+    const decryptedFilePath = [];
+    async function callback(i) {
         if (filePath.length > 0) {
-            let fileName = filePath.join(path.sep);
+            const fileName = filePath.join(path.sep);
             filePath.pop();
-
-            decryptFileName(fileName, key, function(decryptedFileName) {
-                if (!decryptedFileName) decryptedFileName = fileName;
-                decryptedFilePath.splice(0, 0, path.basename(decryptedFileName));
-                callback(i + 1);
-            });
+            let decryptedFileName = await decryptFileName(fileName, key);
+            if (!decryptedFileName) decryptedFileName = fileName;
+            decryptedFilePath.splice(0, 0, path.basename(decryptedFileName));
+            return await callback(i + 1);
         } else {
-            decryptedFilePath = decryptedFilePath.join(path.sep);
-            if (next) next(decryptedFilePath);
+            return decryptedFilePath.join(path.sep);
         }
     }
-    callback(0);
+    return await callback(0);
 }
 
-function decryptStream(contentStream, key, iv, next) {
-    if (!key || !iv) {
-        if (next) next(null);
-        return;
-    }
+async function decryptStream(contentStream, key, iv) {
+    if (!key || !iv) return null;
     log.write("Decrypting...");
-    getDecipher(key, iv, function(err, testDecipher) {
-        if (err) {
-            log.write(err.code);
-            if (next !== undefined) next(null);
-        } else {
-            contentStream = contentStream.pipe(testDecipher)
-
-            contentStream.on("error", function(err) {
-                log.write(err)
-            });
-
-            next(contentStream)
-        }
-
-    });
+    try {
+        const testDecipher = await getDecipher(key, iv);
+        contentStream = contentStream.pipe(testDecipher);
+        contentStream.on("error", log.write);
+        return contentStream;
+    } catch (err) {
+        log.write(err.code);
+        return null;
+    }
 }
 
-function encryptAccount(id, key, next) {
-    let accountPath = path.join(preferences.get("files"), id);
+async function encryptAccount(id, key) {
+    const accountPath = path.join(preferences.get("files"), id);
     const fileManager = require("./fileManager");
-    fileManager.readDirectory(accountPath, function(filePath, isDirectory, next) {
-        if (!isDirectory) {
-            if (next) next();
-            return;
-        }
-        fileManager.walkDirectoryPostorder(filePath, function(filePath, isDirectory, next) {
+    await fileManager.readDirectory(accountPath, async function(filePath, isDirectory) {
+        if (!isDirectory) return;
+        await fileManager.walkDirectoryPostorder(filePath, async function(filePath, isDirectory) {
             try {
                 if (isDirectory) {
-                    fileManager.renameEncryptDirectory(filePath, key, next)
+                    await fileManager.renameEncryptDirectory(filePath, key)
                     return;
                 }
-                fileManager.readFile(filePath, null, function(readStream) {
-                    fileManager.writeFile(filePath, readStream, key, function(err, encryptedFileName) {
-                        if (encryptedFileName !== filePath) {
-                            fs.unlink(filePath, function() {
-                                next();
-                            });
-                        } else {
-                            next();
-                        }
-                    });
-                });
+                const readStream = (await fileManager.readFile(filePath, null)).readStream;
+                const encryptedFileName = await fileManager.writeFile(filePath, readStream, key);
+                if (encryptedFileName !== filePath) {
+                    await fs.promises.unlink(filePath);
+                }
             } catch (err) {
                 log.write(err)
                 if (next) next();
             }
-        }, next);
-    }, next);
+        });
+    });
 }
 
-function encryptBuffer(buffer, key, iv, next) {
+async function encryptBuffer(buffer, key, iv, next) {
     let contentStream = new stream.PassThrough();
     contentStream.end(buffer);
     encryptStream(contentStream, key, iv, function(encryptedStream) {
@@ -279,147 +222,139 @@ function encryptBuffer(buffer, key, iv, next) {
     })
 }
 
-function encryptEncryptionKey(key, iv, pbkdf2, next) {
-    let cipher = crypto.createCipheriv('aes-256-cbc', Buffer.from(pbkdf2), iv);
+async function encryptEncryptionKey(key, iv, pbkdf2) {
+    const cipher = crypto.createCipheriv('aes-256-cbc', Buffer.from(pbkdf2), iv);
     let encrypted = Buffer.concat([cipher.update(key), cipher.final()]);
     encrypted = encrypted.toString("hex");
-    if (next !== undefined) next(encrypted);
+    return encrypted;
 }
 
-function encryptFileName(filePath, key, iv, next) {
-    let basename = path.basename(filePath);
-    let dirname = path.dirname(filePath);
-    let buffer = Buffer.from(basename, 'utf8');
-    encryptBuffer(buffer, key, iv, function(encryptedBuffer) {
-        if (encryptedBuffer) {
-            let encryptedBasename = encryptedBuffer.toString("base64")
-                .replace(/\+/g, "-")
-                .replace(/\//g, "_")
-                .replace(/=/g, "");
-            let encryptedFilePath = path.join(dirname, encryptedBasename);
-            if (next) next(encryptedFilePath);
-        } else {
-            if (next) next(null);
-        }
-    });
+async function encryptFileName(filePath, key, iv) {
+    const basename = path.basename(filePath);
+    const dirname = path.dirname(filePath);
+    const buffer = Buffer.from(basename, 'utf8');
+    const encryptedBuffer = await encryptBuffer(buffer, key, iv);
+    if (encryptedBuffer) {
+        let encryptedBasename = encryptedBuffer.toString("base64")
+            .replace(/\+/g, "-")
+            .replace(/\//g, "_")
+            .replace(/=/g, "");
+        return path.join(dirname, encryptedBasename);
+    } else {
+        return null;
+    }
+
 }
 
 function encryptionEnabled(req) {
     return req.session && req.session.encryptionKey;
 }
 
-function encryptStream(contentStream, key, iv, next) {
-    if (!key || !iv) {
-        if (next) next(null);
-        return;
-    }
+async function encryptStream(contentStream, key, iv) {
+    if (!key || !iv) return null;
     log.write("Encrypting...");
-    getCipher(key, iv, function(err, testCipher) {
-        if (err) {
-            log.write(err.code);
-            if (next !== undefined) next(null);
-        } else {
-            contentStream = contentStream.pipe(testCipher)
-            next(contentStream)
-        }
-    });
+    try {
+        const testCipher = getCipher(key, iv);
+        contentStream = contentStream.pipe(testCipher)
+        return contentStream;
+    } catch (err) {
+        log.write(err.code);
+        return null;
+    }
 }
 
-function generateAccountPbkdf2(id, password, next) {
+async function generateAccountPbkdf2(id, password) {
     const authorization = require("./authorization");
-    authorization.checkPassword(id, password, function(result) {
-        if (result === authorization.LOGIN.FAIL) {
-            if (next !== undefined) next(false);
-        } else {
-            accountManager.getInformation("derivedKeySalt", "id", id, function(derivedKeySalt) {
-                if (!derivedKeySalt) derivedKeySalt = authorization.generateSalt();
-                generatePbkdf2(password, derivedKeySalt, function(pbkdf2) {
-                    if (next !== undefined) next(pbkdf2, derivedKeySalt);
-                });
-            });
-        }
-    });
+    const result = await authorization.checkPassword(id, password);
+    if (result === authorization.LOGIN.FAIL) {
+        return Promise.reject("Incorrect Password")
+    } else {
+        let derivedKeySalt = await accountManager.getInformation("derivedKeySalt", "id", id);
+        if (!derivedKeySalt) derivedKeySalt = authorization.generateSalt();
+        const pbkdf2 = await generatePbkdf2(password, derivedKeySalt);
+        return [pbkdf2, derivedKeySalt];
+    }
+
 }
 
-function generateEncryptionKey(id, password, next) {
-    generateAccountPbkdf2(id, password, function (pbkdf2, derivedKeySalt) {
-        if (pbkdf2 === false) {
-            if (next !== undefined) next(false);
-        } else {
-            let iv = crypto.randomBytes(16);
-            let key = crypto.randomBytes(32);
-            encryptEncryptionKey(key, iv, pbkdf2, function(encryptedKey) {
-                iv = iv.toString("hex");
-                if (next !== undefined) next(encryptedKey, iv, derivedKeySalt);
-            });
-        }
-    });
+async function generateEncryptionKey(id, password) {
+    const [pbkdf2, derivedKeySalt] = await generateAccountPbkdf2(id, password);
+    let iv = crypto.randomBytes(16);
+    const key = crypto.randomBytes(32);
+    const encryptedKey = await encryptEncryptionKey(key, iv, pbkdf2);
+    iv = iv.toString("hex");
+    return {key: encryptedKey, iv: iv, salt: derivedKeySalt};
 }
 
-function generatePbkdf2(password, derivedKeySalt, next) {
-    pbkdf2.pbkdf2(password, derivedKeySalt, 1, 32, 'sha512', function(nothing, pbkdf2) {
-        if (next !== undefined) next(pbkdf2);
+async function generatePbkdf2(password, derivedKeySalt) {
+    return new Promise((resolve, reject) => {
+        pbkdf2.pbkdf2(password, derivedKeySalt, 1, 32, 'sha512', function(err, pbkdf2) {
+            if (err) return reject(err);
+            resolve(pbkdf2);
+        });
     });
 }
 
 function generateIV() {
-    return crypto.randomBytes(16);
+    return new Promise((resolve, reject) => {
+        crypto.randomBytes(16, function(err, buffer) {
+            if (err) return reject(err);
+            resolve(buffer);
+        });
+    });
 }
 
-function getCipher(key, iv, next) {
-    key = Buffer.from(key, "hex");
-    iv = Buffer.from(iv, "hex");
+function getCipher(key, iv) {
     try {
-        let cipher = crypto.createCipheriv('aes-256-cbc', key, iv);
-        if (next) next(null, cipher)
+        key = Buffer.from(key, "hex");
+        iv = Buffer.from(iv, "hex");
+        return crypto.createCipheriv('aes-256-cbc', key, iv);
     } catch (err) {
         log.write(err);
-        if (next) return next(err);
+        return null;
     }
 }
 
-function getDecipher(key, iv, next) {
-    key = Buffer.from(key, "hex");
-    iv = Buffer.from(iv, "hex");
+function getDecipher(key, iv) {
     try {
-        let decipher = crypto.createDecipheriv('aes-256-cbc', key, iv);
-        if (next) next(null, decipher)
+        key = Buffer.from(key, "hex");
+        iv = Buffer.from(iv, "hex");
+        return crypto.createDecipheriv('aes-256-cbc', key, iv);
     } catch (err) {
         log.write(err);
-        if (next) return next(err);
+        return null;
     }
 }
 
-let getIVs = function(filePath, next) {
-    fs.stat(filePath, function(err, stats) {
-        if (err) {
-            log.write(err);
-            if (next) next(null);
-            return;
-        }
+async function getIVs(filePath) {
+    let stats;
+    try {
+        stats = await fs.promises.stat(filePath);
+    } catch (err) {
+        log.write(err);
+        return null;
+    }
+
+    return new Promise((resolve, reject) => {
         if (stats.isDirectory()) {
             let ivFile = path.join(filePath, "iv")
             fs.open(ivFile, "r", function(err, fd) {
                 if (err) {
                     log.write("IV not found for directory");
-                    if (next) next(null);
-                    return;
+                    return resolve(null);
                 }
-                let iv1 = Buffer.alloc(16);
-                fs.read(fd, iv1, 0, 16, 0, function(err, bytesRead, iv1) {
+                fs.read(fd, Buffer.alloc(16), 0, 16, 0, function(err, bytesRead, iv1) {
                     fs.close(fd, function() {
-                        if (next) next(iv1);
+                        resolve({iv1: iv1});
                     });
                 });
             });
         } else {
             fs.open(filePath, "r", function(err, fd) {
-                let iv1 = Buffer.alloc(16);
-                let iv2 = Buffer.alloc(16);
-                fs.read(fd, iv1, 0, 16, 0, function(err, bytesRead, iv1) {
-                    fs.read(fd, iv2, 0, 16, 16, function(err, bytesRead, iv2) {
+                fs.read(fd, Buffer.alloc(16), 0, 16, 0, function(err, bytesRead, iv1) {
+                    fs.read(fd, Buffer.alloc(16), 0, 16, 16, function(err, bytesRead, iv2) {
                         fs.close(fd, function() {
-                            if (next) next(iv1, iv2);
+                            resolve({iv1: iv1, iv2: iv2});
                         });
                     });
                 });
@@ -427,25 +362,21 @@ let getIVs = function(filePath, next) {
         }
     })
 
+
+
 }
 
-function isEncrypted(contentStream, key, iv, next) {
-    getDecipher(key, iv, function(err, testDecipher) {
-        if (err) {
-            log.write(err.code);
-            if (next !== undefined) next(null);
-        }
+function isEncrypted(contentStream, key, iv) {
+    return new Promise((resolve, reject) => {
+        const testDecipher = getDecipher(key, iv);
         contentStream = contentStream.pipe(testDecipher)
-
         contentStream.on("data", function() {
         });
-
         contentStream.on("error", function(error) {
-            next(false)
+            resolve(false);
         });
-
         contentStream.on("end", function() {
-            next(true)
+            resolve(true);
         });
     });
 }

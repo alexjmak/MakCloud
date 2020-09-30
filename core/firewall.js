@@ -9,140 +9,111 @@ const checkFirewallTable = ["CREATE TABLE IF NOT EXISTS firewall (ip TEXT NOT NU
     "ALTER TABLE firewall ADD COLUMN start INTEGER;",
     "ALTER TABLE firewall ADD COLUMN end INTEGER;"];
 
-database.runList(checkFirewallTable, [], function() {}, false);
+
+(async () => {
+    try {
+        await database.runList(checkFirewallTable, [], false);
+    } catch {
+    }
+})();
 
 const LISTS = {"BLACKLIST": 0, "WHITELIST": 1}
 
-function add(ip, list, milliseconds, next) {
-    contains(ip, list, function(result) {
-        let start = Date.now();
-        let end = null;
-        if (milliseconds || milliseconds === 0) end = start + milliseconds;
-        let listName = Object.keys(LISTS).find(key => LISTS[key] === list).toLowerCase();
-        if (!result) {
-            database.run("INSERT INTO firewall (ip, list, start, end) VALUES (?, ?, ?, ?)", [ip, list, start, end], function(result) {
-                if (result) {
-                    log.write(`Added ${ip} to the ${listName}`);
-                }
-                if (next) next(result);
-            });
-        } else {
-            database.get("SELECT * FROM firewall WHERE ip = ? AND list = ?", [ip, list], function(result) {
-                let oldStart = result.start;
-                let oldEnd = result.end;
-                if (start === null || (oldStart !== null && oldStart < start)) start = oldStart;
-                if (oldEnd === null || (end !== null && oldEnd > end)) end = oldEnd;
-                if (start !== oldStart || end !== oldEnd) {
-                    database.run("UPDATE firewall SET start = ?, end = ? WHERE ip = ? AND list = ?", [start, end, ip, list], function(result) {
-                        if (result) {
-                            log.write(`Updated ${ip} in the ${listName}`);
-                        }
-                        if (next) next(result);
-                    });
-                } else {
-                    log.write(`No changes made to ${ip} in the ${listName}`);
-                    if (next) next(result);
-                }
-            });
-        }
-    });
-
-}
-
-function check(ip, list, next) {
-    let time = Date.now();
-    database.get("SELECT * FROM firewall WHERE ip = ? AND list = ? AND (start <= ?)", [ip, list, time], function(result) {
-        if (result) {
-            if (result.end === null || result.end === undefined || result.end > time) {
-                if (next) next(true, result.end);
-            } else {
-                remove(ip, list, function() {
-                    if (next) next(false);
-                });
-            }
-        } else {
-            if (next) next(false);
-        }
-    });
-}
-
-function contains(ip, list, next) {
-    database.get("SELECT * FROM firewall WHERE ip = ? and list = ?", [ip, list], function(result) {
-        if (result) {
-            if (next) next(result);
-        } else {
-            if (next) next(false);
-        }
-    });
-}
-
-function get(list, next) {
-    if (typeof list === "function" && !next) {
-        next = list;
-        database.all("SELECT * FROM firewall ORDER BY ip", null, function(results) {
-            if (next) next(results);
-        })
+async function add(ip, list, milliseconds) {
+    let start = Date.now();
+    let end = null;
+    if (milliseconds || milliseconds === 0) end = start + milliseconds;
+    let listName = Object.keys(LISTS).find(key => LISTS[key] === list).toLowerCase();
+    if (!(await contains(ip, list))) {
+        await database.run("INSERT INTO firewall (ip, list, start, end) VALUES (?, ?, ?, ?)", [ip, list, start, end]);
+        log.write(`Added ${ip} to the ${listName}`);
     } else {
-        database.all("SELECT * FROM firewall WHERE list = ? ORDER BY ip", list, function(results) {
-            if (next) next(results);
-        })
-    }
-}
-
-function modifyEnd(ip, list, newEnd, next) {
-    if (newEnd === undefined) {
-        if (next) next(false);
-        return;
-    }
-    contains(ip, list, function(result) {
-        if (result) {
-            database.run("UPDATE firewall SET end = ? WHERE ip = ? and list = ?", [newEnd, ip, list], function(result) {
-                if (next) next(result);
-            })
-        }
-    });
-}
-
-function modifyIp(ip, list, newIp, next) {
-    if (newIp === undefined) {
-        if (next) next(false);
-        return;
-    }
-    contains(ip, list, function(result) {
-        if (result) {
-            database.run("UPDATE firewall SET ip = ? WHERE ip = ? and list = ?", [newIp, ip, list], function(result) {
-                if (next) next(result);
-            })
-        }
-    });
-}
-
-function modifyStart(ip, list, newStart, next) {
-    if (newStart === undefined) {
-        if (next) next(false);
-        return;
-    }
-    contains(ip, list, function(result) {
-        if (result) {
-            database.run("UPDATE firewall SET start = ? WHERE ip = ? and list = ?", [newStart, ip, list], function(result) {
-                if (next) next(result);
-            })
-        }
-    });
-}
-
-function remove(ip, list, next) {
-    contains(ip, list, function(result) {
-        if (result) {
-            database.run("DELETE FROM firewall WHERE (ip = ? AND list = ?) OR (end <= ?)", [ip, list, Date.now()], function(result) {
-                let listName = Object.keys(LISTS).find(key => LISTS[key] === list).toLowerCase();
-                log.write(`Removed ${ip} from the ${listName}`);
-                if (next) next(result);
-            });
+        const result = await database.get("SELECT * FROM firewall WHERE ip = ? AND list = ?", [ip, list]);
+        const oldStart = result.start;
+        const oldEnd = result.end;
+        if (start === null || (oldStart !== null && oldStart < start)) start = oldStart;
+        if (oldEnd === null || (end !== null && oldEnd > end)) end = oldEnd;
+        if (start !== oldStart || end !== oldEnd) {
+            await database.run("UPDATE firewall SET start = ?, end = ? WHERE ip = ? AND list = ?", [start, end, ip, list]);
+            log.write(`Updated ${ip} in the ${listName}`);
         } else {
-            if (next) next(false);
+            log.write(`No changes made to ${ip} in the ${listName}`);
         }
-    });
+    }
+
+}
+
+async function check(ip, list) {
+    const time = Date.now();
+    const result = await database.get("SELECT * FROM firewall WHERE ip = ? AND list = ? AND (start <= ?)", [ip, list, time]);
+    if (result) {
+        if (result.end === null || result.end === undefined || result.end > time) {
+            return result.end;
+        } else {
+            await remove(ip, list);
+        }
+    }
+    return false;
+}
+
+async function contains(ip, list) {
+    const result = await database.get("SELECT * FROM firewall WHERE ip = ? and list = ?", [ip, list]);
+    if (result) {
+        return result;
+    }
+    return false;
+
+}
+
+async function get(list) {
+    if (list) {
+        return await database.all("SELECT * FROM firewall WHERE list = ? ORDER BY ip", list);
+    } else {
+        return await database.all("SELECT * FROM firewall ORDER BY ip");
+    }
+}
+
+async function modifyEnd(ip, list, newEnd) {
+    if (newEnd === undefined) {
+        return Promise.reject("New end date is undefined");
+    }
+    if (await contains(ip, list)) {
+        await database.run("UPDATE firewall SET end = ? WHERE ip = ? and list = ?", [newEnd, ip, list]);
+    } else {
+        return Promise.reject("List entry not found");
+    }
+}
+
+async function modifyIp(ip, list, newIp) {
+    if (newIp === undefined) {
+        return Promise.reject("New IP date is undefined");
+    }
+    if (await contains(ip, list)) {
+        await database.run("UPDATE firewall SET ip = ? WHERE ip = ? and list = ?", [newIp, ip, list]);
+    } else {
+        return Promise.reject("List entry not found");
+    }
+}
+
+async function modifyStart(ip, list, newStart) {
+    if (newStart === undefined) {
+        return Promise.reject("New start date is undefined");
+    }
+    if (await contains(ip, list)) {
+        await database.run("UPDATE firewall SET start = ? WHERE ip = ? and list = ?", [newStart, ip, list]);
+    } else {
+        return Promise.reject("List entry not found");
+    }
+}
+
+async function remove(ip, list) {
+    if (await contains(ip, list)) {
+        await database.run("DELETE FROM firewall WHERE (ip = ? AND list = ?) OR (end <= ?)", [ip, list, Date.now()]);
+        let listName = Object.keys(LISTS).find(key => LISTS[key] === list).toLowerCase();
+        log.write(`Removed ${ip} from the ${listName}`);
+    } else {
+        log.write(`${ip} already removed from the ${listName}`);
+    }
 }
 
 function getRedirectUrl(req) {
@@ -152,72 +123,73 @@ function getRedirectUrl(req) {
 }
 
 class blacklist {
-    static add(ip, milliseconds, next) {
-        add(ip, LISTS.BLACKLIST, milliseconds, next);
+    static async add(ip, milliseconds) {
+        await add(ip, LISTS.BLACKLIST, milliseconds);
     }
 
-    static check(ip, next) {
-        check(ip, LISTS.BLACKLIST, next);
+    static async check(ip) {
+        await check(ip, LISTS.BLACKLIST);
     }
 
-    static contains(ip, next) {
-        contains(ip, LISTS.BLACKLIST, next);
+    static async contains(ip) {
+        await contains(ip, LISTS.BLACKLIST);
     }
 
-    static enforce(req, res, next) {
-        check(req.ip, LISTS.BLACKLIST, function(result, end) {
-            if (result || !req.ip) {
-                if (req.url !== "/login" && !req.url.startsWith("/login?redirect=")) {
-                    return res.redirect("/logout" + getRedirectUrl(req));
-                }
-                render('login', {firewall: "blacklisted", firewallEnd: end}, req, res, next);
+    static async enforce(req, res, next) {
+        const end = await check(req.ip, LISTS.BLACKLIST);
+        if (end !== false || !req.ip) {
+            if (req.url !== "/login" && !req.url.startsWith("/login?redirect=")) {
+                res.redirect("/logout" + getRedirectUrl(req));
             } else {
-                next();
+                render('login', {firewall: "blacklisted", firewallEnd: end}, req, res, next);
             }
-        });
+        } else {
+            next();
+        }
+
     }
 
-    static get(next) {
-        get(LISTS.BLACKLIST, next);
+    static async get() {
+        await get(LISTS.BLACKLIST);
     }
 
-    static remove(ip, next) {
-        remove(ip, LISTS.BLACKLIST, next);
+    static async remove(ip) {
+        await remove(ip, LISTS.BLACKLIST);
     }
 }
 
 class whitelist {
-    static add(ip, milliseconds, next) {
-        add(ip, LISTS.WHITELIST, milliseconds, next);
+    static async add(ip, milliseconds) {
+        await add(ip, LISTS.WHITELIST, milliseconds);
     }
 
-    static check(ip, next) {
-        check(ip, LISTS.WHITELIST, next);
+    static async check(ip) {
+        await check(ip, LISTS.WHITELIST);
     }
 
-    static contains(ip, next) {
-        contains(ip, LISTS.WHITELIST, next);
+    static async contains(ip) {
+        await contains(ip, LISTS.WHITELIST);
     }
 
-    static enforce(req, res, next) {
-        check(req.ip, LISTS.WHITELIST, function(result) {
-            if (!result || !req.ip) {
-                if (req.url !== "/login" && !req.url.startsWith("/login?redirect=")) {
-                    return res.redirect("/logout" + getRedirectUrl(req));
-                }
-                render('login', {firewall: "not whitelisted"}, req, res, next);
+    static async enforce(req, res, next) {
+        await check(req.ip, LISTS.WHITELIST)
+        if (end !== false || !req.ip) {
+            if (req.url !== "/login" && !req.url.startsWith("/login?redirect=")) {
+                res.redirect("/logout" + getRedirectUrl(req));
             } else {
-                next();
+                render('login', {firewall: "not whitelisted"}, req, res, next);
             }
-        });
+        } else {
+            next();
+        }
     }
 
-    static get(next) {
-        get(LISTS.WHITELIST, next);
+    static async get() {
+        await get(LISTS.WHITELIST);
     }
 
-    static remove(ip, next) {
-        remove(ip, LISTS.WHITELIST, next);
+    static async remove(ip) {
+        await remove(ip, LISTS.WHITELIST);
     }
 }
 

@@ -3,111 +3,109 @@ const express = require('express');
 const fs = require("fs");
 const mkdirp = require("mkdirp");
 const path = require("path");
-const stream = require('stream');
-const url = require('url');
 
-const authorization = require('../authorization');
 const fileManager = require('../fileManager');
 const preferences = require("../preferences");
+const log = require('../log');
 
-let files = function(getRelativeDirectory, encryption) {
-    if (!getRelativeDirectory) getRelativeDirectory = (req) => path.join(preferences.get("files"), authorization.getID(req), "files");
+const files = function (getRelativeDirectory, getFilePath) {
+    if (!getRelativeDirectory) getRelativeDirectory = req => preferences.get("files");
+    if (!getFilePath) getFilePath = req => path.join(getRelativeDirectory(req), decodeURIComponent(req.path));
 
     const router = express.Router();
 
-    router.use(function(req, res, next) {
-        mkdirp(getRelativeDirectory(req)).then(function() {
+    router.use(async function (req, res, next) {
+        let relativeDirectory = getRelativeDirectory(req);
+        try {
+            const stats = await fs.promises.stat(relativeDirectory);
+            if (stats && stats.isDirectory()) await mkdirp(getRelativeDirectory(req));
             next();
-        }).catch(function(err) {
+        } catch (err) {
             log.write(err);
             next(createError(500));
-        });
-    });
-
-    router.delete("/*", function(req, res, next) {
-        let urlPath = getUrlPath(req);
-        let relativeDirectory = getRelativeDirectory(req);
-        let filePath = path.join(relativeDirectory, urlPath);
-        fileManager.deleteFile(filePath, relativeDirectory, function(result) {
-            if (result) res.sendStatus(200);
-            else res.sendStatus(404);
-        });
-    });
-
-    router.get('/*', function(req, res, next) {
-        const urlPath = getUrlPath(req);
-        const relativeDirectory = getRelativeDirectory(req);
-        const filePath = path.join(relativeDirectory, urlPath);
-        const parameter = Object.keys(req.query)[0];
-
-        fs.stat(filePath, function(err, stats) {
-            if (err !== null) return next();
-            if (stats.isDirectory()) {
-                switch(parameter) {
-                    case "download":
-                        fileManager.downloadFolder(filePath, req, res, next)
-                        break;
-                    default:
-                        fileManager.renderDirectory(filePath, relativeDirectory, req, res, next);
-                        break;
-                }
-            } else {
-                switch(parameter) {
-                    case "download":
-                        fileManager.downloadFile(filePath, req, res, next);
-                        break;
-                    case "view":
-                        fileManager.renderFile(filePath, req, res, next);
-                        break;
-                    default:
-                        fileManager.inlineFile(filePath, req, res, next);
-                        break;
-                }
-            }
-        });
-    });
-
-    router.post("/*", function(req, res, next) {
-        const urlPath = getUrlPath(req);
-        const relativeDirectory = getRelativeDirectory(req);
-        const filePath = path.join(relativeDirectory, urlPath);
-        const parameter = Object.keys(req.query)[0];
-
-        fs.stat(filePath, function(err, stats) {
-            if (err !== null && next !== undefined) return res.status(404);
-            if (parameter === "upload") {
-                if (stats.isDirectory()) {
-                    fileManager.processUpload(filePath)(req, res, next);
-                }
-            }
-        });
-    });
-
-    router.put("/*", function(req, res, next) {
-        let filePath = decodeURIComponent(url.parse(req.url).pathname).substring(1);
-        let owner = authorization.getID(req);
-        if (req.baseUrl === "/public") owner = "public";
-        let realFilePath = path.join(preferences.get("files"), owner, "files", filePath);
-        let fileContents = req.files.data.data;
-
-        if (fileContents) {
-            let contents = new stream.PassThrough();
-            contents.end(fileContents);
-            fileManager.writeFile(realFilePath, contents, function(err) {
-                if (err) res.status(500).send("Save failed");
-                else res.send("Saved file");
-            })
-        } else {
-            res.status(400).send("No contents");
         }
     });
 
-    function getUrlPath(req) {
-        return decodeURIComponent(req.path).substring(1);
-    }
+    router.delete("/*", async function (req, res, next) {
+        const relativeDirectory = getRelativeDirectory(req);
+        const filePath = getFilePath(req);
+        try {
+            await fileManager.deleteFile(filePath, relativeDirectory);
+            res.sendStatus(200);
+        } catch {
+            res.sendStatus(404);
+        }
+    });
+
+    router.get('/*', async function (req, res, next) {
+        const filePath = getFilePath(req);
+        const fileName = path.basename(filePath);
+        const relativeDirectory = getRelativeDirectory(req);
+        const parameter = Object.keys(req.query)[0];
+
+        let stats;
+        try {
+            stats = await fs.promises.stat(filePath);
+        } catch (err) {
+            return next(createError(404));
+        }
+
+        if (stats.isDirectory()) {
+            switch (parameter) {
+                case "download":
+                    const archiveStream = await fileManager.createArchive(filePath);
+                    fileManager.downloadFolder(archiveStream, (req.path !== "/") ? fileName : null, req, res, next)
+                    break;
+                default:
+                    await fileManager.renderDirectory(filePath, relativeDirectory, req, res, next);
+                    break;
+            }
+        } else {
+            const fileStream = await fileManager.readFile(filePath);
+            switch (parameter) {
+                case "download":
+                    fileManager.downloadFile(fileStream, fileName, req, res, next);
+                    break;
+                case "view":
+                    await fileManager.renderFile(req, res, next);
+                    break;
+                default:
+                    fileManager.inlineFile(fileStream, fileName, req, res, next);
+                    break;
+            }
+        }
+
+    });
+
+    router.post("/*", async function (req, res, next) {
+        const filePath = getFilePath(req);
+        try {
+            const stats = await fs.promises.stat(filePath);
+            if (stats.isDirectory()) {
+                await fileManager.processUpload(filePath, false, req, res, next);
+            } else {
+                res.status(400);
+            }
+        } catch {
+            res.status(404);
+        }
+    });
+
+    router.put("/*", async function (req, res, next) {
+        const filePath = getFilePath(req);
+        try {
+            const stats = await fs.promises.stat(filePath);
+            if (!stats.isDirectory()) {
+                await fileManager.processUpload(path.dirname(filePath), true, req, res, next);
+            } else {
+                res.status(400);
+            }
+        } catch {
+            res.status(404);
+        }
+    });
 
     return router;
 }
-
 
 module.exports = files;

@@ -10,7 +10,9 @@ html
         link(rel='stylesheet', type='text/css', href='/Material-Icons/material-icons.css')
         link(rel='stylesheet', type='text/css', href='/stylesheets/layout.css')
         script.
-            let currentUsername = "#{username}";
+            const currentID = "#{id}";
+            const currentUsername = "#{username}";
+            const locale = {app_name: "#{locale.app_name}"}
         script(type='text/javascript', src='/javascripts/jquery-3.4.1.js')
         script(type='text/javascript', src='/javascripts/jquery.md5.js')
         script(type='text/javascript', src='/javascripts/jquery.cookie.js')
@@ -20,7 +22,6 @@ html
         script(type='text/javascript', src='/javascripts/requests.js')
         script(type='text/javascript', src='/javascripts/dialog.js')
         script(type='text/javascript', src='/javascripts/snackbar.js')
-        script(type='text/javascript', src='/javascripts/sharing.js')
         block header
         script(type='text/javascript', src='/javascripts/layout.js')
     body
@@ -29,7 +30,8 @@ html
             .mdc-top-app-bar__row.mdc-elevation--z1
                 section.mdc-top-app-bar__section.mdc-top-app-bar__section--align-start
                     button.mobile.material-icons.mdc-top-app-bar__navigation-icon.mdc-ripple(style="display: none; color: white; background-color: transparent; border: none; outline: none") menu
-                    h3(onclick="window.location.href='/'" style="cursor: pointer; font-size: 22px;")= locale.app_name
+                    //button.material-icons(onclick="window.location.href='/'" style="margin-left: 5px; color: white; background-color: transparent; border: none; outline: none") cloud
+                    h3(onclick="window.location.href='/'" style="margin-left: 5px; cursor: pointer; font-size: 22px;")= locale.app_name
                 section.mdc-top-app-bar__section.mdc-top-app-bar__section--align-end
                     h3(id="currentUsername", style="font-weight: normal; cursor: pointer;")= username
                     button#accountButton.material-icons(type='submit' style="float: right; font-size: 36px; color: white; background-color: transparent; border: none; outline: none") perm_identity

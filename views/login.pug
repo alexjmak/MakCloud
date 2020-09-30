@@ -1,10 +1,16 @@
-extends layout
+extends ../core/views/layout
 
 block header
     link(rel='stylesheet', type='text/css', href='/stylesheets/login.css')
     script.
         let firewall = "#{firewall}";
         let firewallEnd = parseInt("#{firewallEnd}");
+        Object.assign(locale, {
+            no_connection: "#{locale.no_connection}",
+            enable_cookies: "#{locale.enable_cookies}",
+            enter_your_username: "#{locale.enter_your_username}",
+            enter_your_password: "#{locale.enter_your_password}"
+        });
     script(type= "text/javascript", src= "/javascripts/login.js")
 block content
     .box

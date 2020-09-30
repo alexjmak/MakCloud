@@ -45,17 +45,19 @@ var UserManager = /** @class */ (function () {
     UserManager.prototype.getUserByNamePassword = function (username, password, callback) {
         this.getUserByName(username, function(e, user) {
             if (e) return callback(e);
+            console.log(user)
             authorization.checkPassword(user.uid, password, function(result) {
                 switch (result) {
                     case authorization.LOGIN.SUCCESS:
-                        if (user.key === undefined || user.iv === undefined)  {
+                        if (user.key === undefined)  {
                             encryptionManager.decryptEncryptionKey(user.uid, password, function(key) {
+                                console.log(key)
                                 if (key !== false) {
                                     user.key = key;
                                 } else {
                                     user.key = null;
-                                    callback(null, user);
                                 }
+                                callback(null, user);
 
                             });
                         } else {

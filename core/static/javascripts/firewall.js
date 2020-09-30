@@ -66,7 +66,11 @@ function getNewFirewallRowHTML() {
 
 function updateCallback(xmlHttpRequest) {
     if (xmlHttpRequest.status === 0) {
-        showDialog(okDialog, "MakCloud", "Your session has expired", {"close": function() {location.reload()}});
+        showDialog(okDialog, locale.app_name, "Your session has expired", {
+            "close": function () {
+                location.reload()
+            }
+        });
     } else if (xmlHttpRequest.status !== 200) {
         showSnackbar(basicSnackbar, xmlHttpRequest.responseText);
         getFirewallInfo(displayFirewallInfo);
@@ -124,11 +128,13 @@ function updateButton(event) {
 
     if (button.hasClass("delete")) {
         let prompt = "Are you sure you want to remove " + ip + "?";
-        showDialog(yesNoDialog, "MakCloud", prompt, {"yes": function() {
+        showDialog(yesNoDialog, locale.app_name, prompt, {
+            "yes": function () {
                 deleteRequest(url + "delete", JSON.stringify(data), updateCallback);
                 delete firewallFieldValues[ip];
                 $("#firewall").find(`tr[name="${ip}"]`).remove();
-            }});
+            }
+        });
     }
     if (button.hasClass("add")) {
         let ip = $(".new-firewall.ip").val().trim();
@@ -147,7 +153,11 @@ function updateButton(event) {
 
         putRequest(url + "new", JSON.stringify(data), function(xmlHttpRequest) {
             if (xmlHttpRequest.status === 0) {
-                showDialog(okDialog, "MakCloud", "Your session has expired", {"close": function() {location.reload()}});
+                showDialog(okDialog, locale.app_name, "Your session has expired", {
+                    "close": function () {
+                        location.reload()
+                    }
+                });
             } else {
                 if (xmlHttpRequest.status !== 200) {
                     showSnackbar(basicSnackbar, xmlHttpRequest.responseText);

@@ -7,85 +7,92 @@ class Database {
         this.database = new sqlite3.Database(path);
     }
 
-    all(query, args, next, verbose) {
-        let database = this.database;
-        let statement = database.prepare(query, function (err) {
-            if (err != null) {
-                if (verbose === true || verbose === undefined) log.write(err);
-                if (next !== undefined) next(false);
-            }
-        });
+    all(query, args, verbose) {
+        return new Promise((resolve, reject) => {
+            let database = this.database;
+            let statement = database.prepare(query, function (err) {
+                if (err != null) {
+                    if (verbose === true || verbose === undefined) log.write(err);
+                    reject(err);
+                }
+            });
 
-        if (args === undefined || args === null) args = [];
+            if (args === undefined || args === null) args = [];
 
-        statement.all(args, function (err, results) {
-            statement.finalize();
+            statement.all(args, function (err, results) {
+                statement.finalize();
 
-            if (err != null) {
-                if (verbose === true || verbose === undefined) log.write(err);
-                if (next !== undefined) next(false);
-            } else if (results === undefined) {
-                if (next !== undefined) next(false);
-            } else if (next !== undefined) next(results);
-        });
+                if (err != null) {
+                    if (verbose === true || verbose === undefined) log.write(err);
+                    reject(err);
+                } else resolve(results);
+            });
+        })
+
     }
 
-    get(query, args, next, verbose) {
-        let database = this.database;
-        let statement = database.prepare(query, function (err) {
-            if (err != null) {
-                if (verbose === true || verbose === undefined) log.write(err);
-                if (next !== undefined) next(false);
-            }
-        });
+    get(query, args, verbose) {
+        return new Promise((resolve, reject) => {
+            let database = this.database;
+            let statement = database.prepare(query, function (err) {
+                if (err != null) {
+                    if (verbose === true || verbose === undefined) log.write(err);
+                    reject(err);
+                }
+            });
 
-        if (args === undefined || args === null) args = [];
-        statement.get(args, function (err, result) {
-            statement.finalize();
+            if (args === undefined || args === null) args = [];
+            statement.get(args, function (err, result) {
+                statement.finalize();
 
-            if (err != null) {
-                if (verbose === true || verbose === undefined) log.write(err);
-                if (next !== undefined) next(false);
-            } else if (result === undefined) {
-                if (next !== undefined) next(false);
-            } else if (next !== undefined) next(result);
+                if (err != null) {
+                    if (verbose === true || verbose === undefined) log.write(err);
+                    reject(err);
+                } else resolve(result);
 
-        });
+            });
+        })
+
     }
 
-    run(query, args, next, verbose) {
-        let database = this.database;
+    run(query, args, verbose) {
+        return new Promise((resolve, reject) => {
+            let database = this.database;
 
-        var statement = database.prepare(query, function (err) {
-            if (err != null) {
-                if (verbose === true || verbose === undefined) log.write(err);
-                if (next !== undefined) next(false);
-            }
+            var statement = database.prepare(query, function (err) {
+                if (err != null) {
+                    if (verbose === true || verbose === undefined) log.write(err);
+                    reject(err);
+                }
+            });
+
+            if (args === undefined || args === null) args = [];
+            statement.run(args, function (err) {
+                statement.finalize();
+                if (err != null) {
+                    if (verbose === true || verbose === undefined) log.write(err);
+                    reject(err);
+                } else {
+                    resolve();
+                }
+            });
         });
 
-        if (args === undefined || args === null) args = [];
-        statement.run(args, function (err) {
-            statement.finalize();
-            if (err != null) {
-                if (verbose === true || verbose === undefined) log.write(err);
-                if (next !== undefined) next(false);
-            } else {
-                if (next !== undefined) next(true);
-            }
-        });
     }
 
-    runList(queries, args, next, verbose) {
+    async runList(queries, args, verbose) {
         let finalResult = true;
-        while(queries.length !== 0) {
-            let query = queries.shift();
+        for (let query of queries) {
             let arg;
             if (args && args.length !== 0) arg = args.shift();
-            this.run(query, arg, function(result) {
-                if (!result) finalResult = false;
-            }, verbose)
+            try {
+                await this.run(query, arg, verbose)
+            } catch (err) {
+                finalResult = false;
+            }
         }
-        if (next) next(finalResult);
+
+        if (!finalResult) return Promise.reject("One or more statements failed");
     }
 }
 

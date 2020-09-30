@@ -1,7 +1,12 @@
-let filesRouter = require("./files");
-let path = require("path");
-let preferences = require("../preferences");
+const filesRouter = require("../core/routes/files");
+const preferences = require("../core/preferences");
+const path = require("path");
+const express = require("express");
 
-let router = filesRouter(req => path.join(preferences.get("files"), "public"), false);
+const router = express.Router();
+
+router.use(filesRouter(req => {
+    return path.join(preferences.get("files"), "public");
+}))
 
 module.exports = router;

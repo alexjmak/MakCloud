@@ -9,12 +9,11 @@ const render = require('../render');
 
 const router = express.Router();
 
-router.use(function(req, res, next) {
-    let id = authorization.getID(req);
-    accountManager.getInformation("privilege", "id", id, function(privilege) {
-        if (privilege === 100) next();
-        else next(createError(403));
-    });
+router.use(async function(req, res, next) {
+    const id = authorization.getID(req);
+    const privilege = await accountManager.getInformation("privilege", "id", id);
+    if (privilege === 100) next();
+    else next(createError(403));
 });
 
 router.get('/', function(req, res, next) {
@@ -26,13 +25,15 @@ router.get('/raw', function(req, res, next) {
     let start = req.query.start;
     if (start) {
         start = parseInt(start);
-        if (Number.isInteger(start) && 0 <= start && start < send.length) send = send.substring(start);
+        if (Number.isInteger(start) && 0 <= start && start < send.length) {
+            send = send.substring(start);
+        }
     }
     res.send(send);
 });
 
 router.get('/size', function(req, res) {
-    let hash = log.get().length;
+    const hash = log.get().length;
     res.send(hash.toString());
 });
 

@@ -51,7 +51,15 @@ function load(directory) {
 
 function get(req) {
     let sessionLocale = defaultLocale;
-    if (req) sessionLocale = req.locale;
+
+    if (req) {
+        sessionLocale = req.locale;
+        let cookieLocale = req.cookies.locale;
+        if (cookieLocale && locales.hasOwnProperty(cookieLocale)) {
+            sessionLocale = cookieLocale;
+        }
+    }
+
     let localeData = locales[sessionLocale];
     if (sessionLocale !== defaultLocale) {
         let defaultLocaleData = locales[defaultLocale];
