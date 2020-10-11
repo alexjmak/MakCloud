@@ -29,7 +29,7 @@ if (preferences.get("webdav")) {
 }
 
 const accountsRouter = require('./routes/accounts');
-const filesRouter = require('./routes/files');
+const filesRouter = require('./routes/files')();
 const languageRouter = require('./core/routes/language');
 const publicRouter = require('./routes/public');
 const photosRouter = require('./routes/photos');

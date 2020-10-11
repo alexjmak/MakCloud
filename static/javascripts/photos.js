@@ -10,4 +10,17 @@ $(document).ready(function() {
     $("#download-current-dir").click(function () {
         window.location.href = location.pathname + "?download";
     });
+
+    $("html").on("dragover", function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+    });
+
+    $("html").on("drop", function(e) {
+        const files = e.originalEvent.dataTransfer.files;
+        uploadFiles(files);
+        e.preventDefault(); e.stopPropagation();
+    });
+
 });
+

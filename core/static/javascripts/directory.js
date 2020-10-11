@@ -1,3 +1,18 @@
+function sortAscending() {
+    folderContents.sort((a, b) => {
+        if (a.type === b.type) {
+            const sortNameA = (a.decrypted_name) ? a.decrypted_name : a.name;
+            const sortNameB = (b.decrypted_name) ? b.decrypted_name : b.name;
+            return sortNameA.localeCompare(sortNameB)
+        } else {
+            if (a.type === "directory") return -1;
+            return 1;
+        }
+    })
+}
+
+sortAscending();
+
 $(document).ready(function() {
     folderContents = folderContents.filter(function (file) {
         return !getDisplayName(file).startsWith(".");
@@ -169,16 +184,19 @@ $(document).ready(function() {
         let fileId = $(selectedItem).attr("name");
         let fileName = getDisplayName(files[fileId])
         let fileLink = encodeURIComponent(files[fileId].name);
-        showDialog(yesNoDialog, locale.app_name, "Are you sure you want to delete " + fileName + "?", {
+        const prompt = locale.confirm_delete.replace("{0}", fileName);
+        showDialog(yesNoDialog, locale.app_name, prompt, {
             "yes": function () {
                 deleteRequest([location.pathname, fileLink].join("/"), null, function (xmlHttpRequest) {
+                    let body;
                     if (xmlHttpRequest.status === 200) {
                         folderContents.splice(fileId, 1);
                         reload();
-                        showSnackbar(basicSnackbar, "Deleted " + fileName)
+                        body = locale.deleted.replace("{0}", fileName);
                     } else {
-                        showSnackbar(basicSnackbar, "Error deleting " + fileName)
+                        body = locale.error_deleting.replace("{0}", fileName);
                     }
+                    showSnackbar(basicSnackbar, body);
                 });
             }
         });
@@ -206,7 +224,8 @@ $(document).ready(function() {
     $("html").on("drop", function(e) {
         const files = e.originalEvent.dataTransfer.files;
         uploadFiles(files);
-        e.preventDefault(); e.stopPropagation(); });
+        e.preventDefault(); e.stopPropagation();
+    });
 
 
 

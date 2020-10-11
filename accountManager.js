@@ -104,13 +104,27 @@ async function enableAccount(id) {
 }
 
 async function encryptAccount(id, password) {
+    await setEncryptionInfo(id, password);
     const encryptionManager = require("./encryptionManager");
-    const encryptionInfo = await encryptionManager.generateEncryptionKey(id, password);
-    await database.run("UPDATE accounts SET encryptKey = ?, encryptIV = ?, derivedKeySalt = ? WHERE id = ?",
-        [encryptionInfo.key, encryptionInfo.iv, encryptionInfo.salt, id]);
     const decryptedKey = await encryptionManager.decryptEncryptionKey(id, password);
     await encryptionManager.encryptAccount(id, decryptedKey);
     return decryptedKey;
+}
+
+async function getAccountsSummary(id) {
+    const privilege = await accountManager.getInformation("privilege", "id", id);
+    const username = await accountManager.getInformation("username", "id", id);
+    const results = await database.all("SELECT id, username, privilege, enabled, encryptKey NOT NULL AS encrypted FROM accounts WHERE ? OR id = ? OR privilege < ? ORDER BY username COLLATE NOCASE", [username === "admin", id, privilege]);
+    const resultsById = {};
+    for (let result in results) {
+        if (results.hasOwnProperty(result)) {
+            result = results[result];
+            const accountID = result.id;
+            delete result[accountID];
+            resultsById[accountID] = result;
+        }
+    }
+    return resultsById;
 }
 
 async function newAccount(username, password, privilege, encrypted) {
@@ -119,7 +133,7 @@ async function newAccount(username, password, privilege, encrypted) {
     const id = await accountManager.getInformation("id", "username", username);
 
     if (encrypted) {
-        await encryptAccount(id, password);
+        await setEncryptionInfo(id, password);
     }
 
     if (preferences.get("sambaIntegration")) {
@@ -136,6 +150,13 @@ async function newAccount(username, password, privilege, encrypted) {
             username.toLowerCase(), null, false);
     }
 
+}
+
+async function setEncryptionInfo(id, password) {
+    const encryptionManager = require("./encryptionManager");
+    const encryptionInfo = await encryptionManager.generateEncryptionKey(id, password);
+    await database.run("UPDATE accounts SET encryptKey = ?, encryptIV = ?, derivedKeySalt = ? WHERE id = ?",
+        [encryptionInfo.key, encryptionInfo.iv, encryptionInfo.salt, id]);
 }
 
 async function updatePassword(id, newPassword, oldPassword) {
@@ -191,6 +212,7 @@ module.exports = Object.assign({}, accountManager, {
     disableAccount: disableAccount,
     enableAccount: enableAccount,
     encryptAccount: encryptAccount,
+    getAccountsSummary: getAccountsSummary,
     newAccount: newAccount,
     updatePassword: updatePassword,
     updateUsername: updateUsername,

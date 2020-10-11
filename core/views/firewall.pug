@@ -3,6 +3,17 @@ extends layout
 block header
     link(rel='stylesheet', type='text/css', href='/stylesheets/firewall.css')
     script.
+        Object.assign(locale, {
+            confirm_delete: "#{locale.confirm_delete}",
+            session_expired: "#{locale.session_expired}",
+            cant_retrieve_firewall: "#{locale.cant_retrieve_firewall}",
+            ip_address: "#{locale.ip_address}",
+            start_date: "#{locale.start_date}",
+            length: "#{locale.length}",
+            no_start_date: "#{locale.no_start_date}",
+            no_end_date: "#{locale.no_end_date}",
+            new_ip: "#{locale.new_ip}",
+        });
         const list = parseInt("#{list}");
     script(type='text/javascript', src="/javascripts/firewall.js")
 

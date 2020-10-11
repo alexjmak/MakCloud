@@ -6,7 +6,7 @@ const path = require("path");
 const log = require("./core/log");
 const readify = require("readify");
 const accountManager = require("./accountManager")
-const authorization = require("./authorization")
+const localeManager = require("./core/localeManager");
 const createError = require("http-errors");
 const fileManager = require("./core/fileManager");
 const render = require("./core/render");
@@ -19,6 +19,9 @@ async function createArchive(directories, key) {
     async function callback(i) {
         if (directories.hasOwnProperty(i)) {
             directories[i] = path.normalize(directories[i]);
+            if (directories[i].endsWith("/")) {
+                directories[i] = directories[i].substring(0, directories[i].length - 1);
+            }
             await fileManager.walkDirectoryPreorder(directories[i], async function(filePath, isDirectory) {
                 if (isDirectory) return;
                 if (key && path.basename(filePath) === "iv") return;
@@ -26,7 +29,8 @@ async function createArchive(directories, key) {
                 const readStream = readData.readStream;
                 const decryptedFilePath = readData.decryptedFilePath;
                 const parentLength = directories[i].split(path.sep).length
-                const name = decryptedFilePath.split(path.sep).splice(parentLength).join(path.sep)
+                const name = decryptedFilePath.split(path.sep).splice(parentLength).join(path.sep);
+
                 archive.append(readStream, {name: name});
             });
             return await callback(i + 1);
@@ -41,15 +45,16 @@ async function createArchive(directories, key) {
 
 
 function processUpload(saveLocation, key, overwrite, req, res, next) {
+    const locale = localeManager.get(req);
     return new Promise((resolve, reject) => {
         const uploadFile = async function (file) {
             let filePath = path.join(saveLocation, file.originalname);
-            await writeFile(filePath, file.stream, key, null, overwrite);
+            await writeFile(filePath, file.stream, key, overwrite);
         }
         return multer({storage: multerStorage(uploadFile)}).any()(req, res, function (err) {
-            if (err) res.status(500).send("Upload failed");
-            else if (Object.keys(req.files).length === 1) res.send("Uploaded file");
-            else res.send("Uploaded files");
+            if (err) res.status(500).send(locale.uploaded_failed);
+            else if (Object.keys(req.files).length === 1) res.send(locale.uploaded_file);
+            else res.send(locale.uploaded_files);
             resolve();
         });
     })
@@ -172,12 +177,10 @@ async function writeFile(filePath, contentStream, key, overwrite) {
     }
     if (exists && encryptedFilePath !== filePath) { //File exists and its encrypted
         log.write("File name collision. Trying another iv...");
-        return await writeFile(filePath, contentStream, key);
+        return await writeFile(filePath, contentStream, key, overwrite);
     } else {
-        let fd;
         try {
-            fd = await fs.promises.open(encryptedFilePath, 'a');
-            await fs.promises.close(fd);
+            await fs.promises.appendFile(encryptedFilePath);
             await fs.promises.unlink(encryptedFilePath);
         } catch {
             encryptedFilePath = filePath;
@@ -191,6 +194,7 @@ async function writeFile(filePath, contentStream, key, overwrite) {
             log.write(err);
             return Promise.reject(err);
         }
+
     }
 }
 

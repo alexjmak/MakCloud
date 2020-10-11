@@ -26,7 +26,7 @@ let okDialog = "<div id=\"dialog\"" +
             "</div>" +
             "<footer class=\"mdc-dialog__actions\">" +
             "<button type=\"button\" class=\"mdc-button mdc-dialog__button\" data-mdc-dialog-action=\"close\">" +
-            "<span class=\"mdc-button__label\">OK</span>" +
+            "<span class=\"mdc-button__label\">" + locale.ok + "</span>" +
             "</button>" +
             "</footer>" +
             "</div>" +
@@ -50,10 +50,10 @@ let yesNoDialog = "<div id=\"dialog\"" +
     "</div>" +
     "<footer class=\"mdc-dialog__actions\">" +
     "<button type=\"button\" class=\"mdc-button mdc-dialog__button\" data-mdc-dialog-action=\"close\">" +
-    "<span class=\"mdc-button__label\">No</span>" +
+    "<span class=\"mdc-button__label\">" + locale.no + "</span>" +
     "</button>" +
     "<button type=\"button\" class=\"mdc-button mdc-dialog__button\" data-mdc-dialog-action=\"yes\">" +
-    "<span class=\"mdc-button__label\">Yes</span>" +
+    "<span class=\"mdc-button__label\">" + locale.yes + "</span>" +
     "</button>" +
     "</footer>" +
     "</div>" +

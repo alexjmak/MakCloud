@@ -162,14 +162,17 @@ function showPromptPassword(event) {
     if (field.val().trim() === "") return;
     let id = field.attr("name");
     let username = accountFieldValues[id].username;
-    let dialogBody = `<div class='mdc-text-field'><input class='mdc-text-field__input' id='current-password' type='password' tabindex='1'><div class='mdc-line-ripple'></div><label class='mdc-floating-label'>Password</label></div>`;
-    passwordDialog = showDialog(okDialog, "Confirm current password for " + username, dialogBody);
+    let dialogBody = `<div class='mdc-text-field'><input class='mdc-text-field__input' id='current-password' type='password' tabindex='1'><div class='mdc-line-ripple'></div><label class='mdc-floating-label'>${locale.password}</label></div>`;
+    let prompt = locale.confirm_password_account.replace("{0}", username);
+    if (id === currentID) prompt = locale.confirm_password;
+    passwordDialog = showDialog(okDialog, prompt, dialogBody);
     let textFields = document.getElementsByClassName('mdc-text-field');
     for (let i = 0; i < textFields.length; i++) {
         new mdc.textField.MDCTextField(textFields[i]);
     }
     let doneButton = $(".mdc-dialog__actions").find("button");
-    doneButton.find("span").text("DONE");
+    doneButton.find("span").text(locale.done);
+    doneButton.find("span").text(locale.done);
 
     passwordDialog.listen("MDCDialog:closing", function() {
         let currentPassword = $("#current-password");

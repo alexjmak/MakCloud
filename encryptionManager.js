@@ -20,6 +20,7 @@ async function checkEncryptionSession(req) {
 }
 
 async function decryptAccount(id, key) {
+    if (!key) return;
     const accountPath = path.join(preferences.get("files"), id);
     const fileManager = require("./fileManager");
     await fileManager.readDirectory(accountPath, async function(filePath, isDirectory) {
@@ -82,7 +83,7 @@ async function decryptEncryptionKey(id, password) {
     let key = await accountManager.getInformation("encryptKey", "id", id);
     let iv = await accountManager.getInformation("encryptIV", "id", id);
     if (key === null || iv === null) {
-        return Promise.reject("Account is not encrypted");
+        return null;
     } else {
         iv = Buffer.from(iv, "hex");
         key = Buffer.from(key, "hex");
@@ -192,34 +193,28 @@ async function encryptAccount(id, key) {
     });
 }
 
-async function encryptBuffer(buffer, key, iv, next) {
+async function encryptBuffer(buffer, key, iv) {
     let contentStream = new stream.PassThrough();
     contentStream.end(buffer);
-    encryptStream(contentStream, key, iv, function(encryptedStream) {
-        if (!encryptedStream) {
-            if (next) next(null);
-            return;
-        }
+    const encryptedStream = await encryptStream(contentStream, key, iv);
+    if (!encryptedStream) return null;
+    return new Promise((resolve, reject) => {
         let bufferArray = [];
         let error = false;
-
         encryptedStream.on("error", function(err) {
             error = true;
         });
-
         encryptedStream.on("data", function(data) {
             bufferArray.push(data);
         });
-
         encryptedStream.on("finish", function() {
             if (error) {
-                if (next) next(null)
-                return;
+                return resolve(null);
             }
             let encryptedBuffer = Buffer.concat(bufferArray);
-            next(encryptedBuffer);
+            resolve(encryptedBuffer);
         })
-    })
+    });
 }
 
 async function encryptEncryptionKey(key, iv, pbkdf2) {
@@ -340,7 +335,6 @@ async function getIVs(filePath) {
             let ivFile = path.join(filePath, "iv")
             fs.open(ivFile, "r", function(err, fd) {
                 if (err) {
-                    log.write("IV not found for directory");
                     return resolve(null);
                 }
                 fs.read(fd, Buffer.alloc(16), 0, 16, 0, function(err, bytesRead, iv1) {

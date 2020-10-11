@@ -10,122 +10,112 @@ const render = require('../render');
 
 const router = express.Router();
 
-router.use(function (req, res, next) {
-    let id = authorization.getID(req);
-    accountManager.getInformation("privilege", "id", id, function (privilege) {
-        if (privilege === 100) next();
-        else next(createError(403));
-    });
+router.use(async function(req, res, next) {
+    const id = authorization.getID(req);
+    const privilege = await accountManager.getInformation("privilege", "id", id);
+    if (privilege === 100) next();
+    else next(createError(403));
 });
 
-router.delete('/delete', function (req, res, next) {
-    let ip = req.body.ip;
-    let list = req.body.list;
+router.delete('/delete', async function(req, res, next) {
+    const ip = req.body.ip;
+    const list = req.body.list;
     if (hasFields(res, ip, list)) {
-        firewall.remove(ip, list, function (result) {
-            if (result) {
-                res.sendStatus(200);
-            } else {
-                res.sendStatus(400);
-            }
-        });
+        try {
+            await firewall.remove(ip, list);
+            res.sendStatus(200);
+        } catch {
+            res.sendStatus(400);
+        }
     }
 });
 
-router.get('/blacklist', function (req, res, next) {
+router.get('/blacklist', function(req, res, next) {
     render('firewall', {list: 0}, req, res, next);
 });
 
-router.get('/blacklist/list', function (req, res) {
-    firewall.blacklist.get(function (list) {
-        let dictionary = {};
-        for (let entry of list) {
-            dictionary[entry.ip] = entry;
-        }
-        res.json(dictionary);
-    });
+router.get('/blacklist/list', async function(req, res) {
+    const list = await firewall.blacklist.get();
+    let dictionary = {};
+    for (let entry of list) {
+        dictionary[entry.ip] = entry;
+    }
+    res.json(dictionary);
 });
 
-router.get('/whitelist', function (req, res, next) {
+router.get('/whitelist', function(req, res, next) {
     render('firewall', {list: 1}, req, res, next);
 });
 
 
-router.get('/whitelist/list', function (req, res) {
-    firewall.whitelist.get(function (list) {
-        let dictionary = {};
-        for (let entry of list) {
-            dictionary[entry.ip] = entry;
-        }
-        res.json(dictionary);
-    });
+router.get('/whitelist/list', async function(req, res) {
+    const list = await firewall.whitelist.get();
+    let dictionary = {};
+    for (let entry of list) {
+        dictionary[entry.ip] = entry;
+    }
+    res.json(dictionary);
 });
 
-router.patch('/end', function (req, res, next) {
-    let ip = req.body.ip;
-    let list = req.body.list;
-    let newEnd = parseInt(req.body.new_end);
+router.patch('/end', async function(req, res, next) {
+    const ip = req.body.ip;
+    const list = req.body.list;
+    const newEnd = parseInt(req.body.new_end);
     if (hasFields(res, ip, list, newEnd)) {
-        firewall.modifyEnd(ip, list, newEnd, function (result) {
-            if (result) {
-                res.sendStatus(200);
-            } else {
-                res.sendStatus(400);
-            }
-        });
+        try {
+            await firewall.modifyEnd(ip, list, newEnd);
+            res.sendStatus(200);
+        } catch {
+            res.sendStatus(400);
+        }
     }
 });
 
-router.patch('/ip', function (req, res, next) {
-    let ip = req.body.ip;
-    let list = req.body.list;
-    let newIp = req.body.new_ip;
+router.patch('/ip', async function(req, res, next) {
+    const ip = req.body.ip;
+    const list = req.body.list;
+    const newIp = req.body.new_ip;
     if (hasFields(res, ip, list, newIp)) {
-        firewall.modifyIp(ip, list, newIp, function (result) {
-            if (result) {
-                res.sendStatus(200);
-            } else {
-                res.sendStatus(400);
-            }
-        });
+        try {
+            await firewall.modifyIp(ip, list, newIp);
+            res.sendStatus(200);
+        } catch {
+            res.sendStatus(400);
+        }
     }
 });
 
-router.patch('/start', function (req, res, next) {
+router.patch('/start', async function(req, res, next) {
     let ip = req.body.ip;
     let list = req.body.list;
     let newStart = parseInt(req.body.new_start);
     if (hasFields(res, ip, list, newStart)) {
-        firewall.modifyStart(ip, list, newStart, function (result) {
-            if (result) {
-                res.sendStatus(200);
-            } else {
-                res.sendStatus(400);
-            }
-        });
+        try {
+            await firewall.modifyStart(ip, list, newStart);
+            res.sendStatus(200);
+        } catch {
+            res.sendStatus(400);
+        }
     }
 });
 
-router.put('/new', function (req, res) {
-    let ip = req.body.ip;
-    let list = req.body.list;
-    let start = parseInt(req.body.start);
-    let length = parseInt(req.body.length);
+router.put('/new', async function(req, res) {
+    const ip = req.body.ip;
+    const list = req.body.list;
+    const start = parseInt(req.body.start);
+    const length = parseInt(req.body.length);
     if (hasFields(res, ip, list, length)) {
-        firewall.contains(ip, list, function (result) {
-            if (!result) {
-                firewall.add(ip, list, length, function (result) {
-                    if (result) {
-                        res.sendStatus(200);
-                    } else {
-                        res.sendStatus(400);
-                    }
-                });
-            } else {
+        const hasIp = await firewall.contains(ip, list);
+        if (!hasIp) {
+            try {
+                await firewall.add(ip, list, length);
+                res.sendStatus(200);
+            } catch {
                 res.sendStatus(400);
             }
-
-        });
+        } else {
+            res.sendStatus(400);
+        }
     }
 });
 

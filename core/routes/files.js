@@ -8,7 +8,7 @@ const fileManager = require('../fileManager');
 const preferences = require("../preferences");
 const log = require('../log');
 
-const files = function (getRelativeDirectory, getFilePath) {
+const files = function(getRelativeDirectory, getFilePath) {
     if (!getRelativeDirectory) getRelativeDirectory = req => preferences.get("files");
     if (!getFilePath) getFilePath = req => path.join(getRelativeDirectory(req), decodeURIComponent(req.path));
 

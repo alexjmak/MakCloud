@@ -12,97 +12,104 @@ const encryptionManager = require('../encryptionManager');
 const filesRouter = require("../core/routes/files");
 
 
-const router = express.Router();
 
-const getRelativeDirectory = (req) => path.join(preferences.get("files"), authorization.getID(req), "files");
-const getFilePath = req => path.join(getRelativeDirectory(req), decodeURIComponent(req.path));
 
-router.use(async function (req, res, next) {
-    let relativeDirectory = getRelativeDirectory(req);
-    try {
-        const stats = await fs.promises.stat(relativeDirectory);
-        if (stats && stats.isDirectory()) await mkdirp(getRelativeDirectory(req));
+const files = function(getRelativeDirectory, getFilePath) {
+    if (!getRelativeDirectory) getRelativeDirectory = (req) => path.join(preferences.get("files"), authorization.getID(req), "files");
+    if (!getFilePath) getFilePath = req => path.join(getRelativeDirectory(req), decodeURIComponent(req.path));
+
+    const router = express.Router();
+
+    router.use(async function (req, res, next) {
+        let relativeDirectory = getRelativeDirectory(req);
+        try {
+            await mkdirp(relativeDirectory);
+        } catch (err) {
+            log.write(err);
+            return next(createError(500));
+        }
         next();
-    } catch (err) {
-        log.write(err);
-        next(createError(500));
-    }
-});
+    });
 
 
-router.get('/*', async function (req, res, next) {
-    const filePath = getFilePath(req);
-    const fileName = path.basename(filePath);
-    const relativeDirectory = getRelativeDirectory(req);
-    const parameter = Object.keys(req.query)[0];
+    router.get('/*', async function (req, res, next) {
+        const filePath = getFilePath(req);
+        const fileName = path.basename(filePath);
+        const relativeDirectory = getRelativeDirectory(req);
+        const parameter = Object.keys(req.query)[0];
 
-    const key = req.session.encryptionKey;
-    const decryptedFileName = await encryptionManager.decryptFileName(filePath, key);
-    const displayName = (decryptedFileName) ? path.basename(decryptedFileName) : fileName;
+        const key = req.session.encryptionKey;
+        const decryptedFileName = await encryptionManager.decryptFileName(filePath, key);
+        const displayName = (decryptedFileName) ? path.basename(decryptedFileName) : fileName;
 
-    let stats;
-    try {
-        stats = await fs.promises.stat(filePath);
-    } catch (err) {
-        return next(createError(404));
-    }
-
-    if (stats.isDirectory()) {
-        switch (parameter) {
-            case "download":
-                const archiveStream = await fileManager.createArchive(filePath, key);
-                fileManager.downloadFolder(archiveStream, (req.path !== "/") ? displayName : null, req, res, next)
-                break;
-            default:
-                await fileManager.renderDirectory(filePath, relativeDirectory, key, req, res, next);
-                break;
+        let stats;
+        try {
+            stats = await fs.promises.stat(filePath);
+        } catch (err) {
+            return next(createError(404));
         }
-    } else {
-        const fileStream = (await fileManager.readFile(filePath, key)).readStream;
-        switch (parameter) {
-            case "download":
-                fileManager.downloadFile(fileStream, displayName, req, res, next);
-                break;
-            case "view":
-                await fileManager.renderFile(displayName, req, res, next);
-                break;
-            default:
-                fileManager.inlineFile(fileStream, displayName, req, res, next);
-                break;
-        }
-    }
-});
 
-router.post("/*", async function (req, res, next) {
-    const filePath = getFilePath(req);
-    const key = req.session.encryptionKey;
-    try {
-        const stats = await fs.promises.stat(filePath);
         if (stats.isDirectory()) {
-            await fileManager.processUpload(filePath, key, false, req, res, next);
+            switch (parameter) {
+                case "download":
+                    const archiveStream = await fileManager.createArchive(filePath, key);
+                    fileManager.downloadFolder(archiveStream, (req.path !== "/") ? displayName : null, req, res, next)
+                    break;
+                default:
+                    await fileManager.renderDirectory(filePath, relativeDirectory, key, req, res, next);
+                    break;
+            }
         } else {
-            res.status(400);
+            const fileStream = (await fileManager.readFile(filePath, key)).readStream;
+            switch (parameter) {
+                case "download":
+                    fileManager.downloadFile(fileStream, displayName, req, res, next);
+                    break;
+                case "view":
+                    await fileManager.renderFile(displayName, req, res, next);
+                    break;
+                default:
+                    fileManager.inlineFile(fileStream, displayName, req, res, next);
+                    break;
+            }
         }
-    } catch {
-        res.status(404);
-    }
-});
+    });
 
-router.put("/*", async function (req, res, next) {
-    const filePath = getFilePath(req);
-    const key = req.session.encryptionKey;
-    try {
-        const stats = await fs.promises.stat(filePath);
-        if (!stats.isDirectory()) {
-            await fileManager.processUpload(path.dirname(filePath), key, true, req, res, next);
-        } else {
-            res.status(400);
+    router.post("/*", async function (req, res, next) {
+        const filePath = getFilePath(req);
+        const key = req.session.encryptionKey;
+        try {
+            const stats = await fs.promises.stat(filePath);
+            if (stats.isDirectory()) {
+                await fileManager.processUpload(filePath, key, false, req, res, next);
+            } else {
+                res.status(400);
+            }
+        } catch {
+            res.status(404);
         }
-    } catch {
-        res.status(404);
-    }
-});
+    });
 
-router.use(filesRouter(getRelativeDirectory, getFilePath))
+    router.put("/*", async function (req, res, next) {
+        const filePath = getFilePath(req);
+        const key = req.session.encryptionKey;
+        try {
+            const stats = await fs.promises.stat(filePath);
+            if (!stats.isDirectory()) {
+                await fileManager.processUpload(path.dirname(filePath), key, true, req, res, next);
+            } else {
+                res.status(400);
+            }
+        } catch {
+            res.status(404);
+        }
+    });
 
-module.exports = router;
+    router.use(filesRouter(getRelativeDirectory, getFilePath))
+
+    return router;
+
+}
+
+module.exports = files;
+

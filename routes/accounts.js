@@ -10,6 +10,10 @@ const accounts = require("../core/routes/accounts");
 
 const router = express.Router();
 
+router.get('/list', async function (req, res, next) {
+    let result = await accountManager.getAccountsSummary(authorization.getID(req));
+    await res.json(result);
+});
 
 router.patch('/encrypted', async function(req, res, next) {
     const id = req.body.id;

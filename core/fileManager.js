@@ -101,15 +101,16 @@ function inlineFile(fileStream, fileName, req, res, next) {
 
 
 function processUpload(saveLocation, overwrite, req, res, next) {
+    const locale = localeManager.get(req);
     return new Promise((resolve, reject) => {
         const uploadFile = async function (file) {
             let filePath = path.join(saveLocation, file.originalname);
             await writeFile(filePath, file.stream, null, overwrite);
         }
         return multer({storage: multerStorage(uploadFile)}).any()(req, res, function (err) {
-            if (err) res.status(500).send("Upload failed");
-            else if (Object.keys(req.files).length === 1) res.send("Uploaded file");
-            else res.send("Uploaded files");
+            if (err) res.status(500).send(locale.upload_failed);
+            else if (Object.keys(req.files).length === 1) res.send(locale.uploaded_file);
+            else res.send(locale.uploaded_files);
             resolve();
         });
     })

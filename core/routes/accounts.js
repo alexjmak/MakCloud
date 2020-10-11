@@ -33,7 +33,8 @@ router.get('/', function (req, res, next) {
 });
 
 router.get('/list', async function (req, res, next) {
-    const result = await accountManager.getAccountsSummary(authorization.getID(req));
+    let result = await accountManager.getAccountsSummary(authorization.getID(req));
+    result = {id: result.id, username: result.username, privilege: result.privilege, enabled: result.enabled}
     await res.json(result);
 });
 

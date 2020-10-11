@@ -12,7 +12,12 @@ html
         script.
             const currentID = "#{id}";
             const currentUsername = "#{username}";
-            const locale = {app_name: "#{locale.app_name}"}
+            const locale = {
+                app_name: "#{locale.app_name}",
+                no: "#{locale.no}",
+                ok: "#{locale.ok}",
+                yes: "#{locale.yes}"
+            }
         script(type='text/javascript', src='/javascripts/jquery-3.4.1.js')
         script(type='text/javascript', src='/javascripts/jquery.md5.js')
         script(type='text/javascript', src='/javascripts/jquery.cookie.js')

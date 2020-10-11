@@ -24,7 +24,7 @@ function getFirewallInfo(next) {
 }
 
 function displayFirewallInfo(firewallInfo) {
-    if (!firewallInfo) return showSnackbar(basicSnackbar, "Could not retrieve firewall");
+    if (!firewallInfo) return showSnackbar(basicSnackbar, locale.cant_retrieve_firewall);
     let table = $("#firewall").find("tbody");
     let tableRows = $("#firewall").find("tr:not(.first-row)");
     tableRows.remove();
@@ -46,9 +46,9 @@ function displayFirewallInfo(firewallInfo) {
 
 function getFirewallRowHTML(ip, start, end) {
     let html = `<tr name=${ip}>` +
-                `<td><input class='ip firewall first-column' name=${ip} type='text' autocomplete='off' autocapitalize='none' value='${ip}' placeholder='New IP'></td>` +
-                `<td><input class='start firewall' name=${ip} type='number' autocomplete='off' autocapitalize='none' value='${start}' placeholder='No start date'></td>` +
-                `<td><input class='end firewall' name=${ip} type='number' autocomplete='off' autocapitalize='none' value='${end}' placeholder='No end date'></td>` +
+                `<td><input class='ip firewall first-column' name=${ip} type='text' autocomplete='off' autocapitalize='none' value='${ip}' placeholder='${locale.new_ip}'></td>` +
+                `<td><input class='start firewall' name=${ip} type='number' autocomplete='off' autocapitalize='none' value='${start}' placeholder='${locale.no_start_date}'></td>` +
+                `<td><input class='end firewall' name=${ip} type='number' autocomplete='off' autocapitalize='none' value='${end}' placeholder='${locale.no_end_date}'></td>` +
                 `<td><button class='delete firewall mdc-icon-button material-icons' name=${ip}>delete</button></td>` +
                 `</tr>`;
     return html;
@@ -56,9 +56,9 @@ function getFirewallRowHTML(ip, start, end) {
 
 function getNewFirewallRowHTML() {
     return `<tr name=-1>` +
-        `<td><input class='ip new-firewall first-column' name=-1 type='text' autocomplete='off' autocapitalize='none' placeholder='IP address'></td>` +
-        `<td><input class='start new-firewall' name=-1 type='number' autocomplete='off' autocapitalize='none' placeholder='Start date'></td>` +
-        `<td><input class='length new-firewall' name=-1 type='number' autocomplete='off' autocapitalize='none' placeholder='Length'></td>` +
+        `<td><input class='ip new-firewall first-column' name=-1 type='text' autocomplete='off' autocapitalize='none' placeholder='${locale.ip_address}'></td>` +
+        `<td><input class='start new-firewall' name=-1 type='number' autocomplete='off' autocapitalize='none' placeholder='${locale.start_date}'></td>` +
+        `<td><input class='length new-firewall' name=-1 type='number' autocomplete='off' autocapitalize='none' placeholder='${locale.length}'></td>` +
         `<td><button class='add new-firewall mdc-icon-button material-icons' name=-1>add</button></td>` +
         `<td></td>` +
         `</tr>`;
@@ -66,7 +66,7 @@ function getNewFirewallRowHTML() {
 
 function updateCallback(xmlHttpRequest) {
     if (xmlHttpRequest.status === 0) {
-        showDialog(okDialog, locale.app_name, "Your session has expired", {
+        showDialog(okDialog, locale.app_name, locale.session_expired, {
             "close": function () {
                 location.reload()
             }
@@ -127,7 +127,7 @@ function updateButton(event) {
     let url = location.pathname + "/" + ".." + "/";
 
     if (button.hasClass("delete")) {
-        let prompt = "Are you sure you want to remove " + ip + "?";
+        const prompt = locale.confirm_delete.replace("{0}", ip);
         showDialog(yesNoDialog, locale.app_name, prompt, {
             "yes": function () {
                 deleteRequest(url + "delete", JSON.stringify(data), updateCallback);
@@ -153,7 +153,7 @@ function updateButton(event) {
 
         putRequest(url + "new", JSON.stringify(data), function(xmlHttpRequest) {
             if (xmlHttpRequest.status === 0) {
-                showDialog(okDialog, locale.app_name, "Your session has expired", {
+                showDialog(okDialog, locale.app_name, locale.session_expired, {
                     "close": function () {
                         location.reload()
                     }

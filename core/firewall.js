@@ -124,15 +124,15 @@ function getRedirectUrl(req) {
 
 class blacklist {
     static async add(ip, milliseconds) {
-        await add(ip, LISTS.BLACKLIST, milliseconds);
+        return await add(ip, LISTS.BLACKLIST, milliseconds);
     }
 
     static async check(ip) {
-        await check(ip, LISTS.BLACKLIST);
+        return await check(ip, LISTS.BLACKLIST);
     }
 
     static async contains(ip) {
-        await contains(ip, LISTS.BLACKLIST);
+        return await contains(ip, LISTS.BLACKLIST);
     }
 
     static async enforce(req, res, next) {
@@ -150,25 +150,25 @@ class blacklist {
     }
 
     static async get() {
-        await get(LISTS.BLACKLIST);
+        return await get(LISTS.BLACKLIST);
     }
 
     static async remove(ip) {
-        await remove(ip, LISTS.BLACKLIST);
+        return await remove(ip, LISTS.BLACKLIST);
     }
 }
 
 class whitelist {
     static async add(ip, milliseconds) {
-        await add(ip, LISTS.WHITELIST, milliseconds);
+        return await add(ip, LISTS.WHITELIST, milliseconds);
     }
 
     static async check(ip) {
-        await check(ip, LISTS.WHITELIST);
+        return await check(ip, LISTS.WHITELIST);
     }
 
     static async contains(ip) {
-        await contains(ip, LISTS.WHITELIST);
+        return await contains(ip, LISTS.WHITELIST);
     }
 
     static async enforce(req, res, next) {
@@ -185,11 +185,11 @@ class whitelist {
     }
 
     static async get() {
-        await get(LISTS.WHITELIST);
+        return await get(LISTS.WHITELIST);
     }
 
     static async remove(ip) {
-        await remove(ip, LISTS.WHITELIST);
+        return await remove(ip, LISTS.WHITELIST);
     }
 }
 
