@@ -24,9 +24,7 @@ let requestFile = function (method, authorization, next) {
                             requestFile("GET");
                             break;
                         case "pdf":
-                            console.log("<object data='/pdfjs/web/viewer.html?file=" + encodeURI(encodedFileName) + "'></object>")
-
-                            content.append("<object data='/pdfjs/web/viewer.html?file=" + encodeURI(encodedFileName) + "'></object>")
+                            content.append("<object data='/pdfjs/web/viewer.html?file=" + encodeURI(encodedFileName) + "'></object>");
                             break;
                         case "apng": case "bmp": case "gif": case "ico": case "cur": case "jpg":
                         case "jpeg": case "pjpeg": case "pjp": case "png": case ".svg": case "webp":
@@ -40,7 +38,7 @@ let requestFile = function (method, authorization, next) {
 
                 } else {
                     content.append("<pre id='fileContents' class='selectable mdc-elevation--z10'></pre>");
-                    $("#fileContents").text("Can't open file type");
+                    $("#fileContents").text(locale.cant_open_file_type);
                     $("#fileContents").prop("contenteditable", false);
                     hideAuthorization();
                 }
@@ -55,11 +53,11 @@ let requestFile = function (method, authorization, next) {
         } else if (xmlHttpRequest.status === 401 || xmlHttpRequest.status === 403) {
             showAuthorization();
             if (authorization !== undefined) {
-                $("#message").text("Incorrect password");
+                $("#message").text(locale.incorrect_password);
                 $("#password").val("");
             }
         } else if (xmlHttpRequest.status === 0) {
-            $("#message").text("Connection lost");
+            $("#message").text(locale.no_connection);
         }
         if (next) next(true);
     }, authorization);
@@ -85,15 +83,15 @@ var revert = function(event) {
 
 var deleteFile = function () {
     if (window.location.pathname.startsWith("/shared")) return;
-    showDialog(yesNoDialog, locale.app_name, "Are you sure you want to delete " + displayName + "?", {
+    const prompt = locale.confirm_delete.replace("{0}", displayName);
+    showDialog(yesNoDialog, locale.app_name, prompt, {
         "yes": function () {
-
             deleteRequest(filePath, null, function (xmlHttpRequest) {
                 if (xmlHttpRequest.status === 200) {
-                    showSnackbar(basicSnackbar, "Deleted " + displayName);
                     window.location.href = '.';
                 } else {
-                    showSnackbar(basicSnackbar, "Error deleting " + displayName);
+                    const body = locale.error_deleting.replace("{0}", fileName);
+                    showSnackbar(basicSnackbar, body);
                 }
             });
         }
@@ -105,17 +103,17 @@ var edit = function () {
     if (!authorized || !plainText.includes(extension)) return;
     let fileContents = $("#fileContents").text();
 
-    let mode = $("#edit").find("span").text();
-    if (mode === "Save") {
+    let mode = $("#edit").find("i").text();
+    if (mode === "save") {
         if (fileContents !== oldFileContents) save();
         $("#fileContents").prop("contenteditable", false);
         $("#edit").find("i").text("edit");
-        $("#edit").find("span").text("Edit");
+        $("#edit").find("span").text(locale.edit);
     } else {
         oldFileContents = fileContents;
         $("#fileContents").prop("contenteditable", true);
         $("#edit").find("i").text("save");
-        $("#edit").find("span").text("Save");
+        $("#edit").find("span").text(locale.save);
 
     }
 
@@ -174,31 +172,27 @@ $(document).ready(function() {
     requestFile("HEAD");
 
     $("#edit").click(edit);
-
     $("#download").click(download);
-
     $("#delete").click(deleteFile);
-
     $("#submit").click(authorize);
-
     $("#share").click(share);
 });
 
 $(document).keydown(function(event) {
-    var key = event.which;
+    const key = event.which;
     if (key === 13) {
-        authorize()
+        authorize();
     }
 
     if ((event.ctrlKey || event.metaKey) && key === 83) {
         event.preventDefault();
-        let mode = $("#edit").find("span").text();
-        if (mode === "Save") $("#edit").trigger("click");
+        let mode = $("#edit").find("i").text();
+        if (mode === "save") $("#edit").trigger("click");
     }
 });
 
 $(window).on("beforeunload", function() {
-    let mode = $("#edit").find("span").text();
-    if (mode === "Save") return "Changes you made may not be saved.";
+    let mode = $("#edit").find("i").text();
+    if (mode === "save") return locale.unsaved_changes;
 });
 

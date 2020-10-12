@@ -188,15 +188,13 @@ $(document).ready(function() {
         showDialog(yesNoDialog, locale.app_name, prompt, {
             "yes": function () {
                 deleteRequest([location.pathname, fileLink].join("/"), null, function (xmlHttpRequest) {
-                    let body;
                     if (xmlHttpRequest.status === 200) {
                         folderContents.splice(fileId, 1);
                         reload();
-                        body = locale.deleted.replace("{0}", fileName);
                     } else {
-                        body = locale.error_deleting.replace("{0}", fileName);
+                        const body = locale.error_deleting.replace("{0}", fileName);
+                        showSnackbar(basicSnackbar, body);
                     }
-                    showSnackbar(basicSnackbar, body);
                 });
             }
         });

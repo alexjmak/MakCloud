@@ -40,7 +40,6 @@ async function add(ip, list, milliseconds) {
             log.write(`No changes made to ${ip} in the ${listName}`);
         }
     }
-
 }
 
 async function check(ip, list) {
@@ -141,7 +140,7 @@ class blacklist {
             if (req.url !== "/login" && !req.url.startsWith("/login?redirect=")) {
                 res.redirect("/logout" + getRedirectUrl(req));
             } else {
-                render('login', {firewall: "blacklisted", firewallEnd: end}, req, res, next);
+                render('login', {firewall: 0, firewallEnd: end}, req, res, next);
             }
         } else {
             next();
@@ -172,12 +171,12 @@ class whitelist {
     }
 
     static async enforce(req, res, next) {
-        await check(req.ip, LISTS.WHITELIST)
-        if (end !== false || !req.ip) {
+        const exists = await check(req.ip, LISTS.WHITELIST);
+        if (exists === false || !req.ip) {
             if (req.url !== "/login" && !req.url.startsWith("/login?redirect=")) {
                 res.redirect("/logout" + getRedirectUrl(req));
             } else {
-                render('login', {firewall: "not whitelisted"}, req, res, next);
+                render('login', {firewall: 1}, req, res, next);
             }
         } else {
             next();

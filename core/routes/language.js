@@ -15,7 +15,6 @@ router.get("/update", function (req, res, next) {
     }
 })
 
-
 router.put("/update", function (req, res, next) {
     const locale = req.body.locale;
     if (locale && localeManager.isSupported(locale)) {

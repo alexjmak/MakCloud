@@ -74,7 +74,6 @@ const files = function(getRelativeDirectory, getFilePath) {
                     break;
             }
         }
-
     });
 
     router.post("/*", async function (req, res, next) {
@@ -104,7 +103,6 @@ const files = function(getRelativeDirectory, getFilePath) {
             res.status(404);
         }
     });
-
     return router;
 }
 

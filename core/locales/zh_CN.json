@@ -1,10 +1,10 @@
 {
   "account": "帐户",
   "account_manager": "帐户管理",
-  "app_name": "App",
   "back": "上一页",
   "blacklisted": "列入黑名单",
   "blacklisted_until": "列入黑名单到{0}",
+  "confirm_delete": "您确定要删除{0}吗?",
   "delete": "删除",
   "done": "完成",
   "download": "下载",

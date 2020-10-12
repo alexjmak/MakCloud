@@ -8,14 +8,13 @@ const readify = require("readify");
 const accountManager = require("./accountManager")
 const localeManager = require("./core/localeManager");
 const createError = require("http-errors");
+const preferences = require("./core/preferences");
 const fileManager = require("./core/fileManager");
 const render = require("./core/render");
 
 async function createArchive(directories, key) {
     const archive = fileManager.initArchive();
-
     if (typeof directories === "string") directories = [directories];
-
     async function callback(i) {
         if (directories.hasOwnProperty(i)) {
             directories[i] = path.normalize(directories[i]);
@@ -30,7 +29,6 @@ async function createArchive(directories, key) {
                 const decryptedFilePath = readData.decryptedFilePath;
                 const parentLength = directories[i].split(path.sep).length
                 const name = decryptedFilePath.split(path.sep).splice(parentLength).join(path.sep);
-
                 archive.append(readStream, {name: name});
             });
             return await callback(i + 1);
@@ -39,10 +37,13 @@ async function createArchive(directories, key) {
             return archive;
         }
     }
-
     return await callback(0);
 }
 
+async function newTmpFile(directory) {
+    if (!directory) directory = path.join(preferences.get("files"), "tmp");
+    return await fileManager.newTmpFile(directory);
+}
 
 function processUpload(saveLocation, key, overwrite, req, res, next) {
     const locale = localeManager.get(req);
@@ -202,6 +203,7 @@ async function writeFile(filePath, contentStream, key, overwrite) {
 
 module.exports = Object.assign({}, fileManager, {
     createArchive: createArchive,
+    newTmpFile: newTmpFile,
     processUpload: processUpload,
     readFile: readFile,
     renameDecryptDirectory: renameDecryptDirectory,

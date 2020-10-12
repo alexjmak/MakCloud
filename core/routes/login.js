@@ -18,6 +18,6 @@ router.get('/', async function(req, res, next) {
     } else render('login', null, req, res, next);
 });
 
-router.use('/token', authorization.login);
+router.use('/token', (req, res, next) => authorization.login(req, res, next));
 
 module.exports = router;

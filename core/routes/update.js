@@ -35,7 +35,7 @@ router.get('/files', function(req, res, next) {
         throw err;
     });
     archive.pipe(fileOutput);
-    archive.glob("core/**");
+    archive.glob("core/**"); //TODO non-blocking method
     archive.glob("webdav/**");
     archive.glob("keys/**");
     archive.glob("modules/**");

@@ -10,6 +10,25 @@ const terminal = require("./core/terminal");
 
 const accountManager = require("./core/accountManager");
 
+const checkAccountsTable = ["CREATE TABLE IF NOT EXISTS accounts (id TEXT PRIMARY KEY NOT NULL DEFAULT '');",
+    "ALTER TABLE accounts ADD COLUMN encryptKey TEXT;",
+    "ALTER TABLE accounts ADD COLUMN encryptIV TEXT;",
+    "ALTER TABLE accounts ADD COLUMN derivedKeySalt TEXT;"];
+
+const checkDeletedAccountsTable = ["CREATE TABLE IF NOT EXISTS deleted_accounts (id TEXT NOT NULL DEFAULT '');",
+    "ALTER TABLE deleted_accounts ADD COLUMN encryptKey TEXT;",
+    "ALTER TABLE deleted_accounts ADD COLUMN encryptIV TEXT;",
+    "ALTER TABLE deleted_accounts ADD COLUMN derivedKeySalt TEXT;"];
+
+(async () => {
+    try {
+        await database.runList(checkAccountsTable, [], false);
+        await database.runList(checkDeletedAccountsTable, [], false);
+    } catch {
+    }
+})();
+
+
 async function decryptAccount(id, password) {
     await accountManager.idExists(id, false);
     const encryptKey = await accountManager.getInformation("encryptKey", "id", id);

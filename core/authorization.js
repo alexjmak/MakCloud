@@ -161,7 +161,7 @@ async function login(req, res, next, onSuccess) {
                 if (!bruteForceProtection.hasOwnProperty(req.ip)) bruteForceProtection[req.ip] = 0;
                 bruteForceProtection[req.ip]++;
                 if (bruteForceProtection[req.ip] % 5 === 0) {
-                    res.status(429).send(`Too many attempts. Try again in ${bruteForceProtection[req.ip]} minutes.`);
+                    res.status(429).send(locale.too_many_attempts.replace("{0}", bruteForceProtection[req.ip]));
                     await firewall.blacklist.add(req.ip, bruteForceProtection[req.ip] * 60 * 1000);
                     return;
                 }

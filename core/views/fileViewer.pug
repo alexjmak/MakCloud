@@ -3,6 +3,16 @@ extends layout
 block header
     link(rel='stylesheet', type='text/css', href='/stylesheets/fileViewer.css')
     script.
+        Object.assign(locale, {
+            confirm_delete: "#{locale.confirm_delete}",
+            error_deleting: "#{locale.error_deleting}",
+            incorrect_password: "#{locale.incorrect_password}",
+            cant_open_file_type: "#{locale.cant_open_file_type}",
+            no_connection: "#{locale.no_connection}",
+            unsaved_changes: "#{locale.unsaved_changes}",
+            edit: "#{locale.edit}",
+            save: "#{locale.save}"
+        });
         const name_decrypted = "#{name_decrypted}";
     script(type='text/javascript', src= "/javascripts/fileViewer.js")
 
@@ -35,14 +45,14 @@ block drawer
 block content
     div#content(hidden)
     #authorization.box.mdc-card.mdc-elevation--z8(style="display: none")
-        #title.demo-card__title.mdc-typography.mdc-typography--headline4 Password Required
+        #title.demo-card__title.mdc-typography.mdc-typography--headline4= locale.password_required
         br
         .mdc-text-field
             input#password.mdc-text-field__input(type='password' tabindex=1)
             .mdc-line-ripple
-            label.mdc-floating-label Password
+            label.mdc-floating-label= locale.password
         p#message
-        button#submit.mdc-button.mdc-button--raised Submit
+        button#submit.mdc-button.mdc-button--raised= locale.submit
 
 
 

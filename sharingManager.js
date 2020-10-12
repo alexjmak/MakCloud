@@ -11,6 +11,33 @@ database.run("CREATE TABLE IF NOT EXISTS sharing (key TEXT NOT NULL, id INTEGER 
     });
 });
 
+const checkSharingTable = [
+    "CREATE TABLE IF NOT EXISTS sharing (key TEXT PRIMARY KEY NOT NULL DEFAULT '');",
+    "ALTER TABLE sharing ADD COLUMN key TEXT PRIMARY KEY NOT NULL DEFAULT '';",
+    "ALTER TABLE sharing ADD COLUMN id TEXT NOT NULL DEFAULT '';",
+    "ALTER TABLE sharing ADD COLUMN access INTEGER NOT NULL DEFAULT 0;",
+    "ALTER TABLE sharing ADD COLUMN expiration INTEGER;"
+];
+
+const checkLinksTable = [
+    "CREATE TABLE IF NOT EXISTS links (key TEXT PRIMARY KEY NOT NULL DEFAULT '');",
+    "ALTER TABLE links ADD COLUMN key TEXT PRIMARY KEY NOT NULL DEFAULT '';",
+    "ALTER TABLE links ADD COLUMN filePath TEXT NOT NULL DEFAULT '';",
+    "ALTER TABLE links ADD COLUMN owner TEXT NOT NULL DEFAULT '';",
+    "ALTER TABLE links ADD COLUMN hash TEXT NOT NULL DEFAULT '';",
+    "ALTER TABLE links ADD COLUMN salt TEXT NOT NULL DEFAULT '';"
+];
+
+(async () => {
+    try {
+        await database.runList(checkSharingTable, [], false);
+    } catch {}
+    try {
+        await database.runList(checkLinksTable, [], false);
+    } catch {}
+})();
+
+
 function addLinkAccess(filePath, owner, id, access, expiration, next) {
     filePath = decodeURIComponent(filePath);
     if (filePath === "") filePath = "/";
@@ -55,7 +82,6 @@ function checkPassword(req, res, key, hash, salt, next) {
             });
             if (next) next(token);
         });
-
     } else res.status(403).send("Invalid password");
 }
 

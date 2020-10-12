@@ -1,37 +1,40 @@
-const path = require("path");
 const crypto = require("crypto");
-const mkdirp = require('mkdirp');
 const database = require("./databaseInit");
 const log = require("../core/log");
-const preferences = require("../preferences");
 
-const checkAccountsTable = ["CREATE TABLE IF NOT EXISTS accounts (id TEXT PRIMARY KEY);",
-    "ALTER TABLE accounts ADD COLUMN id TEXT PRIMARY KEY;",
-    "ALTER TABLE accounts ADD COLUMN username TEXT NOT NULL DEFAULT ' ';",
-    "ALTER TABLE accounts ADD COLUMN hash TEXT NOT NULL DEFAULT ' ';",
-    "ALTER TABLE accounts ADD COLUMN salt TEXT NOT NULL DEFAULT ' ';",
+const checkAccountsTable = [
+    "CREATE TABLE IF NOT EXISTS accounts (id TEXT PRIMARY KEY NOT NULL DEFAULT '');",
+    "ALTER TABLE accounts ADD COLUMN id TEXT PRIMARY KEY NOT NULL DEFAULT '';",
+    "ALTER TABLE accounts ADD COLUMN username TEXT NOT NULL DEFAULT '';",
+    "ALTER TABLE accounts ADD COLUMN hash TEXT NOT NULL DEFAULT '';",
+    "ALTER TABLE accounts ADD COLUMN salt TEXT NOT NULL DEFAULT '';",
     "ALTER TABLE accounts ADD COLUMN privilege INTEGER NOT NULL DEFAULT 0;",
-    "ALTER TABLE accounts ADD COLUMN enabled INTEGER NOT NULL DEFAULT 1;"];
-const checkDeletedAccountsTable = ["CREATE TABLE IF NOT EXISTS deleted_accounts (id INTEGER);",
-    "ALTER TABLE deleted_accounts ADD COLUMN id INTEGER;",
-    "ALTER TABLE deleted_accounts ADD COLUMN username TEXT NOT NULL DEFAULT ' ';",
-    "ALTER TABLE deleted_accounts ADD COLUMN hash TEXT NOT NULL DEFAULT ' ';",
-    "ALTER TABLE deleted_accounts ADD COLUMN salt TEXT NOT NULL DEFAULT ' ';",
+    "ALTER TABLE accounts ADD COLUMN enabled INTEGER NOT NULL DEFAULT 1;"
+];
+
+const checkDeletedAccountsTable = [
+    "CREATE TABLE IF NOT EXISTS deleted_accounts (id TEXT NOT NULL DEFAULT '');",
+    "ALTER TABLE deleted_accounts ADD COLUMN id TEXT NOT NULL DEFAULT '';",
+    "ALTER TABLE deleted_accounts ADD COLUMN username TEXT NOT NULL DEFAULT '';",
+    "ALTER TABLE deleted_accounts ADD COLUMN hash TEXT NOT NULL DEFAULT '';",
+    "ALTER TABLE deleted_accounts ADD COLUMN salt TEXT NOT NULL DEFAULT '';",
     "ALTER TABLE deleted_accounts ADD COLUMN privilege INTEGER NOT NULL DEFAULT 0;",
     "ALTER TABLE deleted_accounts ADD COLUMN enabled INTEGER NOT NULL DEFAULT 1;",
-    "ALTER TABLE deleted_accounts ADD COLUMN dateDeleted INTEGER NOT NULL DEFAULT 0;"];
+    "ALTER TABLE deleted_accounts ADD COLUMN dateDeleted INTEGER NOT NULL DEFAULT 0;"
+];
 
 (async () => {
     try {
         await database.runList(checkAccountsTable, [], false);
-    } catch {
-    }
+    } catch {}
+    try {
+        await database.runList(checkDeletedAccountsTable, [], false);
+    } catch {}
     try {
         await newAccount("admin", "password", 100);
     } catch {
     }
 })();
-
 
 async function deleteAccount(id) {
     const dateDeleted = Math.floor(Date.now() / 1000);
@@ -192,8 +195,7 @@ async function usernameExists(username, enabledCheck) {
         if (result.length === 1) {
             return true;
         }
-    } catch {
-    }
+    } catch {}
     return false;
 }
 

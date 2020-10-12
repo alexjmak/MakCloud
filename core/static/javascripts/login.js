@@ -26,7 +26,7 @@ $(document).ready(function() {
             $("#message").text(locale.no_connection);
         } else {
             if (xmlHttpRequest.status === 429) {
-                firewall = true;
+                firewall = 0;
                 $("#submit").prop("disabled", true);
                 setTimeout(function() {
                     location.reload();
@@ -38,11 +38,11 @@ $(document).ready(function() {
 
     };
 
-    let randomNumberArray = new Uint32Array(1);
+    const randomNumberArray = new Uint32Array(1);
     window.crypto.getRandomValues(randomNumberArray);
 
     let submit = function() {
-        if (firewall) return;
+        if (!isNaN(firewall)) return;
 
         let usernameValue = username.val().trim();
         let passwordValue = password.val();
@@ -70,9 +70,8 @@ $(document).ready(function() {
             return;
         }
 
-
-
-        getRequest("/login/token", login, "Basic " + btoa(encodeURIComponent(usernameValue) + ":" + encodeURIComponent(passwordValue)));
+        const authorization = btoa(encodeURIComponent(usernameValue) + ":" + encodeURIComponent(passwordValue));
+        getRequest("/login/token", login, "Basic " + authorization);
     };
 
 
@@ -86,7 +85,7 @@ $(document).ready(function() {
 
     $("#submit").click(submit);
 
-    if (firewall) {
+    if (!isNaN(firewall)) {
         showFirewall();
     }
 
@@ -94,21 +93,25 @@ $(document).ready(function() {
 
 function showFirewall() {
     $("#submit").prop("disabled", true);
-    let message = firewall.charAt(0).toUpperCase() + firewall.slice(1);
-    if (firewallEnd) {
-        let expiration = new Date(firewallEnd)
-        if (!isNaN(expiration.getTime())) {
-            message += " until " + expiration.toLocaleString();
-            let timeout = firewallEnd - Date.now();
-            if (timeout < 0) timeout *= -1;
-            if (timeout + 3000 <= Math.pow(2, 31) - 1) {
-                setTimeout(function() {
-                    location.reload();
-                }, timeout + 3000);
+    let message;
+    if (firewall === 0) {
+        if (firewallEnd) {
+            const expiration = new Date(firewallEnd)
+            if (!isNaN(expiration.getTime())) {
+                message = locale.blacklisted_until.replace("{0}", expiration.toLocaleString());
+                let timeout = firewallEnd - Date.now();
+                if (timeout < 0) timeout *= -1;
+                if (timeout + 3000 <= Math.pow(2, 31) - 1) {
+                    setTimeout(function() {
+                        location.reload();
+                    }, timeout + 3000);
+                }
             }
+        } else {
+            message = locale.blacklisted;
         }
+    } else {
+        message = locale.not_whitelisted;
     }
     $("#message").text(message);
-
-
 }

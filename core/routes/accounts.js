@@ -12,17 +12,17 @@ const router = express.Router();
 router.delete('/delete', async function (req, res, next) {
     let id = req.body.id;
 
-    if (!hasFields(res, id)) return res.status(400);
+    if (!hasFields(req, res, id)) return res.status(400);
 
     try {
         const username = await accountManager.getInformation("username", "id", id);
-        if (username === "admin") return res.status(403).send("Cannot delete the admin account");
+        if (username === "admin") return res.status(403);
         const privilegeCheck = checkPrivilege(req, res, id);
         if (!privilegeCheck) return;
         await accountManager.deleteAccount(id);
-        res.send("Deleted account");
+        res.sendStatus(200);
     } catch {
-        res.status(404).send("Account not found");
+        res.status(404).send(locale.account_not_found);
     }
 
 });
@@ -34,7 +34,6 @@ router.get('/', function (req, res, next) {
 
 router.get('/list', async function (req, res, next) {
     let result = await accountManager.getAccountsSummary(authorization.getID(req));
-    result = {id: result.id, username: result.username, privilege: result.privilege, enabled: result.enabled}
     await res.json(result);
 });
 
@@ -57,27 +56,27 @@ router.patch('/enabled', async function (req, res, next) {
     let id = req.body.id;
     let enabled = req.body.enabled;
 
-    if (!hasFields(res, id, enabled)) return res.status(400);
+    if (!hasFields(req, res, id, enabled)) return res.status(400);
 
     const privilegeCheck = await checkPrivilege(req, res, id);
     if (!privilegeCheck) return;
     if (enabled) {
         try {
             await accountManager.enableAccount(id);
-            res.send("Enabled account");
+            res.sendStatus(200);
         } catch {
-            res.status(404).send("Account not found");
+            res.status(404).send(locale.account_not_found);
         }
     } else {
         if (authorization.getID(req) === id) {
-            res.status(404).send("Cannot disable your own account");
+            res.sendStatus(403);
             return;
         }
         try {
             await accountManager.disableAccount(id);
-            res.send("Disabled account");
+            res.sendStatus(200);
         } catch {
-            res.status(404).send("Account not found");
+            res.status(404).send(locale.account_not_found);
         }
     }
 });
@@ -86,14 +85,14 @@ router.patch('/password', async function (req, res, next) {
     let id = req.body.id;
     let new_password = req.body.password;
 
-    if (!hasFields(res, id, new_password)) return res.status(400);
+    if (!hasFields(req, res, id, new_password)) return res.status(400);
     const privilegeCheck = await checkPrivilege(req, res, id);
     if (!privilegeCheck) return;
     try {
         await accountManager.updatePassword(id, new_password);
-        res.send("Updated account information")
+        res.sendStatus(200);
     } catch {
-        res.status(401).send("Failed to update password");
+        res.status(401).send(locale.cant_update_password);
     }
 });
 
@@ -101,7 +100,7 @@ router.patch('/privilege', async function (req, res) {
     let id = req.body.id;
     let new_privilege = req.body.privilege;
 
-    if (!hasFields(res, id, new_privilege)) return res.status(400);
+    if (!hasFields(req, res, id, new_privilege)) return res.status(400);
     const privilegeCheck = await checkPrivilege(req, res, id);
     if (!privilegeCheck) return;
     if (new_privilege > 100 || new_privilege.toString().toUpperCase() === "ADMIN") new_privilege = 100;
@@ -109,9 +108,9 @@ router.patch('/privilege', async function (req, res) {
     if (!canChangePrivilege) return res.status(401);
     try {
         await accountManager.updatePrivilege(id, new_privilege);
-        res.send("Updated account information")
+        res.sendStatus(200);
     } catch {
-        res.status(401).send("Failed to update privilege level");
+        res.status(401).send(locale.cant_update_privilege);
     }
 });
 
@@ -119,14 +118,14 @@ router.patch('/username', async function (req, res) {
     let id = req.body.id;
     let new_username = req.body.username;
 
-    if (!hasFields(res, id, new_username)) return res.status(400);
+    if (!hasFields(req, res, id, new_username)) return res.status(400);
     const privilegeCheck = await checkPrivilege(req, res, id);
     if (!privilegeCheck) return;
     try {
         await accountManager.updateUsername(id, new_username);
-        res.send("Updated account information")
+        res.sendStatus(200);
     } catch {
-        res.status(401).send("Account already exists");
+        res.status(401).send(locale.account_already_exists);
     }
 
 });
@@ -136,19 +135,18 @@ router.put('/new', async function (req, res) {
     let password = req.body.password;
     let privilege = req.body.privilege;
 
-    if (!hasFields(res, username, password)) return res.send(400);
-    if (username === "admin") return res.status(401).send("Insufficient privilege level");
-    const privilegeCheck = await checkPrivilege(req, res);
-    if (!privilegeCheck) return;
+    const locale = localeManager.get(req);
+    if (!hasFields(req, res, username, password)) return res.send(400);
+    if (username === "admin") return res.status(401).send(locale.insufficient_privilege);
     if (privilege === undefined) privilege = 0;
     else if (privilege > 100 || privilege.toString().toUpperCase() === "ADMIN") privilege = 100;
     const canChangePrivilege = await checkChangePrivilege(req, res, privilege);
     if (!canChangePrivilege) return;
     try {
         await accountManager.newAccount(username, password, privilege);
-        res.send("Created account: " + username);
+        res.sendStatus(200);
     } catch {
-        res.status(409).send("Account already exists");
+        res.status(409).send(locale.account_already_exists);
     }
 });
 
@@ -162,13 +160,13 @@ router.use(async function (req, res, next) {
 router.delete('/deleted/delete', async function (req, res, next) {
     let id = req.body.id;
 
-    if (!hasFields(res, id)) return res.send(400);
+    if (!hasFields(req, res, id)) return res.send(400);
 
     try {
         await accountManager.deleteDeletedAccount(id);
-        res.send("Deleted account");
+        res.sendStatus(200);
     } catch {
-        res.status(404).send("Account not found");
+        res.status(404).send(locale.account_not_found);
     }
 });
 
@@ -188,17 +186,18 @@ async function checkChangePrivilege(req, res, new_privilege) {
         res.status(401).send(locale.invalid_privilege);
         return false;
     }
-
-    const currentPrivilege = await accountManager.getInformation("privilege", "id", authorization.getID(req));
-    const currentUsername = await accountManager.getInformation("username", "id", authorization.getID(req));
+    const currentID = authorization.getID(req);
+    const currentPrivilege = await accountManager.getInformation("privilege", "id", currentID);
+    const currentUsername = await accountManager.getInformation("username", "id", currentID);
     if (currentUsername !== "admin" && currentPrivilege <= new_privilege) {
-        res.status(401).send("Insufficient privilege level");
+        res.status(401).send(locale.insufficient_privilege);
         return false;
     }
     return true;
 }
 
 async function checkPrivilege(req, res, accountID) {
+    const locale = localeManager.get(req);
     const currentID = authorization.getID(req);
     const currentUsername = await accountManager.getInformation("username", "id", currentID);
     const currentPrivilege = await accountManager.getInformation("privilege", "id", currentID);
@@ -212,16 +211,17 @@ async function checkPrivilege(req, res, accountID) {
             if (currentPrivilege > 0 && currentPrivilege > accountPrivilege) return true;
         }
     }
-    res.status(401).send("Insufficient privilege level");
+    res.status(401).send(locale.insufficient_privilege);
     return false;
 
 }
 
-function hasFields(res, ...fields) {
+function hasFields(req, res, ...fields) {
+    const locale = localeManager.get(req);
     for (let field in fields) {
         field = fields[field];
         if (field === undefined) {
-            res.status(400).send("Missing required fields");
+            res.status(400).send(locale.missing_fields);
             return false;
         }
     }

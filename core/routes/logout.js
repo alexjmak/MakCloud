@@ -6,7 +6,7 @@ router.get('/', function (req, res, next) {
     res.clearCookie("loginToken");
     res.clearCookie("fileToken");
     let redirect = req.query.redirect;
-    if (redirect !== undefined) res.redirect("/login?redirect=" + redirect);
+    if (redirect) res.redirect("/login?redirect=" + redirect);
     else res.redirect("/login");
 });
 

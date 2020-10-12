@@ -1,6 +1,5 @@
 {
   "app_name": "麦云端",
-  "confirm_delete": "您确定要删除{0}吗?",
   "confirm_password": "输入你的密码",
   "confirm_password_account": "输入{0}的密码",
   "encrypted": "加密",

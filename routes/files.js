@@ -11,9 +11,6 @@ const log = require('../core/log');
 const encryptionManager = require('../encryptionManager');
 const filesRouter = require("../core/routes/files");
 
-
-
-
 const files = function(getRelativeDirectory, getFilePath) {
     if (!getRelativeDirectory) getRelativeDirectory = (req) => path.join(preferences.get("files"), authorization.getID(req), "files");
     if (!getFilePath) getFilePath = req => path.join(getRelativeDirectory(req), decodeURIComponent(req.path));

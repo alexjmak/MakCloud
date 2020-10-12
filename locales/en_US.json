@@ -1,9 +1,12 @@
 {
   "app_name": "MakCloud",
-  "confirm_delete": "Are you sure you want to delete {0}?",
   "confirm_password": "Confirm current password",
   "confirm_password_account": "Confirm current password for {0}",
+  "decrypted_account": "Decrypted account",
+  "decryption_error": "Decryption error",
   "encrypted": "Encrypted",
+  "encrypted_account": "Encrypted account",
+  "encryption_error": "Encryption error",
   "password_required": "Password required",
   "photos": "Photos",
   "public": "Public",

@@ -21,7 +21,7 @@ router.patch('/encrypted', async function(req, res, next) {
     const password = req.body.password;
 
     const locale = localeManager.get(req);
-    if (!hasFields(res, id, encrypted, password)) return;
+    if (!hasFields(req, res, id, encrypted, password)) return;
     const privilegeCheck = await checkPrivilege(req, res, id);
     if (!privilegeCheck) return;
     const result = await authorization.checkPassword(id, password);
@@ -32,10 +32,10 @@ router.patch('/encrypted', async function(req, res, next) {
                 if (id === authorization.getID(req)) {
                     req.session.encryptionKey = decryptedKey;
                 }
-                res.send("Encrypted account");
+                res.send(locale.encrypted_account);
             } catch (err) {
                 log.write(err);
-                res.status(500).send("Encryption Error");
+                res.status(500).send(locale.encryption_error);
             }
 
         } else {
@@ -45,10 +45,10 @@ router.patch('/encrypted', async function(req, res, next) {
                     req.session.encryptionKey = undefined;
                     res.clearCookie("encryptionSession");
                 }
-                res.send("Decrypted account");
+                res.send(locale.decrypted_account);
             } catch (err) {
                 log.write(err);
-                res.status(500).send("Decryption Error");
+                res.status(500).send(locale.decryption_error);
             }
         }
     } else {
@@ -62,11 +62,11 @@ router.patch('/password', async function(req, res, next) {
     const old_password = req.body.old_password;
 
     const locale = localeManager.get(req);
-    if (!hasFields(res, id, new_password)) return;
+    if (!hasFields(req, res, id, new_password)) return;
 
     const encrypted = await accountManager.getInformation("encryptKey", "id", id);
     if (encrypted) {
-        if (!hasFields(res, old_password)) return;
+        if (!hasFields(req, res, old_password)) return;
         const result = await authorization.checkPassword(id, old_password);
         if (result === authorization.LOGIN.FAIL) {
             return res.status(403).send(locale.incorrect_password);
@@ -76,9 +76,9 @@ router.patch('/password', async function(req, res, next) {
     if (!privilegeCheck) return;
     try {
         await accountManager.updatePassword(id, new_password);
-        res.send("Updated account information")
+        res.sendStatus(200);
     } catch {
-        res.status(401).send("Failed to update password");
+        res.status(401).send(locale.cant_update_password);
     }
 });
 
@@ -89,11 +89,9 @@ router.put('/new', async function(req, res) {
     let encrypted = req.body.encrypted;
 
     const locale = localeManager.get(req);
-    if (!hasFields(res, username, password)) return;
-    if (username === "admin")  return res.status(401).send("Insufficient privilege level");
+    if (!hasFields(req, res, username, password)) return;
+    if (username === "admin")  return res.status(401).send(locale.insufficient_privilege);
 
-    const privilegeCheck = await checkPrivilege(req, res, undefined);
-    if (!privilegeCheck) return;
     if (encrypted === undefined) encrypted = false;
     if (privilege === undefined) privilege = 0;
     else if (privilege > 100 || privilege.toString().toUpperCase() === "ADMIN") privilege = 100;
@@ -102,9 +100,9 @@ router.put('/new', async function(req, res) {
     if (!canChangePrivilege) return;
     try {
         await accountManager.newAccount(username, password, privilege, encrypted);
-        res.send("Created account: " + username);
+        res.sendStatus(200);
     } catch (err) {
-        res.status(409).send("Account already exists");
+        res.status(409).send(locale.account_already_exists);
     }
 });
 
@@ -116,17 +114,18 @@ async function checkChangePrivilege(req, res, new_privilege) {
         res.status(401).send(locale.invalid_privilege);
         return false;
     }
-
-    const currentPrivilege = await accountManager.getInformation("privilege", "id", authorization.getID(req));
-    const currentUsername = await accountManager.getInformation("username", "id", authorization.getID(req));
+    const currentID = authorization.getID(req);
+    const currentPrivilege = await accountManager.getInformation("privilege", "id", currentID);
+    const currentUsername = await accountManager.getInformation("username", "id", currentID);
     if (currentUsername !== "admin" && currentPrivilege <= new_privilege) {
-        res.status(401).send("Insufficient privilege level");
+        res.status(401).send(locale.insufficient_privilege);
         return false;
     }
     return true;
 }
 
 async function checkPrivilege(req, res, accountID) {
+    const locale = localeManager.get(req);
     const currentID = authorization.getID(req);
     const currentUsername = await accountManager.getInformation("username", "id", currentID);
     const currentPrivilege = await accountManager.getInformation("privilege", "id", currentID);
@@ -140,20 +139,22 @@ async function checkPrivilege(req, res, accountID) {
             if (currentPrivilege > 0 && currentPrivilege > accountPrivilege) return true;
         }
     }
-    res.status(401).send("Insufficient privilege level");
+    res.status(401).send(locale.insufficient_privilege);
     return false;
 
 }
 
-function hasFields(res, ...fields) {
+function hasFields(req, res, ...fields) {
+    const locale = localeManager.get(req);
     for (let field in fields) {
         field = fields[field];
         if (field === undefined) {
-            res.status(400).send("Missing required fields");
+            res.status(400).send(locale.missing_fields);
             return false;
         }
     }
     return true;
 }
+
 
 module.exports = router;
