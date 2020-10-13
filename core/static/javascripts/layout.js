@@ -1,8 +1,3 @@
-let isMobile;
-/*console.log($(document.documentElement)[0].style)
-$(document.documentElement)[0].style.backgroundColor = "#181818"
-$(document.documentElement)[0].style.color = "white";
-*/
 $(document).ready(function() {
     checkMobileResize();
     $(window).resize(checkMobileResize);
@@ -124,8 +119,6 @@ function checkMobileResize() {
     let drawer = $(".mdc-drawer");
     let mobile = $(".mobile");
     let smallWidth = (drawer.width() / width) > 0.25;
-
-    isMobile = height > width;
 
     if ((height > width && drawer.length !== 0) || smallWidth)  {
         drawer.addClass("mdc-drawer--modal");

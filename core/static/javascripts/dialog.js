@@ -1,20 +1,15 @@
-
 String.format = function(format) {
     let args = Array.prototype.slice.call(arguments, 1);
     return format.replace(/{(\d+)}/g, function(match, number) {
-        return typeof args[number] != 'undefined'
-            ? args[number]
-            : match
-            ;
+        return typeof args[number] != 'undefined' ? args[number] : match;
     });
 };
 
-
-let okDialog = "<div id=\"dialog\"" +
-            "class=\"mdc-dialog\"" +
-            "role=\"alertdialog\"" +
-            "aria-modal=\"true\"" +
-            "aria-labelledby=\"dialog-title\"" +
+let okDialog = "<div id=\"dialog\" " +
+            "class=\"mdc-dialog\" " +
+            "role=\"alertdialog\" " +
+            "aria-modal=\"true\" " +
+            "aria-labelledby=\"dialog-title\" " +
             "aria-describedby=\"dialog-content\">" +
             "<div class=\"mdc-dialog__container\">" +
             "<div class=\"mdc-dialog__surface\">" +
@@ -34,11 +29,11 @@ let okDialog = "<div id=\"dialog\"" +
             "<div class=\"mdc-dialog__scrim\"></div>" +
             "</div>";
 
-let yesNoDialog = "<div id=\"dialog\"" +
-    "class=\"mdc-dialog\"" +
-    "role=\"alertdialog\"" +
-    "aria-modal=\"true\"" +
-    "aria-labelledby=\"dialog-title\"" +
+let yesNoDialog = "<div id=\"dialog\" " +
+    "class=\"mdc-dialog\" " +
+    "role=\"alertdialog\" " +
+    "aria-modal=\"true\" " +
+    "aria-labelledby=\"dialog-title\" " +
     "aria-describedby=\"dialog-content\">" +
     "<div class=\"mdc-dialog__container\">" +
     "<div class=\"mdc-dialog__surface\">" +
@@ -62,13 +57,10 @@ let yesNoDialog = "<div id=\"dialog\"" +
     "</div>";
 
 let showDialog = function(type, title, body, actionFunctions) {
-
     $("body").append(String.format(type, title, body));
     let dialog = new mdc.dialog.MDCDialog(document.querySelector('#dialog'));
-
     dialog.listen('MDCDialog:closed', function(event) {
         $("#dialog").remove();
-
         if (actionFunctions !== undefined) {
             try {
                 actionFunctions[event.detail.action]();
@@ -76,8 +68,6 @@ let showDialog = function(type, title, body, actionFunctions) {
             }
         }
     });
-
     dialog.open();
-
     return dialog;
 };

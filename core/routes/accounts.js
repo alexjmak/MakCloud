@@ -179,7 +179,6 @@ router.get('/deleted/list', async function (req, res, next) {
     await res.json(result);
 });
 
-
 async function checkChangePrivilege(req, res, new_privilege) {
     const locale = localeManager.get(req);
     if (isNaN(new_privilege) || new_privilege < 0) {

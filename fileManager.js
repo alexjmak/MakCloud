@@ -5,10 +5,8 @@ const multerStorage = require('./core/modules/multer/StorageEngine');
 const path = require("path");
 const log = require("./core/log");
 const readify = require("readify");
-const accountManager = require("./accountManager")
 const localeManager = require("./core/localeManager");
 const createError = require("http-errors");
-const preferences = require("./core/preferences");
 const fileManager = require("./core/fileManager");
 const render = require("./core/render");
 
@@ -38,11 +36,6 @@ async function createArchive(directories, key) {
         }
     }
     return await callback(0);
-}
-
-async function newTmpFile(directory) {
-    if (!directory) directory = path.join(preferences.get("files"), "tmp");
-    return await fileManager.newTmpFile(directory);
 }
 
 function processUpload(saveLocation, key, overwrite, req, res, next) {
@@ -151,7 +144,6 @@ async function renderDirectory(directory, relativeDirectory, key, req, res, next
         log.write(err);
         next(createError(404))
     }
-
 }
 
 async function renderFile(displayName, req, res, next) {
@@ -160,7 +152,6 @@ async function renderFile(displayName, req, res, next) {
     }
     return await render("fileViewer", {name_decrypted: displayName}, req, res, next);
 }
-
 
 async function writeFile(filePath, contentStream, key, overwrite) {
     if (!key) return await fileManager.writeFile(filePath, contentStream, undefined, overwrite);
@@ -195,15 +186,11 @@ async function writeFile(filePath, contentStream, key, overwrite) {
             log.write(err);
             return Promise.reject(err);
         }
-
     }
 }
 
-//const testKey = "0000000000000000000000000000000000000000000000000000000000000000";
-
 module.exports = Object.assign({}, fileManager, {
     createArchive: createArchive,
-    newTmpFile: newTmpFile,
     processUpload: processUpload,
     readFile: readFile,
     renameDecryptDirectory: renameDecryptDirectory,

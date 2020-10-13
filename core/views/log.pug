@@ -2,6 +2,12 @@ extends layout
 
 block header
     link(rel='stylesheet', type='text/css', href='/stylesheets/log.css')
+    script.
+        Object.assign(locale, {
+            session_expired: "#{locale.session_expired}",
+            no_connection: "#{locale.no_connection}",
+            retry: "#{locale.retry}"
+        });
     script(type= "text/javascript", src= "/javascripts/log.js")
 
 block content

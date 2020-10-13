@@ -14,7 +14,7 @@ $(document).ready(function() {
                 let size = parseInt(xmlHttpRequest.responseText);
                 if (new URL(xmlHttpRequest.responseURL).pathname === "/login") {
                     automatic = false;
-                    showDialog(okDialog, locale.app_name, "Your session has expired", {
+                    showDialog(okDialog, locale.app_name, locale.session_expired, {
                         "close": function () {
                             location.reload()
                         }
@@ -26,12 +26,12 @@ $(document).ready(function() {
                 }
             } else if (xmlHttpRequest.status === 0 && (noConnDialog === undefined || !noConnDialog.isOpen)) {
                 try {
-                    noConnDialog = showDialog(okDialog, locale.app_name, "Connection lost", {
+                    noConnDialog = showDialog(okDialog, locale.app_name, locale.no_connection, {
                         "close": function () {
                             getLogHash(false);
                         }
                     });
-                    noConnDialog.buttons_[0].firstChild.innerHTML = "RETRY";
+                    noConnDialog.buttons_[0].firstChild.innerHTML = locale.retry;
                     noConnDialog.escapeKeyAction = "";
                     noConnDialog.scrimClickAction = "";
                 } catch (err) {

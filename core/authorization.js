@@ -3,7 +3,7 @@ const jwt = require("jsonwebtoken");
 const database = require("./databaseInit");
 const crypto = require("crypto");
 const firewall = require("./firewall");
-const path = require("path");
+const createError = require("http-errors");
 
 const accountManager = require("./accountManager");
 const localeManager = require("./localeManager");
@@ -15,7 +15,7 @@ const secretKey = keys.jwt.secret;
 
 const LOGIN = {"SUCCESS": 0, "FAIL": 1, "DISABLED": 2};
 
-let bruteForceProtection = {};
+const bruteForceProtection = {};
 
 async function checkCredentials(username, password) {
     const result = await database.get("SELECT id FROM accounts WHERE lower(username) = ?", username.toLowerCase());
@@ -53,6 +53,15 @@ function checkPayload(token, payload) {
     return token.iss === serverID;
 }
 
+async function checkPrivilege(req, res, next, minimumPrivilege) {
+    const id = getID(req);
+    const privilege = await accountManager.getInformation("privilege", "id", id);
+    if (privilege >= minimumPrivilege) next();
+    else next(createError(403));
+}
+
+
+
 function createJwtToken(payload, maxAge) {
     return new Promise((resolve, reject) => {
         if (!maxAge) maxAge = 3 * 24 * 60 * 60 * 1000;
@@ -87,7 +96,6 @@ async function doAuthorization(req, res, next) {
             res.redirect("/logout" + redirect);
         }
     }
-
     if (req.headers.authorization !== undefined) {
         if (req.headers.authorization.startsWith("Bearer ")) {
             let loginToken = verifyToken(req.headers.authorization.substring("Bearer ".length), req);
@@ -205,6 +213,7 @@ module.exports = {
     checkCredentials: checkCredentials,
     checkPassword: checkPassword,
     checkPayload: checkPayload,
+    checkPrivilege: checkPrivilege,
     createJwtToken: createJwtToken,
     doAuthorization: doAuthorization,
     generateSalt: generateSalt,

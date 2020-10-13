@@ -55,6 +55,7 @@
   "password": "Password",
   "password_required": "Password required",
   "privilege_level": "Privilege Level",
+  "retry": "Retry",
   "save": "Save",
   "server": "Server",
   "session_expired": "Your session has expired",

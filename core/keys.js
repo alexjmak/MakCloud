@@ -1,17 +1,8 @@
-const log = require("./log");
 const fs = require("fs");
-const path = require("path");
+const log = require("./log");
+const preferences = require("../preferences");
 
-const keyFolder = "keys";
-const keyFiles = {
-    https: {
-        cert: "./https/cert.crt",
-        key: "./https/key.key",
-    },
-    jwt: {
-        secret: "./jwt/secret.key",
-    }
-}
+const keyFiles = preferences.get("keys");
 
 let keys = {};
 
@@ -20,7 +11,7 @@ log.write("Loading keys...");
 for (const group of Object.keys(keyFiles)) {
     if (!keys[group]) keys[group] = {};
     for (const key of Object.keys(keyFiles[group])) {
-        const keyFilePath = path.join(keyFolder, keyFiles[group][key]);
+        const keyFilePath = keyFiles[group][key];
         keys[group][key] = fs.readFileSync(keyFilePath);
     }
 }

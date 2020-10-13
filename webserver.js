@@ -41,9 +41,7 @@ const logRouter = require('./core/routes/log');
 const logsRouter = require('./core/routes/logs');
 const loginRouter = require('./routes/login');
 const logoutRouter = require('./routes/logout');
-const updateRouter = require('./routes/update');
-
-log.write("Starting server...");
+const updateRouter = require('./core/routes/update');
 
 app.use(helmet());
 app.use(cookieParser());
@@ -121,12 +119,16 @@ app.set('view engine', 'pug');
 
 
 function start() {
+    log.write(`Starting server on port ${preferences.get("port")}...`);
     const httpsServer = https.createServer(keys.https, app);
-    httpsServer.listen(443);
-    httpRedirectServer();
+    httpsServer.listen(preferences.get("port"));
+    if (preferences.get("httpRedirectServer")) {
+        httpRedirectServer();
+    }
 }
 
 function httpRedirectServer() {
+    log.write(`Starting http redirect server on port 80...`);
     const httpServer = express();
     httpServer.get('*', function(req, res) {
         res.redirect('https://' + req.headers.host + req.url);

@@ -1,5 +1,5 @@
 {
-  "name": "test",
+  "name": "MakCloud",
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
@@ -20,6 +20,7 @@
     "cookie-parser": "^1.4.4",
     "express": "^4.17.1",
     "express-session": "^1.17.0",
+    "got": "^11.7.0",
     "helmet": "^3.21.2",
     "http-errors": "latest",
     "jsonwebtoken": "^8.5.1",
@@ -36,7 +37,6 @@
     "pug": "^2.0.4",
     "pug-cli": "^1.0.0-alpha6",
     "readify": "^7.0.3",
-    "request-promise": "^4.2.6",
     "rmfr": "^2.0.0",
     "sass": "^1.25.0",
     "sqlite3": "latest",

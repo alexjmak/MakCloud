@@ -1,9 +1,25 @@
 const fs = require('fs');
 const log = require('./log');
-const localeManager = require("./localeManager");
 
 const configurationFile = "preferences.json";
-let defaultConfiguration = {"blacklist": true, "whitelist": false, "serviceName": null};
+
+let defaultConfiguration = {
+    port: 443,
+    httpRedirectServer: true,
+    blacklist: true,
+    whitelist: false,
+    serviceName: null,
+    keys: {
+        https: {
+            cert: "./keys/https/cert.crt",
+            key: "./keys/https/key.key",
+        },
+        jwt: {
+            secret: "./keys/jwt/secret.key",
+        }
+    }
+};
+
 let configuration;
 
 function cleanup() {
@@ -44,7 +60,6 @@ function init() {
     }
     data = data.toString().trim();
     log.write(`Reading ${configurationFile}...`);
-    log.write(data)
     try {
         configuration = JSON.parse(data);
         cleanup();
@@ -56,7 +71,7 @@ function init() {
 }
 
 function save() {
-    fs.writeFileSync(configurationFile, JSON.stringify(configuration));
+    fs.writeFileSync(configurationFile, JSON.stringify(configuration, null, 4));
 }
 
 function setDefaultConfiguration(configuration) {

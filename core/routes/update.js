@@ -4,10 +4,9 @@ const express = require('express');
 const fs = require('fs');
 const createError = require('http-errors');
 const path = require('path');
-const request = require('request-promise');
+const got = require('got');
 const unzipper = require('unzipper');
 
-const accountManager = require("../accountManager");
 const authorization = require("../authorization");
 const log = require('../log');
 const terminal = require('../terminal');
@@ -23,9 +22,9 @@ router.get('/files', function(req, res, next) {
     const updateArchiveName = "tmp-" + crypto.randomBytes(4).toString("hex") + ".zip";
     const fileOutput = fs.createWriteStream(updateArchiveName);
     fileOutput.on('close', function() {
-        res.sendFile(path.join(__dirname, "..", updateArchiveName), async function () {
+        res.sendFile(path.resolve(updateArchiveName), async function () {
             try {
-                await fs.promises.unlink(path.join(__dirname, "..", updateArchiveName));
+                await fs.promises.unlink(updateArchiveName);
             } catch {}
         });
     });
@@ -36,13 +35,12 @@ router.get('/files', function(req, res, next) {
     });
     archive.pipe(fileOutput);
     archive.glob("core/**"); //TODO non-blocking method
-    archive.glob("webdav/**");
     archive.glob("keys/**");
+    archive.glob("locales/**");
     archive.glob("modules/**");
     archive.glob("static/**");
     archive.glob("routes/**");
     archive.glob("views/**");
-    archive.glob("keys/**");
     archive.glob("*.js");
     archive.glob("package.json");
     archive.glob("package-lock.json");
@@ -51,12 +49,7 @@ router.get('/files', function(req, res, next) {
 
 router.use(authorization.doAuthorization);
 
-router.use(async function(req, res, next) {
-    const id = authorization.getID(req);
-    const privilege = await accountManager.getInformation("privilege", "id", id);
-    if (privilege === 100) next();
-    else next(createError(403));
-});
+router.use((req, res, next) => authorization.checkPrivilege(req, res, next, 100));
 
 router.get('/', function(req, res, next) {
     render('update', null, req, res, next);
@@ -71,45 +64,34 @@ router.post('/', async function(req, res) {
         return;
     }
 
-    const response = await request(req.protocol + "://" + req.body.server + "/update/files", {
-        resolveWithFullResponse: true,
-        timeout: 10 * 1000,
-        encoding: "binary",
-        headers: {authorization: authorizationToken}
+    log.writeServer(req, "Requesting update from " + req.protocol + "://" + req.body.server + "/update/files")
+    const response = await got.stream(req.protocol + "://" + req.body.server + "/update/files", {
+            timeout: 10 * 1000,
+            headers: {authorization: authorizationToken}
     });
 
-    if (response && response.statusCode === 200) {
-        log.writeServer(req, "Updating server...");
-        await fs.promises.writeFile("update.zip", response.body, "binary");
-        const readSteam = fs.createReadStream('update.zip');
-        const pipeSteam = readSteam.pipe(unzipper.Extract({path: path.join(__dirname, "..")}));
-        const error = async function (e) {
-            log.writeServer(req, "Update failed. " + e);
-            try {
-                await fs.promises.unlink("update.zip");
-            } catch {}
-            if (!res.headersSent) res.sendStatus(500);
-        };
-        readSteam.on("error", error);
-        pipeSteam.on("error", error);
-        pipeSteam.on("finish", async function () {
-            try {
-                await fs.promises.unlink("update.zip");
-            } catch {}
-            await terminal("npm install", null);
-            await terminal("npm audit fix", null);
-            log.writeServer(req, "Update complete");
-            if (!res.headersSent) res.sendStatus(200);
-            const serviceName = preferences.get("serviceName");
-            if (serviceName) {
-                await terminal(`sudo service ${serviceName} restart`);
-            }
-        });
-    } else {
-        if (response) log.writeServer(req, "Update failed. Update server responded with error " + response.statusCode);
-        else log.writeServer(req, "Update failed. No response from server.");
-        res.sendStatus(400);
-    }
+    log.writeServer(req, "Updating server...");
+    const pipeSteam = response.pipe(unzipper.Extract({path: path.resolve(".")}));
+    const error = async function (e) {
+        log.writeServer(req, "Update failed. " + e);
+        try {
+            await fs.promises.unlink("update.zip");
+        } catch {}
+        if (!res.headersSent) res.sendStatus(500);
+    };
+    response.on("error", error);
+    pipeSteam.on("error", error);
+    pipeSteam.on("finish", async function () {
+        await terminal("npm install", null);
+        await terminal("npm audit fix", null);
+        log.writeServer(req, "Update complete");
+        if (!res.headersSent) res.sendStatus(200);
+        const serviceName = preferences.get("serviceName");
+        if (serviceName) {
+            await terminal(`sudo service ${serviceName} restart`);
+        }
+    });
+
 });
 
 module.exports = router;

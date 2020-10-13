@@ -9,63 +9,53 @@ class Database {
 
     all(query, args, verbose) {
         return new Promise((resolve, reject) => {
-            let database = this.database;
-            let statement = database.prepare(query, function (err) {
+            const database = this.database;
+            const statement = database.prepare(query, function (err) {
                 if (err != null) {
                     if (verbose === true || verbose === undefined) log.write(err);
                     reject(err);
                 }
             });
-
             if (args === undefined || args === null) args = [];
-
             statement.all(args, function (err, results) {
                 statement.finalize();
-
                 if (err != null) {
                     if (verbose === true || verbose === undefined) log.write(err);
                     reject(err);
                 } else resolve(results);
             });
-        })
-
+        });
     }
 
     get(query, args, verbose) {
         return new Promise((resolve, reject) => {
-            let database = this.database;
-            let statement = database.prepare(query, function (err) {
+            const database = this.database;
+            const statement = database.prepare(query, function (err) {
                 if (err != null) {
                     if (verbose === true || verbose === undefined) log.write(err);
                     reject(err);
                 }
             });
-
             if (args === undefined || args === null) args = [];
             statement.get(args, function (err, result) {
                 statement.finalize();
-
                 if (err != null) {
                     if (verbose === true || verbose === undefined) log.write(err);
                     reject(err);
                 } else resolve(result);
-
             });
-        })
-
+        });
     }
 
     run(query, args, verbose) {
         return new Promise((resolve, reject) => {
-            let database = this.database;
-
-            var statement = database.prepare(query, function (err) {
+            const database = this.database;
+            const statement = database.prepare(query, function (err) {
                 if (err != null) {
                     if (verbose === true || verbose === undefined) log.write(err);
                     reject(err);
                 }
             });
-
             if (args === undefined || args === null) args = [];
             statement.run(args, function (err) {
                 statement.finalize();
@@ -87,11 +77,10 @@ class Database {
             if (args && args.length !== 0) arg = args.shift();
             try {
                 await this.run(query, arg, verbose)
-            } catch (err) {
+            } catch {
                 finalResult = false;
             }
         }
-
         if (!finalResult) return Promise.reject("One or more statements failed");
     }
 }
