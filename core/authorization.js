@@ -60,8 +60,6 @@ async function checkPrivilege(req, res, next, minimumPrivilege) {
     else next(createError(403));
 }
 
-
-
 function createJwtToken(payload, maxAge) {
     return new Promise((resolve, reject) => {
         if (!maxAge) maxAge = 3 * 24 * 60 * 60 * 1000;

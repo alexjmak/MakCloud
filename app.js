@@ -7,4 +7,5 @@ const preferences = require("./preferences");
 preferences.init();
 
 const webServer = require("./webserver");
+
 webServer.start();

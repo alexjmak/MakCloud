@@ -3,9 +3,9 @@ const createError = require('http-errors');
 const https = require("https");
 const fs = require("fs");
 const path = require("path");
-const cookieParser = require('cookie-parser');
+
 //const fileUpload = require("./modules/express-fileupload");
-const helmet = require("helmet");
+
 const session = require("express-session");
 const MemoryStore = require("memorystore")(session);
 
@@ -19,8 +19,9 @@ const keys = require("./core/keys");
 const log = require("./core/log");
 const preferences = require("./preferences");
 const render = require('./core/render');
+const webserver = require("./core/webserver");
 
-const app = express();
+const app = webserver.start();
 
 if (preferences.get("webdav")) {
     if (preferences.get("blacklist")) app.use("/webdav", firewall.blacklist.enforce);
@@ -30,22 +31,16 @@ if (preferences.get("webdav")) {
 
 const accountsRouter = require('./routes/accounts');
 const filesRouter = require('./routes/files')();
-const languageRouter = require('./core/routes/language');
 const publicRouter = require('./routes/public');
 const photosRouter = require('./routes/photos');
 const mailRouter = require('./routes/mail');
-const firewallRouter = require('./core/routes/firewall');
 const sharedRouter = require('./routes/shared');
 const indexRouter = require('./routes/index');
-const logRouter = require('./core/routes/log');
-const logsRouter = require('./core/routes/logs');
 const loginRouter = require('./routes/login');
 const logoutRouter = require('./routes/logout');
-const updateRouter = require('./core/routes/update');
 
-app.use(helmet());
-app.use(cookieParser());
-app.use(express.json());
+
+
 
 app.use(session({
     name: "encryptionSession",
@@ -58,16 +53,7 @@ app.use(session({
     cookie: { secure: true, sameSite: "strict", maxAge: 1 * 60 * 60 * 1000}
 }));
 
-app.use(function (req, res, next) {
-    if (req.originalUrl === "/") return next();
-    let urlCleanup = req.originalUrl
-        .replace(/\/{2,}/g, "/")
-        .replace(/\/$/, "");
-    if (req.originalUrl !== urlCleanup) {
-        return res.redirect(urlCleanup);
-    }
-    next();
-})
+
 
 const noLog = ["/accounts/list/hash", "/log/raw", "/log/size"];
 app.use(function(req, res, next) {
@@ -80,7 +66,6 @@ app.use(express.static("./core/static"));
 app.use("/core", express.static("./core/static"));
 
 app.use(localeManager.getHandler());
-app.use('/language', languageRouter);
 app.use('/logout', logoutRouter);
 if (preferences.get("blacklist")) app.use(firewall.blacklist.enforce);
 if (preferences.get("whitelist")) app.use(firewall.whitelist.enforce);
@@ -88,13 +73,9 @@ app.use('/login', loginRouter);
 app.use("/shared", sharedRouter());
 app.use("/shared-with-me", sharedRouter());
 app.use("/shared-with-others", sharedRouter());
-app.use("/update", updateRouter);
 app.use(authorization.doAuthorization);
 app.use('/', indexRouter);
-app.use("/log", logRouter);
-app.use("/logs", logsRouter);
 app.use("/files", filesRouter);
-app.use("/firewall", firewallRouter);
 app.use("/public", publicRouter);
 app.use("/photos", photosRouter);
 app.use("/mail", mailRouter);
@@ -137,5 +118,6 @@ function httpRedirectServer() {
 }
 
 module.exports = {
+    app: app,
     start: start
 };

@@ -6,6 +6,7 @@ const keyFiles = preferences.get("keys");
 
 let keys = {};
 
+
 log.write("Loading keys...");
 
 for (const group of Object.keys(keyFiles)) {
@@ -15,5 +16,6 @@ for (const group of Object.keys(keyFiles)) {
         keys[group][key] = fs.readFileSync(keyFilePath);
     }
 }
+
 
 module.exports = keys;

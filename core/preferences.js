@@ -17,7 +17,8 @@ let defaultConfiguration = {
         jwt: {
             secret: "./keys/jwt/secret.key",
         }
-    }
+    },
+    test: false
 };
 
 let configuration;
