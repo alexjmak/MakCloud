@@ -9,6 +9,7 @@ const fileManager = require('../fileManager');
 const preferences = require("../core/preferences");
 const log = require('../core/log');
 const encryptionManager = require('../encryptionManager');
+const sharingManager = require('../sharingManager');
 const filesRouter = require("../core/routes/files");
 
 const files = function(getRelativeDirectory, getFilePath) {
@@ -28,7 +29,9 @@ const files = function(getRelativeDirectory, getFilePath) {
         next();
     });
 
-
+    /*
+     * GET /files/{file_path}
+     */
     router.get('/*', async function (req, res, next) {
         const filePath = getFilePath(req);
         const fileName = path.basename(filePath);
@@ -39,6 +42,8 @@ const files = function(getRelativeDirectory, getFilePath) {
         const decryptedFileName = await encryptionManager.decryptFileName(filePath, key);
         const displayName = (decryptedFileName) ? path.basename(decryptedFileName) : fileName;
 
+        const currentID = authorization.getID(req);
+
         let stats;
         try {
             stats = await fs.promises.stat(filePath);
@@ -48,6 +53,7 @@ const files = function(getRelativeDirectory, getFilePath) {
 
         if (stats.isDirectory()) {
             switch (parameter) {
+                // /files/{file_path}?download
                 case "download":
                     const archiveStream = await fileManager.createArchive(filePath, key);
                     fileManager.downloadFolder(archiveStream, (req.path !== "/") ? displayName : null, req, res, next)
@@ -59,11 +65,18 @@ const files = function(getRelativeDirectory, getFilePath) {
         } else {
             const fileStream = (await fileManager.readFile(filePath, key)).readStream;
             switch (parameter) {
+                // /files/{file_path}?download
                 case "download":
                     fileManager.downloadFile(fileStream, displayName, req, res, next);
                     break;
+                // /files/{file_path}?view
                 case "view":
                     await fileManager.renderFile(displayName, req, res, next);
+                    break;
+                // /files/{file_path}?sharing
+                case "sharing":
+                    const linkSummary = await sharingManager.getLinkSummary(filePath, currentID);
+                    res.json(linkSummary);
                     break;
                 default:
                     fileManager.inlineFile(fileStream, displayName, req, res, next);
@@ -74,13 +87,29 @@ const files = function(getRelativeDirectory, getFilePath) {
 
     router.post("/*", async function (req, res, next) {
         const filePath = getFilePath(req);
+        const parameter = Object.keys(req.query)[0];
+
         const key = req.session.encryptionKey;
         try {
             const stats = await fs.promises.stat(filePath);
             if (stats.isDirectory()) {
-                await fileManager.processUpload(filePath, key, false, req, res, next);
+                switch (parameter) {
+                    default:
+                        await fileManager.processUpload(filePath, key, false, req, res, next);
+                        break;
+                }
+
             } else {
-                res.status(400);
+                switch (parameter) {
+                    case "sharing":
+
+                        //TODO
+                        res.status(200);
+                        break;
+                    default:
+                        res.status(400);
+                        break;
+                }
             }
         } catch {
             res.status(404);

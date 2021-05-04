@@ -10,6 +10,7 @@ let setUpdateSharingListeners = function(event) {
 
 var share = function(event) {
     if (window.location.pathname.startsWith("/shared")) return;
+    const fileName = decodeURIComponent(event.data.filePath.split("/").pop());
     getRequest(event.data.filePath + "?sharing", function(xmlHttpRequest) {
         if (xmlHttpRequest.status === 200) {
             let sharingInfo = JSON.parse(xmlHttpRequest.responseText);
@@ -36,7 +37,7 @@ var share = function(event) {
 
             dialogBody += "</table>";
 
-            let shareDialog = showDialog(okDialog, "Share " + event.data.filePath.split("/").pop(), dialogBody);
+            let shareDialog = showDialog(okDialog, "Share " + fileName, dialogBody);
             let newShare = $(".sharing_username[name='new']");
 
             $(".sharing_delete[name='-1']").prop("disabled", true);
@@ -187,7 +188,7 @@ var share = function(event) {
             }
 
         } else {
-            showDialog(okDialog, "Share " + event.data.filePath.split("/").pop(), "Sharing unavailable right now.");
+            showDialog(okDialog, "Share " + fileName, "Sharing unavailable right now.");
 
         }
     });
@@ -241,7 +242,7 @@ var removeAccess = function(event) {
 
 var showSetPassword = function(event) {
     let dialogBody = "<div class='mdc-text-field'><input class='mdc-text-field__input' id='new-password' type='password' tabindex='1'/><div class=\"mdc-line-ripple\"></div><label class=\"mdc-floating-label\">Password</label></div>";
-    let setPasswordDialog = showDialog(okDialog, "Set password for " + event.data.filePath.split("/").pop(), dialogBody);
+    let setPasswordDialog = showDialog(okDialog, "Set password for " + fileName, dialogBody);
     let textFields = document.getElementsByClassName('mdc-text-field');
     for (let i = 0; i < textFields.length; i++) {
         new mdc.textField.MDCTextField(textFields[i]);
