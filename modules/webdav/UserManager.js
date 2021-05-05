@@ -19,57 +19,46 @@ var UserManager = /** @class */ (function () {
         callback(this.users.__default);
     };
 
-    UserManager.prototype.getUserByName = function(username, callback) {
+    UserManager.prototype.getUserByName = async function(username, callback) {
         let _this = this;
-        accountManager.getInformation("id", "lower(username)", username.toLowerCase(), function(id) {
-            if (!username) {
-                if (_this.users[id]) delete _this.users[id];
-                return callback(Errors.UserNotFound);
-            }
-            accountManager.getAccountInfoHash(id, function(infoHash) {
-                if ((_this.users[id] && _this.users[id].infoHash !== infoHash) || !_this.users[id]) {
-                    accountManager.getInformation("privilege", "id", id, function(privilege) {
-                        _this.users[id] = new User(id, infoHash, username, privilege, undefined, undefined)
-                        callback(null, _this.users[id]);
-                    });
-                } else {
-                    callback(null, _this.users[id]);
-                }
-            });
-
-
-        })
-
+        const id = await accountManager.getInformation("id", "lower(username)", username.toLowerCase());
+        if (!id) {
+            return callback(Errors.UserNotFound);
+        }
+        const infoHash = await accountManager.getAccountInfoHash(id);
+        if ((_this.users[id] && _this.users[id].infoHash !== infoHash) || !_this.users[id]) {
+            const privilege = await accountManager.getInformation("privilege", "id", id);
+            _this.users[id] = new User(id, infoHash, username, privilege, undefined)
+            callback(null, _this.users[id]);
+        } else {
+            callback(null, _this.users[id]);
+        }
     }
 
     UserManager.prototype.getUserByNamePassword = function (username, password, callback) {
-        this.getUserByName(username, function(e, user) {
+        this.getUserByName(username, async function(e, user) {
             if (e) return callback(e);
-            console.log(user)
-            authorization.checkPassword(user.uid, password, function(result) {
-                switch (result) {
-                    case authorization.LOGIN.SUCCESS:
-                        if (user.key === undefined)  {
-                            encryptionManager.decryptEncryptionKey(user.uid, password, function(key) {
-                                console.log(key)
-                                if (key !== false) {
-                                    user.key = key;
-                                } else {
-                                    user.key = null;
-                                }
-                                callback(null, user);
-
-                            });
-                        } else {
-                            callback(null, user);
+            const loginResult = await authorization.checkPassword(user.uid, password);
+            switch (loginResult) {
+                case authorization.LOGIN.SUCCESS:
+                    if (user.key === undefined)  {
+                        let key;
+                        try {
+                            key = await encryptionManager.decryptEncryptionKey(user.uid, password);
+                        } catch {
                         }
-
-                        break;
-                    case authorization.LOGIN.FAIL: case authorization.LOGIN.DISABLED:
-                        callback(Errors.BadAuthentication);
-                        break;
-                }
-            })
+                        if (key) {
+                            user.key = key;
+                        } else {
+                            user.key = null;
+                        }
+                    }
+                    callback(null, user);
+                    break;
+                case authorization.LOGIN.FAIL: case authorization.LOGIN.DISABLED:
+                    callback(Errors.BadAuthentication);
+                    break;
+            }
         });
     };
 

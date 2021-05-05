@@ -6,6 +6,9 @@ const fs = require("fs");
 const stream = require("stream");
 const log = require("./core/log");
 const pbkdf2 = require("pbkdf2");
+const session = require("express-session");
+const serverID = require("./core/serverID");
+const MemoryStore = require("memorystore")(session);
 
 async function checkEncryptionSession(req) {
     if (req.cookies.encryptionSession && req.sessionID) {
@@ -241,7 +244,7 @@ async function encryptFileName(filePath, key, iv) {
 
 }
 
-function encryptionEnabled(req) {
+function encryptionTimeout(req) {
     return req.session && req.session.encryptionKey;
 }
 
@@ -375,6 +378,26 @@ function isEncrypted(contentStream, key, iv) {
     });
 }
 
+function setEncryptionEnabledCookie(res) {
+    const maxAge = preferences.get("encryptionSessionMaxAge");
+    res.cookie("encryptionTimeout", maxAge, {maxAge: maxAge, path: "/", secure: true, sameSite: "strict"});
+}
+
+function setSessionCookie() {
+    const maxAge = preferences.get("encryptionSessionMaxAge");
+    return session({
+        name: "encryptionSession",
+        secret: serverID,
+        store: new MemoryStore({
+            checkPeriod: maxAge
+        }),
+        resave: false,
+        rolling: true,
+        saveUninitialized: false,
+        cookie: {secure: true, sameSite: "strict", maxAge: maxAge}
+    });
+}
+
 module.exports = {
     checkEncryptionSession: checkEncryptionSession,
     decryptAccount: decryptAccount,
@@ -386,7 +409,7 @@ module.exports = {
     encryptAccount: encryptAccount,
     encryptEncryptionKey: encryptEncryptionKey,
     encryptFileName: encryptFileName,
-    encryptionEnabled: encryptionEnabled,
+    encryptionTimeout: encryptionTimeout,
     encryptStream: encryptStream,
     getIVs: getIVs,
     generateEncryptionKey: generateEncryptionKey,
@@ -394,5 +417,8 @@ module.exports = {
     generatePbkdf2: generatePbkdf2,
     getCipher: getCipher,
     getDecipher: getDecipher,
-    isEncrypted: isEncrypted
+    isEncrypted: isEncrypted,
+    setEncryptionEnabledCookie: setEncryptionEnabledCookie,
+    setSessionCookie: setSessionCookie,
+
 };

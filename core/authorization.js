@@ -10,6 +10,7 @@ const localeManager = require("./localeManager");
 const serverID = require("./serverID");
 const keys = require("./keys");
 const log = require("./log");
+const preferences = require("./preferences");
 
 const secretKey = keys.jwt.secret;
 
@@ -43,16 +44,6 @@ async function checkPassword(id, password) {
     }
 }
 
-function checkPayload(token, payload) {
-    if (token === false) return false;
-    for (let key in payload)  {
-        if (!payload.hasOwnProperty(key)) continue;
-        if (!token.hasOwnProperty(key)) return false;
-        if (payload[key] !== token[key]) return false;
-    }
-    return token.iss === serverID;
-}
-
 async function checkPrivilege(req, res, next, minimumPrivilege) {
     const id = getID(req);
     const privilege = await accountManager.getInformation("privilege", "id", id);
@@ -62,7 +53,7 @@ async function checkPrivilege(req, res, next, minimumPrivilege) {
 
 function createJwtToken(payload, maxAge) {
     return new Promise((resolve, reject) => {
-        if (!maxAge) maxAge = 3 * 24 * 60 * 60 * 1000;
+        if (!maxAge) maxAge = preferences.get("loginMaxAge");
         if (payload.hasOwnProperty("iss")) delete payload.iss;
         payload = Object.assign({}, payload, {iss: serverID});
         jwt.sign(payload, secretKey, {expiresIn: maxAge + "ms"}, function (err, token) {
@@ -76,7 +67,7 @@ function createJwtToken(payload, maxAge) {
 }
 
 async function createLoginTokenCookie(res, id, next, maxAge) {
-    if (!maxAge) maxAge = 3 * 24 * 60 * 60 * 1000;
+    if (!maxAge) maxAge = preferences.get("loginMaxAge");
     const token = await createJwtToken({sub: "loginToken", aud: id}, maxAge);
     res.cookie("loginToken", token, {maxAge: maxAge, path: "/", secure: true, sameSite: "strict"});
     return token;
@@ -84,35 +75,12 @@ async function createLoginTokenCookie(res, id, next, maxAge) {
 
 async function doAuthorization(req, res, next) {
     let redirect = getRedirectUrl(req);
-
-    async function callback(loginToken, next) {
-        const exists = await accountManager.idExists(getID(req), true);
-        if (exists) {
-            await renewLoginToken(loginToken, req, res);
-            next();
-        } else {
-            res.redirect("/logout" + redirect);
-        }
+    const authorizationToken = await isAuthorized(req)
+    if (authorizationToken) {
+        await renewLoginToken(authorizationToken, req, res);
+        return next();
     }
-    if (req.headers.authorization !== undefined) {
-        if (req.headers.authorization.startsWith("Bearer ")) {
-            let loginToken = verifyToken(req.headers.authorization.substring("Bearer ".length), req);
-            if (loginToken !== false && checkPayload(loginToken, {sub: "loginToken"})) {
-                await callback(loginToken, next);
-                return;
-            }
-        }
-        res.redirect("/logout" + redirect);
-    } else if (req.cookies.loginToken !== undefined) {
-        let loginToken = verifyToken(req.cookies.loginToken, req);
-        if (loginToken !== false && checkPayload(loginToken, {sub: "loginToken"})) {
-            await callback(loginToken, next);
-            return;
-        }
-        res.redirect("/logout" + redirect);
-    } else {
-        res.redirect("/login" + redirect);
-    }
+    res.redirect("/logout" + redirect);
 }
 
 function generateSalt() {
@@ -124,9 +92,11 @@ function getHash(password, salt) {
 }
 
 function getID(req) {
-    let cookieName = "loginToken";
-    if (req.cookies[cookieName] === undefined) return null;
-    return verifyToken(req.cookies[cookieName], req).aud;
+    const cookieName = "loginToken";
+    if (!req.cookies[cookieName]) return null;
+    const verifiedToken = verifyToken(req.cookies[cookieName], req);
+    if (verifiedToken) return verifiedToken.aud;
+    else return null;
 }
 
 function getRedirectUrl(req) {
@@ -134,6 +104,23 @@ function getRedirectUrl(req) {
     if (redirect !== "") redirect = "?redirect=" + redirect;
     return redirect;
 }
+
+async function isAuthorized(req) {
+    let authorizationToken = null;
+    if (req.cookies.loginToken) {
+        authorizationToken = req.cookies.loginToken;
+    }
+
+    if (req.headers.authorization && req.headers.authorization.startsWith("Bearer ")) {
+        authorizationToken = req.headers.authorization.substring("Bearer ".length);
+    }
+    const verifiedToken = verifyToken(authorizationToken, req);
+    const isValidPayload = validPayload(verifiedToken, {sub: "loginToken"})
+    const accountExists = await accountManager.idExists(getID(req), true);
+    if (isValidPayload && accountExists) return verifiedToken;
+    else return false;
+}
+
 
 async function login(req, res, next, onSuccess) {
     if (req.headers.authorization !== undefined) {
@@ -190,8 +177,18 @@ async function renewLoginToken(loginToken, req, res) {
     }
 }
 
+function validPayload(token, payload) {
+    if (!token) return false;
+    for (let key in payload)  {
+        if (!payload.hasOwnProperty(key)) continue;
+        if (!token.hasOwnProperty(key)) return false;
+        if (payload[key] !== token[key]) return false;
+    }
+    return token.iss === serverID;
+}
+
 function verifyToken(rawToken, req) {
-    if (rawToken === undefined) return false;
+    if (!rawToken) return null;
     try {
         return jwt.verify(rawToken, secretKey);
     } catch (err) {
@@ -203,14 +200,13 @@ function verifyToken(rawToken, req) {
         }
         else log.write(err);
     }
-    return false;
+    return null;
 }
 
 module.exports = {
     LOGIN: LOGIN,
     checkCredentials: checkCredentials,
     checkPassword: checkPassword,
-    checkPayload: checkPayload,
     checkPrivilege: checkPrivilege,
     createJwtToken: createJwtToken,
     doAuthorization: doAuthorization,
@@ -218,6 +214,8 @@ module.exports = {
     getHash: getHash,
     getID: getID,
     getRedirectUrl: getRedirectUrl,
+    isAuthorized: isAuthorized,
     login: login,
+    validPayload: validPayload,
     verifyToken: verifyToken
 };

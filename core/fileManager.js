@@ -40,7 +40,7 @@ function downloadFile(fileStream, fileName, req, res, next) {
         "Content-Disposition": "attachment"
     };
     if (fileName) {
-        header["Content-Disposition"] += `; filename="${encodeURIComponent(path.basename(fileName))}"`;
+        header["Content-Disposition"] += `; filename="${path.basename(fileName)}"`;
     }
     res.writeHead(200, header);
     fileStream.pipe(res);
@@ -51,7 +51,7 @@ function downloadFolder(archiveStream, fileName, req, res, next) {
     fileName = `${path.basename(fileName)}-${Math.floor(Date.now() / 1000)}.zip`;
     res.writeHead(200,
         {
-            "Content-Disposition": `attachment; filename="${encodeURIComponent(path.basename(fileName))}"`,
+            "Content-Disposition": `attachment; filename="${path.basename(fileName)}"`,
             "Content-Type": "application/octet-stream"
         });
     archiveStream.pipe(res);
@@ -163,8 +163,8 @@ async function renderDirectory(directory, relativeDirectory, req, res, next) {
     }
 }
 
-async function renderFile(req, res, next) {
-    return await render("fileViewer", null, req, res, next);
+async function renderFile(displayName, req, res, next) {
+    return await render("fileViewer", {displayName: encodeURIComponent(displayName)}, req, res, next);
 }
 
 async function walkDirectoryPreorder(directory, eachFile) {

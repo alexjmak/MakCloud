@@ -28,7 +28,7 @@ var share = function(event) {
                     let account = sharing[sharingIndex];
                     if (account.expiration === null) account.expiration = "None";
                     let sharingAccess0Text = "Same as public";
-                    if (account.id === -1) sharingAccess0Text = "No access";
+                    if (account.id === "public") sharingAccess0Text = "No access";
                     dialogBody += "<tr class='sharing-tr' id='" + account.id + "'><td><input readonly type='text' class='sharing_username' name='" + account.id + "' value='" + account.username + "' placeholder='New username' autocomplete='off' autocapitalize='none'></td><td><input type='text' class='sharing_expiration' name='" + account.id + "' value='" + account.expiration + "' placeholder='New expiration'></td><td><div class=\"sharing_access mdc-select mdc-select--outlined\" name='" + account.id + "'><input type=\"hidden\" name=\"enhanced-select\"><i class=\"mdc-select__dropdown-icon\"></i><div class=\"mdc-select__selected-text\"></div><div class=\"mdc-select__menu mdc-menu mdc-menu-surface\"><ul class=\"mdc-list\"><li class=\"mdc-list-item\">" + sharingAccess0Text + "</li> <li class=\"mdc-list-item\">Read access</li> <li class=\"mdc-list-item\">Read & write access</li></ul></div><div class=\"mdc-line-ripple\"></div></div></td><td><button class=\"sharing_delete mdc-icon-button material-icons\" name='" + account.id + "'>delete</button></td></tr>";
                 }
             }
@@ -40,7 +40,7 @@ var share = function(event) {
             let shareDialog = showDialog(okDialog, "Share " + fileName, dialogBody);
             let newShare = $(".sharing_username[name='new']");
 
-            $(".sharing_delete[name='-1']").prop("disabled", true);
+            $(".sharing_delete[name='public']").prop("disabled", true);
 
             $(".sharing-tr").last().append("<div class=\"mdc-card mdc-elevation--z10\" id=\"search\" style=\"overflow: scroll; z-index:20;position:absolute; left: 23px; margin-top: 58px; max-height: 200px; padding-bottom: 8px; padding-top: 2px\"><ul id='search-list' class='mdc-list'></ul></div>");
             let searchList = $("#search-list");
@@ -53,6 +53,7 @@ var share = function(event) {
                         if (xmlHttpRequest.status === 200) {
                             searchList.empty();
                             var accountsList = JSON.parse(xmlHttpRequest.responseText.trim());
+
                             for (var account in accountsList) {
                                 if (accountsList.hasOwnProperty(account)) {
                                     let id = accountsList[account].id;
@@ -89,7 +90,7 @@ var share = function(event) {
                     newShareMenu = selectMenu;
                     selectMenu.selectedIndex = 1;
                 } else {
-                    if (sharing[i].id === -1) publicMenu = selectMenu;
+                    if (sharing[i].id === "public") publicMenu = selectMenu;
                     selectMenu.selectedIndex = sharing[i].access;
                 }
                 selectMenu.listen('MDCSelect:change', function(selectEvent) {
@@ -196,7 +197,7 @@ var share = function(event) {
 
 var updateAccess = function(event) {
     let accessIndex = event.detail.index;
-    let id = (event.detail.id !== undefined) ? event.detail.id : -1;
+    let id = (event.detail.id !== undefined) ? event.detail.id : "public";
     let data = JSON.stringify({"action": "updateAccess", "access": accessIndex, "id": id});
     postRequest(event.data.filePath + "?sharing", data, function(xmlHttpRequest) {
         if (xmlHttpRequest.status !== 200) {
@@ -231,7 +232,7 @@ var addAccess = function(event) {
 };
 
 var removeAccess = function(event) {
-    let id = (event.detail.id !== undefined) ? event.detail.id : -1;
+    let id = (event.detail.id !== undefined) ? event.detail.id : "public";
     let data = JSON.stringify({"action": "removeAccess", "id": id});
     postRequest(event.data.filePath + "?sharing", data, function(xmlHttpRequest) {
         if (xmlHttpRequest.status !== 200) {
@@ -241,6 +242,7 @@ var removeAccess = function(event) {
 };
 
 var showSetPassword = function(event) {
+    const fileName = decodeURIComponent(event.data.filePath.split("/").pop());
     let dialogBody = "<div class='mdc-text-field'><input class='mdc-text-field__input' id='new-password' type='password' tabindex='1'/><div class=\"mdc-line-ripple\"></div><label class=\"mdc-floating-label\">Password</label></div>";
     let setPasswordDialog = showDialog(okDialog, "Set password for " + fileName, dialogBody);
     let textFields = document.getElementsByClassName('mdc-text-field');

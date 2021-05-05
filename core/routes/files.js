@@ -9,16 +9,17 @@ const preferences = require("../preferences");
 const log = require('../log');
 
 const files = function(getRelativeDirectory, getFilePath) {
-    if (!getRelativeDirectory) getRelativeDirectory = req => preferences.get("files");
-    if (!getFilePath) getFilePath = req => path.join(getRelativeDirectory(req), decodeURIComponent(req.path));
+    if (!getRelativeDirectory) getRelativeDirectory = async req => preferences.get("files");
+    if (!getFilePath) getFilePath = async req => path.join(await getRelativeDirectory(req), decodeURIComponent(req.path));
 
     const router = express.Router();
 
     router.use(async function (req, res, next) {
-        let relativeDirectory = getRelativeDirectory(req);
+        let relativeDirectory = await getRelativeDirectory(req);
+        console.log(relativeDirectory);
         try {
             const stats = await fs.promises.stat(relativeDirectory);
-            if (stats && stats.isDirectory()) await mkdirp(getRelativeDirectory(req));
+            if (stats && stats.isDirectory()) await mkdirp(relativeDirectory);
             next();
         } catch (err) {
             log.write(err);
@@ -27,8 +28,8 @@ const files = function(getRelativeDirectory, getFilePath) {
     });
 
     router.delete("/*", async function (req, res, next) {
-        const relativeDirectory = getRelativeDirectory(req);
-        const filePath = getFilePath(req);
+        const relativeDirectory = await getRelativeDirectory(req);
+        const filePath = await getFilePath(req);
         try {
             await fileManager.deleteFile(filePath, relativeDirectory);
             res.sendStatus(200);
@@ -38,9 +39,9 @@ const files = function(getRelativeDirectory, getFilePath) {
     });
 
     router.get('/*', async function (req, res, next) {
-        const filePath = getFilePath(req);
+        const filePath = await getFilePath(req);
         const fileName = path.basename(filePath);
-        const relativeDirectory = getRelativeDirectory(req);
+        const relativeDirectory = await getRelativeDirectory(req);
         const parameter = Object.keys(req.query)[0];
 
         let stats;
@@ -67,7 +68,7 @@ const files = function(getRelativeDirectory, getFilePath) {
                     fileManager.downloadFile(fileStream, fileName, req, res, next);
                     break;
                 case "view":
-                    await fileManager.renderFile(req, res, next);
+                    await fileManager.renderFile(fileName, req, res, next);
                     break;
                 default:
                     fileManager.inlineFile(fileStream, fileName, req, res, next);
@@ -77,7 +78,7 @@ const files = function(getRelativeDirectory, getFilePath) {
     });
 
     router.post("/*", async function (req, res, next) {
-        const filePath = getFilePath(req);
+        const filePath = await getFilePath(req);
         try {
             const stats = await fs.promises.stat(filePath);
             if (stats.isDirectory()) {
@@ -91,7 +92,7 @@ const files = function(getRelativeDirectory, getFilePath) {
     });
 
     router.put("/*", async function (req, res, next) {
-        const filePath = getFilePath(req);
+        const filePath = await getFilePath(req);
         try {
             const stats = await fs.promises.stat(filePath);
             if (!stats.isDirectory()) {

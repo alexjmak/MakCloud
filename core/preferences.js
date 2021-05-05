@@ -4,8 +4,10 @@ const log = require('./log');
 const configurationFile = "preferences.json";
 
 let defaultConfiguration = {
+    files: "./files",
     port: 443,
-    httpRedirectServer: true,
+    httpRedirectServer: false,
+    loginMaxAge: 3 * 24 * 60 * 60 * 1000,
     blacklist: true,
     whitelist: false,
     serviceName: null,
@@ -56,7 +58,7 @@ function init() {
     try {
         data = fs.readFileSync(configurationFile);
     } catch {
-        fs.writeFileSync(configurationFile, JSON.stringify(defaultConfiguration));
+        writeJSON(configurationFile, defaultConfiguration);
         return init();
     }
     data = data.toString().trim();
@@ -72,11 +74,15 @@ function init() {
 }
 
 function save() {
-    fs.writeFileSync(configurationFile, JSON.stringify(configuration, null, 4));
+    writeJSON(configurationFile, configuration);
 }
 
 function setDefaultConfiguration(configuration) {
     Object.assign(defaultConfiguration, configuration);
+}
+
+function writeJSON(filePath, json) {
+    fs.writeFileSync(filePath, JSON.stringify(json, null, 4));
 }
 
 module.exports = {

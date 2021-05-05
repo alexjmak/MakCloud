@@ -7,6 +7,7 @@ const accountManager = require('../accountManager');
 const authorization = require('../authorization');
 const localeManager = require('../core/localeManager');
 const accounts = require("../core/routes/accounts");
+const encryptionManager = require("../encryptionManager");
 
 const router = express.Router();
 
@@ -31,6 +32,7 @@ router.patch('/encrypted', async function(req, res, next) {
                 const decryptedKey = await accountManager.encryptAccount(id, password);
                 if (id === authorization.getID(req)) {
                     req.session.encryptionKey = decryptedKey;
+                    encryptionManager.setEncryptionEnabledCookie(res);
                 }
                 res.send(locale.encrypted_account);
             } catch (err) {
@@ -44,6 +46,7 @@ router.patch('/encrypted', async function(req, res, next) {
                 if (id === authorization.getID(req)) {
                     req.session.encryptionKey = undefined;
                     res.clearCookie("encryptionSession");
+                    res.clearCookie("encryptionTimeout");
                 }
                 res.send(locale.decrypted_account);
             } catch (err) {

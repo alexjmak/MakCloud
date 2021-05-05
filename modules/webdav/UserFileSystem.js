@@ -18,6 +18,7 @@ var path_1 = require("path");
 var Errors_1 = require("webdav-server/lib/Errors");
 var fs = require("fs");
 var encryptionManager = require("../../encryptionManager");
+const fileManager = require("../../fileManager");
 
 var PhysicalFileSystemResource = /** @class */ (function () {
     function PhysicalFileSystemResource(data) {
@@ -144,94 +145,30 @@ var UserFileSystem = /** @class */ (function (_super) {
                 fs.unlink(realPath, callback);
         });
     };
-    FileSystem.prototype._openWriteStream = function (path, ctx, callback) {
+    FileSystem.prototype._displayName = function (path, ctx, callback) {
+        return callback(null, path.fileName());
+    };
+
+    FileSystem.prototype._openWriteStream = async function (path, ctx, callback) {
         var _this = this;
         var _a = this.getRealPath(path, ctx), realPath = _a.realPath, resource = _a.resource;
+        const key = ctx.context.user.key;
+        if (key) return callback(Errors_1.Errors.Locked);
+
         fs.open(realPath, 'w+', function (e, fd) {
-            if (e)
-                return callback(Errors_1.Errors.ResourceNotFound);
-            if (!resource)
-                _this.resources[path.toString()] = PhysicalFileSystemResource();
             var stream = fs.createWriteStream(null, { fd: fd });
-            var key = ctx.context.user.key;
-            var iv = ctx.context.user.iv;
-            if (key && iv) {
-                encryptionManager.getCipher(key, iv, function(err, cipher) {
-                    if (err) {
-                        fs.open(realPath, 'w+', function (e, fd) {
-                            var stream = fs.createWriteStream(null, { fd: fd });
-                            callback(null, stream);
-                        });
-                    } else {
-                        let encryptedStream = cipher.pipe(stream);
-                        let callbackCalled = false;
-                        encryptedStream.on("error", function() {
-                            if (!callbackCalled) {
-                                callbackCalled = true;
-                                fs.open(realPath, 'w+', function (e, fd) {
-                                    var stream = fs.createWriteStream(null, { fd: fd });
-                                    callback(null, stream);
-                                });
-                            }
-                        });
-                        encryptedStream.on("finish", function() {
-                            if (!callbackCalled) {
-                                callbackCalled = true;
-                                callback(null, encryptedStream);
-                            }
-                        });
-                    }
-
-                });
-            } else {
-                callback(null, stream);
-            }
+            callback(null, stream);
         });
     };
 
-    FileSystem.prototype._openReadStream = function (path, ctx, callback) {
-        var realPath = this.getRealPath(path, ctx).realPath;
-        fs.open(realPath, 'r', function (e, fd) {
-            if (e)
-                return callback(Errors_1.Errors.ResourceNotFound);
-
-            var stream = fs.createReadStream(null, { fd: fd });
-
-            var key = ctx.context.user.key;
-            var iv = ctx.context.user.iv;
-
-            if (key && iv) {
-                encryptionManager.decryptStream(stream, key, iv, function(decryptedStream) {
-                    if (!decryptedStream) {
-                        fs.open(realPath, 'r', function (e, fd) {
-                            var stream = fs.createReadStream(null, { fd: fd });
-                            callback(null, stream);
-                        });
-                    } else {
-                        let callbackCalled = false;
-                        decryptedStream.on("error", function(err) {
-                            if (!callbackCalled) {
-                                callbackCalled = true;
-                                fs.open(realPath, 'r', function (e, fd) {
-                                    var stream = fs.createReadStream(null, { fd: fd });
-                                    callback(null, stream);
-                                });
-                            }
-                        });
-                        decryptedStream.on("finish", function() {
-                            if (!callbackCalled) {
-                                callbackCalled = true;
-                                callback(null, decryptedStream);
-                            }
-                        });
-                    }
-
-                });
-            } else {
-                callback(null, stream);
-            }
-        });
+    FileSystem.prototype._openReadStream = async function (path, ctx, callback) {
+        const realPath = this.getRealPath(path, ctx).realPath;
+        const key = ctx.context.user.key;
+        const fileInfo = await fileManager.readFile(realPath, key);
+        const stream = fileInfo.readStream;
+        callback(null, stream);
     };
+
     FileSystem.prototype._move = function (pathFrom, pathTo, ctx, callback) {
         var _this = this;
         var realPathFrom = this.getRealPath(pathFrom, ctx).realPath;

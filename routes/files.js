@@ -13,13 +13,13 @@ const sharingManager = require('../sharingManager');
 const filesRouter = require("../core/routes/files");
 
 const files = function(getRelativeDirectory, getFilePath) {
-    if (!getRelativeDirectory) getRelativeDirectory = (req) => path.join(preferences.get("files"), authorization.getID(req), "files");
-    if (!getFilePath) getFilePath = req => path.join(getRelativeDirectory(req), decodeURIComponent(req.path));
+    if (!getRelativeDirectory) getRelativeDirectory = async req => path.join(preferences.get("files"), authorization.getID(req), "files");
+    if (!getFilePath) getFilePath = async req => path.join(await getRelativeDirectory(req), decodeURIComponent(req.path));
 
     const router = express.Router();
 
     router.use(async function (req, res, next) {
-        let relativeDirectory = getRelativeDirectory(req);
+        let relativeDirectory = await getRelativeDirectory(req);
         try {
             await mkdirp(relativeDirectory);
         } catch (err) {
@@ -33,9 +33,9 @@ const files = function(getRelativeDirectory, getFilePath) {
      * GET /files/{file_path}
      */
     router.get('/*', async function (req, res, next) {
-        const filePath = getFilePath(req);
+        const filePath = await getFilePath(req);
         const fileName = path.basename(filePath);
-        const relativeDirectory = getRelativeDirectory(req);
+        const relativeDirectory = await getRelativeDirectory(req);
         const parameter = Object.keys(req.query)[0];
 
         const key = req.session.encryptionKey;
@@ -86,7 +86,7 @@ const files = function(getRelativeDirectory, getFilePath) {
     });
 
     router.post("/*", async function (req, res, next) {
-        const filePath = getFilePath(req);
+        const filePath = await getFilePath(req);
         const parameter = Object.keys(req.query)[0];
 
         const key = req.session.encryptionKey;
@@ -102,9 +102,7 @@ const files = function(getRelativeDirectory, getFilePath) {
             } else {
                 switch (parameter) {
                     case "sharing":
-
-                        //TODO
-                        res.status(200);
+                        await sharingManager.handle(filePath, req, res, next)
                         break;
                     default:
                         res.status(400);
@@ -117,7 +115,7 @@ const files = function(getRelativeDirectory, getFilePath) {
     });
 
     router.put("/*", async function (req, res, next) {
-        const filePath = getFilePath(req);
+        const filePath = await getFilePath(req);
         const key = req.session.encryptionKey;
         try {
             const stats = await fs.promises.stat(filePath);

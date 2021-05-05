@@ -22,6 +22,10 @@ let getRequest = function(url, callback, authorization) {
     request("GET", url, null, callback, authorization);
 };
 
+let headRequest = function(url, callback, authorization) {
+    request("HEAD", url, null, callback, authorization);
+};
+
 let postRequest = function(url, data, callback, authorization) {
     request("POST", url, data, callback, authorization);
 };

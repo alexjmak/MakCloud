@@ -3,6 +3,7 @@
 /keys/
 /logs/
 /node_modules/
+/tmp/
 /firewall.json
 /database.db
 /preferences.json

@@ -6,7 +6,7 @@ let oldFileContents;
 
 const pathSplit = location.pathname.split("/");
 const filePath = pathSplit[pathSplit.length - 1];
-const displayName = name_decrypted ? name_decrypted : decodeURIComponent(filePath);
+displayName = decodeURIComponent(displayName);
 
 let requestFile = function (method, authorization, next) {
     request(method, filePath, null, function (xmlHttpRequest) {

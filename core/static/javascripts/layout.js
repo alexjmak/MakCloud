@@ -107,7 +107,6 @@ function uploadFiles(files) {
         formData.append("file" + i, file);
     }
 
-    console.log(files)
     request("POST", location.pathname, formData, function(xmlHttpRequest) {
         showSnackbar(basicSnackbar, xmlHttpRequest.responseText);
     }, undefined, null);
@@ -128,3 +127,12 @@ function checkMobileResize() {
         mobile.hide();
     }
 }
+
+
+(() => {
+    if ($.cookie("loginToken")) {
+        const expiresAt = parseJwt($.cookie("loginToken")).exp * 1000;
+        const expiresIn = expiresAt - Date.now() + 5 * 1000;
+        setTimeout((() => location.reload()), expiresIn);
+    }
+})();

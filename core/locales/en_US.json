@@ -13,7 +13,7 @@
   "cant_retrieve_firewall": "Can't retrieve firewall",
   "cant_update_password": "Can't update password",
   "cant_update_privilege": "Can't update privilege",
-  "confirm_delete": "Are you sure you want to delete {0}?",
+  "confirm_delete": "Are you sure you want to delete \"{0}\"?",
   "confirm_delete_account": "Are you sure you want to delete your account?",
   "delete": "Delete",
   "deleted": "Deleted {0}",

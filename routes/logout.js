@@ -4,6 +4,7 @@ const router = express.Router();
 
 router.get('/', function(req, res, next) {
     res.clearCookie("encryptionSession");
+    res.clearCookie("encryptionTimeout");
     if (req.session !== undefined) req.session.destroy();
     next();
 });

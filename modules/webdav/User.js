@@ -1,7 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var User = /** @class */ (function () {
-    function User(uid, infoHash, username, privilege, key, iv) {
+    function User(uid, infoHash, username, privilege, key) {
         this.uid = uid;
         this.infoHash = infoHash
         this.username = username;

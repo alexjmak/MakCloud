@@ -16,11 +16,11 @@ const readify = require("readify")
 
 const router = express.Router();
 
-const getRelativeDirectory = (req) => path.join(preferences.get("files"), authorization.getID(req), "photos");
-const getFilePath = req => path.join(getRelativeDirectory(req), decodeURIComponent(req.path));
+const getRelativeDirectory = async req => path.join(preferences.get("files"), authorization.getID(req), "photos");
+const getFilePath = async req => path.join(await getRelativeDirectory(req), decodeURIComponent(req.path));
 
 router.use(async function (req, res, next) {
-    let relativeDirectory = getRelativeDirectory(req);
+    let relativeDirectory = await getRelativeDirectory(req);
     try {
         await mkdirp(relativeDirectory);
     } catch (err) {
@@ -32,7 +32,7 @@ router.use(async function (req, res, next) {
 
 
 router.get('/*', async function(req, res, next) {
-    const filePath = getFilePath(req);
+    const filePath = await getFilePath(req);
     const key = req.session.encryptionKey;
     const parameter = Object.keys(req.query)[0];
 

@@ -147,10 +147,7 @@ async function renderDirectory(directory, relativeDirectory, key, req, res, next
 }
 
 async function renderFile(displayName, req, res, next) {
-    if (!displayName) {
-        return await fileManager.renderFile(req, res, next);
-    }
-    return await render("fileViewer", {name_decrypted: displayName}, req, res, next);
+    return await fileManager.renderFile(displayName, req, res, next);
 }
 
 async function writeFile(filePath, contentStream, key, overwrite) {
@@ -189,6 +186,51 @@ async function writeFile(filePath, contentStream, key, overwrite) {
     }
 }
 
+async function writeFileStream(filePath, key) {
+    if (!key) return fs.createWriteStream(filePath);
+    const encryptionManager = require("./encryptionManager");
+    const nameIV = await encryptionManager.generateIV();
+    const contentIV = await encryptionManager.generateIV();
+    let encryptedFilePath = await encryptionManager.encryptFileName(filePath, key, nameIV.toString("hex"));
+    if (!encryptedFilePath) encryptedFilePath = filePath;
+    let exists;
+    try {
+        await fs.promises.stat(encryptedFilePath);
+        exists = true;
+    } catch {
+        exists = false;
+    }
+    if (exists && encryptedFilePath !== filePath) { //File exists and its encrypted
+        log.write("File name collision. Trying another iv...");
+        return await writeFileStream(filePath, key);
+    } else {
+        try {
+            await fs.promises.appendFile(encryptedFilePath);
+            await fs.promises.unlink(encryptedFilePath);
+        } catch {
+            encryptedFilePath = filePath;
+        }
+        const cipher = encryptionManager.getCipher(key, contentIV.toString("hex"));
+        const stream = await writeFileStream(encryptedFilePath);
+        if (!cipher) return stream;
+
+        return new Promise((resolve, reject) => {
+            const encryptedStream = cipher.pipe(stream);
+            let error = false;
+            encryptedStream.on("error", function() {
+                if (!error) {
+                    error = true;
+                    resolve(stream)
+                }
+            })
+            encryptedStream.on("finish", function() {
+                if (!error) {
+                    resolve(encryptedStream);
+                }
+            });
+        });
+    }
+}
 module.exports = Object.assign({}, fileManager, {
     createArchive: createArchive,
     processUpload: processUpload,
@@ -198,4 +240,5 @@ module.exports = Object.assign({}, fileManager, {
     renderDirectory: renderDirectory,
     renderFile: renderFile,
     writeFile: writeFile,
+    writeFileStream: writeFileStream
 });
