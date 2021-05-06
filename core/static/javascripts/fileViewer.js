@@ -59,7 +59,7 @@ let requestFile = function (method, authorization, next) {
         } else if (xmlHttpRequest.status === 0) {
             $("#message").text(locale.no_connection);
         }
-        if (next) next(true);
+        if (typeof next === "function") next(true);
     }, authorization);
 };
 

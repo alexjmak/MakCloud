@@ -49,6 +49,12 @@ var share = function(event) {
                 if (newShareValue.trim() === "") {
                     searchList.empty();
                 } else {
+                    const existingUsernames = [];
+                    for (let usernameFields of $(`.sharing_username`)
+                        .not(".sharing_username[name='new']")
+                        .not(".sharing_username[name='public']")) {
+                        existingUsernames.push($(usernameFields).val());
+                    }
                     getRequest("/accounts/search?q=" + newShareValue, function(xmlHttpRequest) {
                         if (xmlHttpRequest.status === 200) {
                             searchList.empty();
@@ -58,6 +64,7 @@ var share = function(event) {
                                 if (accountsList.hasOwnProperty(account)) {
                                     let id = accountsList[account].id;
                                     let username = accountsList[account].username;
+                                    if (existingUsernames.includes(username)) continue;
                                     searchList.append("<li class='mdc-list-item search-result' name='" + id +  "'>" + username + "</li>");
                                 }
 

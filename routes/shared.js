@@ -17,15 +17,12 @@ const shared = function(getRelativeDirectory, getFilePath) {
     if (!getRelativeDirectory) getRelativeDirectory = async req => {
         const key = getKey(req);
         const filePath = await sharingManager.getLinkInformation("filePath", "key", key);
-
         return filePath;
     }
     if (!getFilePath) getFilePath = async req => {
-        //const key = getKey(req);
         const filePath = await getRelativeDirectory(req);
         const urlPathSplit = req.path.split("/");
         urlPathSplit.splice(0, 2)
-        console.log(path.join(filePath, urlPathSplit.join("/")));
         return path.join(filePath, urlPathSplit.join("/"));
     };
 
@@ -38,7 +35,7 @@ const shared = function(getRelativeDirectory, getFilePath) {
     router.use(async function(req, res, next) {
         const key = getKey(req);
         const currentID = authorization.getID(req);
-        const status = await sharingManager.linkCheck(key);
+        const status = await sharingManager.linkCheck(key, currentID);
 
         switch(status) {
             case 200:

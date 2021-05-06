@@ -143,8 +143,7 @@ async function doAuthorization(key, req, res, next) {
     if (result) {
         if (req.method === "HEAD") res.sendStatus(200);
         else next();
-    }
-    else {
+    } else {
         const result = await database.get(`SELECT owner, hash, salt
                                            FROM links
                                            WHERE key = ?`, key);
@@ -191,14 +190,19 @@ async function doAuthorization(key, req, res, next) {
                 } else {
                     try {
                         await checkPassword(req, res, key, hash, salt);
+                        if (req.method === "HEAD") res.sendStatus(200);
+                        else next();
                     } catch {
                         if (req.method === "HEAD") res.status(403).send("Invalid password");
                         else res.redirect(req.baseUrl + req.path + "?view");
                     }
                 }
+            } else {
+                if (req.method === "HEAD") res.sendStatus(401);
+                else res.redirect(req.baseUrl + req.path + "?view");
             }
         } else {
-
+            res.sendStatus(500);
         }
     }
 }
@@ -328,7 +332,7 @@ async function handle(filePath, req, res, next) {
         case "updateAccess":
             try {
                 await updateLinkAccess(filePath, owner, id, access, expiration);
-                res.send(id.toString());
+                res.sendStatus(200);
             } catch {
                 res.sendStatus(400);
             }
@@ -422,14 +426,14 @@ async function updateLinkAccess(filePath, owner, id, newAccess, newExpiration) {
 
     const key = await getLinkKey(filePath, owner);
 
-    if (newAccess) {
+    if (newAccess !== null) {
         await database.run(`UPDATE sharing
                             SET access = ?
                             WHERE key = ?
                             AND id = ?`, [newAccess, key, id]);
     }
 
-    if (newExpiration) {
+    if (newExpiration !== null) {
         await database.run(`UPDATE sharing
                             SET expiration = ?
                             WHERE key = ?
